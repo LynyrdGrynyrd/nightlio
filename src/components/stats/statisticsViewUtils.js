@@ -132,6 +132,9 @@ export const buildCalendarDays = (entries) => {
       iconColor: moodInfo?.color ?? null,
       isCurrentMonth: current.getMonth() === today.getMonth(),
       isToday: current.toDateString() === todayKey,
+      isFuture: current > today,
+      // Date string for API (locale format matches backend expectations)
+      dateString: current.toLocaleDateString(),
     });
 
     current.setDate(current.getDate() + 1);

@@ -11,19 +11,23 @@ const DEFAULT_MARKDOWN = `# How was your day?
 
 Write about your thoughts, feelings, and experiences...`;
 
-const EntryView = ({ 
-  selectedMood, 
-  groups, 
-  onBack, 
-  onCreateGroup, 
-  onCreateOption, 
+const EntryView = ({
+  selectedMood,
+  groups,
+  onBack,
+  onCreateGroup,
+  onCreateOption,
   onEntrySubmitted,
   onSelectMood,
   editingEntry = null,
   onEntryUpdated,
   onEditMoodSelect,
+  targetDate = null,
 }) => {
   const isEditing = Boolean(editingEntry);
+  // For retroactive entries: use targetDate if provided, otherwise today
+  const isRetroactiveEntry = Boolean(targetDate) && !isEditing;
+  const entryDate = targetDate || new Date().toLocaleDateString();
   const [selectedOptions, setSelectedOptions] = useState(
     editingEntry?.selections?.map((selection) => selection.id) ?? []
   );
@@ -115,7 +119,7 @@ const EntryView = ({
       const now = new Date();
       const response = await apiService.createMoodEntry({
         mood: selectedMood,
-        date: now.toLocaleDateString(),
+        date: entryDate, // Use targetDate for retroactive entries, otherwise today
         time: now.toISOString(),
         content: markdownContent,
         selected_options: selectedOptions,
@@ -135,13 +139,13 @@ const EntryView = ({
         setSubmitMessage('Entry saved successfully! 🎉');
       }
 
-  markdownRef.current?.getInstance()?.setMarkdown(DEFAULT_MARKDOWN);
+      markdownRef.current?.getInstance()?.setMarkdown(DEFAULT_MARKDOWN);
 
       setSelectedOptions([]);
       setTimeout(() => {
         onEntrySubmitted();
       }, 1500);
-  } catch (error) {
+    } catch (error) {
       console.error('Failed to save entry:', error);
       if (isEditing) {
         show('Failed to update entry. Please try again.', 'error');
@@ -214,6 +218,19 @@ const EntryView = ({
               color: 'color-mix(in oklab, var(--text), transparent 40%)'
             }}>
               Editing entry from <strong style={{ color: 'var(--text)' }}>{editingEntry.date}</strong>
+            </div>
+          )}
+          {isRetroactiveEntry && (
+            <div style={{
+              marginBottom: '0.75rem',
+              padding: '0.6rem 1rem',
+              borderRadius: '12px',
+              background: 'var(--accent-bg-softer)',
+              border: '1px solid var(--accent-200)',
+              fontSize: '0.9rem',
+              color: 'var(--text)'
+            }}>
+              📅 Creating entry for <strong style={{ color: 'var(--accent-600)' }}>{entryDate}</strong>
             </div>
           )}
           <div style={{ marginBottom: '1rem' }}>
@@ -290,20 +307,20 @@ const EntryView = ({
         <div className="entry-right">
           <MDArea ref={markdownRef} />
           <div className="entry-savebar">
-      <button
+            <button
               disabled={isSubmitting}
               onClick={handleSubmit}
               style={{
                 padding: '0.9rem 2rem',
                 fontSize: '1rem',
-  background: 'linear-gradient(135deg, var(--accent-bg), var(--accent-bg-2))',
+                background: 'linear-gradient(135deg, var(--accent-bg), var(--accent-bg-2))',
                 color: 'white',
                 border: 'none',
                 borderRadius: '50px',
                 cursor: !isSubmitting ? 'pointer' : 'not-allowed',
                 transition: 'all 0.3s ease',
                 fontWeight: '600',
-    boxShadow: 'var(--shadow-md)'
+                boxShadow: 'var(--shadow-md)'
               }}
             >
               {isSubmitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Save Entry'}
@@ -322,13 +339,13 @@ const EntryView = ({
             zIndex: 10,
           }}
         >
-      <div
+          <div
             style={{
-        background: 'var(--bg-card)',
+              background: 'var(--bg-card)',
               padding: '2rem',
               borderRadius: '16px',
-        boxShadow: 'var(--shadow-3)',
-        border: '1px solid var(--border)',
+              boxShadow: 'var(--shadow-3)',
+              border: '1px solid var(--border)',
               textAlign: 'center',
               minWidth: '300px',
               maxWidth: 'min(560px, 90%)',
@@ -336,7 +353,7 @@ const EntryView = ({
           >
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎉</div>
             <div style={{
-        color: submitMessage.includes('achievement') ? 'var(--accent-600)' : 'var(--text)',
+              color: submitMessage.includes('achievement') ? 'var(--accent-600)' : 'var(--text)',
               fontWeight: '600',
               fontSize: '1.1rem',
               lineHeight: '1.4'
@@ -348,11 +365,11 @@ const EntryView = ({
       )}
 
       {submitMessage && (
-    <div
+        <div
           style={{
             position: 'absolute',
             inset: 0,
-      background: 'var(--overlay)',
+            background: 'var(--overlay)',
             zIndex: 5
           }}
         />

@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import LoginPage from "./components/auth/LoginPage";
 import NotFound from "./views/NotFound";
 import { AuthProvider } from "./contexts/AuthContext";
-import { ConfigProvider, useConfig } from "./contexts/ConfigContext";
+import { ConfigProvider } from "./contexts/ConfigContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import Header from "./components/Header";
@@ -29,7 +29,7 @@ import "./App.css";
 const AppContent = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   // Custom hooks
   const { pastEntries, setPastEntries, loading: historyLoading, error: historyError, refreshHistory } = useMoodData();
   const { groups, createGroup, createGroupOption } = useGroups();
@@ -69,10 +69,15 @@ const AppContent = () => {
     refreshHistory();
   };
 
+  // Handler for clicking an empty day in the calendar - create entry for that date
+  const handleCalendarDayClick = (dateString) => {
+    navigate('entry', { state: { targetDate: dateString } });
+  };
+
   // Helper to get state from location
   const locationState = location.state || {};
-  const { mood: selectedMood, entry: editingEntry } = locationState;
-  
+  const { mood: selectedMood, entry: editingEntry, targetDate } = locationState;
+
   // Determine if we are in entry view for layout purposes (no sidebar)
   const isEntryView = location.pathname.endsWith('/entry');
 
@@ -95,7 +100,7 @@ const AppContent = () => {
         <Sidebar
           onLoadStatistics={loadStatistics}
         />
-        
+
         <div className="app-shell">
           <Header currentStreak={currentStreak} />
 
@@ -126,6 +131,7 @@ const AppContent = () => {
                     onEntryUpdated={handleEntryUpdated}
                     onEditMoodSelect={handleEditMoodSelect}
                     onSelectMood={handleMoodSelect}
+                    targetDate={targetDate}
                   />
                 } />
                 <Route path="stats" element={
@@ -134,6 +140,8 @@ const AppContent = () => {
                     pastEntries={pastEntries}
                     loading={statsLoading}
                     error={statsError}
+                    onDayClick={handleCalendarDayClick}
+                    onEntryClick={handleStartEdit}
                   />
                 } />
                 <Route path="achievements" element={<AchievementsView />} />
@@ -141,7 +149,7 @@ const AppContent = () => {
                 <Route path="settings" element={<SettingsView />} />
               </Routes>
             </main>
-            
+
             <Routes>
               <Route index element={
                 <>
@@ -150,7 +158,7 @@ const AppContent = () => {
                   </section>
                   <section className="app-wide" aria-label="History entries">
                     <h2 style={{ margin: '0 0 var(--space-1) 0', paddingLeft: 'calc(var(--space-1) / 2)', paddingTop: 0, paddingBottom: 'calc(var(--space-1) / 2)', color: 'var(--text)' }}>History</h2>
-                    <HistoryList 
+                    <HistoryList
                       entries={pastEntries}
                       loading={historyLoading}
                       error={historyError}

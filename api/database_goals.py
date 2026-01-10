@@ -265,6 +265,108 @@ class GoalsMixin(DatabaseConnectionMixin):
             )
             return result
 
+    def toggle_goal_completion(
+        self, user_id: int, goal_id: int, date_str: str
+    ) -> Optional[Dict]:
+        """Toggle goal completion for a specific date.
+        
+        If completion exists for that date, remove it.
+        If completion doesn't exist, add it.
+        Updates completed count if the date is within current week.
+        """
+        with self._connect() as conn:
+            conn.row_factory = sqlite3.Row
+            
+            # Verify goal exists and belongs to user
+            row = conn.execute(
+                "SELECT * FROM goals WHERE id = ? AND user_id = ?",
+                (goal_id, user_id),
+            ).fetchone()
+            if not row:
+                return None
+            
+            goal = self._rollover_goal_if_needed(conn, row)
+            current_completed = int(goal.get("completed") or 0)
+            period_start = goal.get("period_start")
+            
+            # Check if completion exists for this date
+            existing = conn.execute(
+                "SELECT 1 FROM goal_completions WHERE user_id = ? AND goal_id = ? AND date = ?",
+                (user_id, goal_id, date_str),
+            ).fetchone()
+            
+            # Determine if the date is within the current week
+            try:
+                target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+                target_week_start = self._week_start_iso(target_date)
+                is_current_week = target_week_start == period_start
+            except ValueError:
+                is_current_week = False
+            
+            if existing:
+                # Remove the completion
+                conn.execute(
+                    "DELETE FROM goal_completions WHERE user_id = ? AND goal_id = ? AND date = ?",
+                    (user_id, goal_id, date_str),
+                )
+                # Decrement completed count if within current week
+                if is_current_week and current_completed > 0:
+                    current_completed -= 1
+                    conn.execute(
+                        """
+                        UPDATE goals
+                           SET completed = ?,
+                               last_completed_date = NULL,
+                               updated_at = CURRENT_TIMESTAMP
+                         WHERE id = ? AND user_id = ?
+                        """,
+                        (current_completed, goal_id, user_id),
+                    )
+                was_completed = False
+            else:
+                # Add the completion
+                conn.execute(
+                    "INSERT INTO goal_completions (user_id, goal_id, date) VALUES (?, ?, ?)",
+                    (user_id, goal_id, date_str),
+                )
+                # Increment completed count if within current week
+                freq = int(goal.get("frequency_per_week") or 0)
+                if is_current_week and current_completed < freq:
+                    current_completed += 1
+                    conn.execute(
+                        """
+                        UPDATE goals
+                           SET completed = ?,
+                               last_completed_date = ?,
+                               updated_at = CURRENT_TIMESTAMP
+                         WHERE id = ? AND user_id = ?
+                        """,
+                        (current_completed, date_str, goal_id, user_id),
+                    )
+                was_completed = True
+            
+            conn.commit()
+            
+            # Return updated goal state
+            updated = conn.execute(
+                """
+                SELECT id, user_id, title, description, frequency_per_week, completed,
+                       streak, period_start, last_completed_date, created_at, updated_at
+                  FROM goals WHERE id = ? AND user_id = ?
+                """,
+                (goal_id, user_id),
+            ).fetchone()
+            
+            if not updated:
+                return None
+            
+            result = dict(updated)
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            result["already_completed_today"] = result.get("last_completed_date") == today_str
+            result["toggled_date"] = date_str
+            result["is_completed"] = was_completed
+            return result
+
     def get_goal_completions(
         self,
         user_id: int,

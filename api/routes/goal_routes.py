@@ -113,6 +113,24 @@ def create_goal_routes(goal_service: GoalService):
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
+    @bp.route("/goals/<int:goal_id>/toggle-completion", methods=["POST"])
+    @require_auth
+    def toggle_completion(goal_id: int):
+        try:
+            user_id = get_current_user_id()
+            if not isinstance(user_id, int):
+                return jsonify({"error": "Unauthorized"}), 401
+            data = request.json or {}
+            date_str = data.get("date")
+            if not date_str:
+                return jsonify({"error": "date is required"}), 400
+            updated = goal_service.toggle_completion(user_id, goal_id, date_str)
+            if not updated:
+                return jsonify({"error": "Not found"}), 404
+            return jsonify(updated)
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
     @bp.route(
         "/goals/<int:goal_id>/completions",
         methods=["GET", "OPTIONS"],

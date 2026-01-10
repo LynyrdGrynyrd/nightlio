@@ -215,31 +215,59 @@ const TagCorrelationsSection = ({ tagStats, onExportCSV }) => {
   );
 };
 
-const MoodCalendarSection = ({ days }) => (
-  <div className="statistics-view__card statistics-view__calendar-card">
-    <h3 className="statistics-view__calendar-title">Mood Calendar</h3>
-    <div className="statistics-view__calendar-grid">
-      {WEEK_DAYS.map((day) => (
-        <div key={day} className="statistics-view__calendar-label">
-          {day}
-        </div>
-      ))}
+const MoodCalendarSection = ({ days, onDayClick, onEntryClick }) => {
+  const handleDayClick = (day) => {
+    if (day.isFuture) return; // Prevent future date clicks
+    if (day.entry && onEntryClick) {
+      onEntryClick(day.entry);
+    } else if (!day.entry && onDayClick) {
+      onDayClick(day.dateString);
+    }
+  };
 
-      {days.map(({ key, label, entry, IconComponent, iconColor, isCurrentMonth, isToday }) => (
-        <div
-          key={key}
-          className={`statistics-view__calendar-day${entry ? ' has-entry' : ''}${isCurrentMonth ? '' : ' is-outside'}${isToday ? ' is-today' : ''}`}
-          style={{
-            background: entry && iconColor ? `color-mix(in oklab, ${iconColor} 18%, transparent)` : undefined,
-            color: entry && iconColor ? iconColor : undefined,
-          }}
-        >
-          {entry && IconComponent ? <IconComponent size={16} /> : label}
-        </div>
-      ))}
+  const handleKeyDown = (e, day) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleDayClick(day);
+    }
+  };
+
+  return (
+    <div className="statistics-view__card statistics-view__calendar-card">
+      <h3 className="statistics-view__calendar-title">Mood Calendar</h3>
+      <p className="statistics-view__calendar-hint">Click a day to add or view an entry</p>
+      <div className="statistics-view__calendar-grid">
+        {WEEK_DAYS.map((day) => (
+          <div key={day} className="statistics-view__calendar-label">
+            {day}
+          </div>
+        ))}
+
+        {days.map((day) => {
+          const { key, label, entry, IconComponent, iconColor, isCurrentMonth, isToday, isFuture } = day;
+          const isClickable = !isFuture && (onDayClick || onEntryClick);
+          return (
+            <div
+              key={key}
+              role={isClickable ? 'button' : undefined}
+              tabIndex={isClickable ? 0 : undefined}
+              onClick={() => handleDayClick(day)}
+              onKeyDown={(e) => handleKeyDown(e, day)}
+              className={`statistics-view__calendar-day${entry ? ' has-entry' : ''}${isCurrentMonth ? '' : ' is-outside'}${isToday ? ' is-today' : ''}${isFuture ? ' is-future' : ''}${isClickable ? ' is-clickable' : ''}`}
+              style={{
+                background: entry && iconColor ? `color-mix(in oklab, ${iconColor} 18%, transparent)` : undefined,
+                color: entry && iconColor ? iconColor : undefined,
+              }}
+              aria-label={entry ? `View entry for ${day.dateString}` : isFuture ? `${day.dateString} (future)` : `Add entry for ${day.dateString}`}
+            >
+              {entry && IconComponent ? <IconComponent size={16} /> : label}
+            </div>
+          );
+        })}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const LoadingState = () => (
   <div className="statistics-view">
@@ -261,7 +289,7 @@ const EmptyState = () => (
   <div className="statistics-view statistics-view__status">No statistics available</div>
 );
 
-const StatisticsView = ({ statistics, pastEntries, loading, error }) => {
+const StatisticsView = ({ statistics, pastEntries, loading, error, onDayClick, onEntryClick }) => {
   const [range, setRange] = useState(RANGE_OPTIONS[0]);
   const trendRef = useRef(null);
   const distributionRef = useRef(null);
@@ -325,7 +353,7 @@ const StatisticsView = ({ statistics, pastEntries, loading, error }) => {
         containerRef={distributionRef}
       />
       <TagCorrelationsSection tagStats={tagStats} onExportCSV={handleExportTagCSV} />
-      <MoodCalendarSection days={calendarDays} />
+      <MoodCalendarSection days={calendarDays} onDayClick={onDayClick} onEntryClick={onEntryClick} />
     </div>
   );
 };

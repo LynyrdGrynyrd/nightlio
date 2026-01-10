@@ -21,7 +21,7 @@ const BottomNav = ({ onLoadStatistics }) => {
 
   return (
     <nav className="bottom-nav">
-      {items.map(({ key, label, icon: Icon, end }) => (
+      {items.map(({ key, label, icon: Icon, end }) => ( // eslint-disable-line no-unused-vars
         <NavLink
           key={key}
           to={key}

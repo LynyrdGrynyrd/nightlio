@@ -251,6 +251,13 @@ class ApiService {
     const q = params.toString();
     return this.request(`/api/goals/${goalId}/completions${q ? `?${q}` : ''}`);
   }
+
+  async toggleGoalCompletion(goalId, date) {
+    return this.request(`/api/goals/${goalId}/toggle-completion`, {
+      method: 'POST',
+      body: JSON.stringify({ date }),
+    });
+  }
 }
 
 const apiService = new ApiService();

@@ -1,19 +1,20 @@
 import { useState } from 'react';
-import { Target, Trash2, CheckCircle, Calendar } from 'lucide-react';
+import { Target, Trash2, CheckCircle, Calendar, XCircle } from 'lucide-react';
 import { useToast } from '../ui/ToastProvider';
 import GoalStatsCalendar from './GoalStatsCalendar';
 import Modal from '../ui/Modal';
 
-const GoalCard = ({ goal, onDelete, onUpdateProgress }) => {
+const GoalCard = ({ goal, onDelete, onUpdateProgress, onToggleCompletion, onGoalUpdated }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const { show } = useToast();
 
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete this goal?')) return;
     setIsDeleting(true);
-    
+
     // Simulate API call delay
     setTimeout(() => {
       onDelete(goal.id);
@@ -22,9 +23,22 @@ const GoalCard = ({ goal, onDelete, onUpdateProgress }) => {
     }, 500);
   };
 
-  const handleMarkComplete = () => {
+  const handleToggleComplete = async () => {
     const d = new Date();
-    const today = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    // If toggle handler is provided, use it (supports both mark and unmark)
+    if (onToggleCompletion) {
+      setIsToggling(true);
+      try {
+        await onToggleCompletion(goal.id, today);
+      } finally {
+        setIsToggling(false);
+      }
+      return;
+    }
+
+    // Fallback to old increment-only behavior
     try {
       const localVal = typeof localStorage !== 'undefined' ? localStorage.getItem(`goal_done_${goal.id}`) : null;
       if (localVal === today) {
@@ -50,7 +64,7 @@ const GoalCard = ({ goal, onDelete, onUpdateProgress }) => {
   const isCompleted = goal.completed >= goal.total;
   const isDoneToday = (() => {
     const d = new Date();
-    const today = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     try {
       const localVal = typeof localStorage !== 'undefined' ? localStorage.getItem(`goal_done_${goal.id}`) : null;
       return (localVal === today) || goal.last_completed_date === today || goal._doneToday === true;
@@ -58,6 +72,13 @@ const GoalCard = ({ goal, onDelete, onUpdateProgress }) => {
       return goal.last_completed_date === today || goal._doneToday === true;
     }
   })();
+
+  // When calendar updates the goal, bubble it up
+  const handleGoalUpdatedFromCalendar = (updatedGoal) => {
+    if (onGoalUpdated) {
+      onGoalUpdated(updatedGoal);
+    }
+  };
 
   return (
     <div
@@ -80,16 +101,16 @@ const GoalCard = ({ goal, onDelete, onUpdateProgress }) => {
       {/* Header: icon + delete button */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', position: 'relative' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, marginRight: goal.streak > 0 ? '60px' : '40px' }}>
-          <span style={{ 
-            color: 'var(--accent-600)', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            width: 28, 
-            height: 28, 
-            borderRadius: '50%', 
-            background: 'var(--accent-bg-softer)', 
-            border: '1px solid var(--border)' 
+          <span style={{
+            color: 'var(--accent-600)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 28,
+            height: 28,
+            borderRadius: '50%',
+            background: 'var(--accent-bg-softer)',
+            border: '1px solid var(--border)'
           }}>
             <Target size={16} strokeWidth={2} />
           </span>
@@ -98,7 +119,7 @@ const GoalCard = ({ goal, onDelete, onUpdateProgress }) => {
             <span>{goal.frequency}</span>
           </div>
         </div>
-        
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)' }}>
           {goal.streak > 0 && (
             <div style={{
@@ -151,10 +172,10 @@ const GoalCard = ({ goal, onDelete, onUpdateProgress }) => {
 
       {/* Progress Bar */}
       <div style={{ marginBottom: '12px' }}>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
           marginBottom: '6px',
           fontSize: '0.85rem',
           color: 'var(--text)',
@@ -179,10 +200,10 @@ const GoalCard = ({ goal, onDelete, onUpdateProgress }) => {
         </div>
       </div>
 
-      {/* Action Button */}
+      {/* Action Button - now supports toggle */}
       <button
-        onClick={(e) => { e.stopPropagation(); handleMarkComplete(); }}
-        disabled={isDoneToday}
+        onClick={(e) => { e.stopPropagation(); handleToggleComplete(); }}
+        disabled={isToggling}
         style={{
           width: '100%',
           padding: '8px 12px',
@@ -192,21 +213,21 @@ const GoalCard = ({ goal, onDelete, onUpdateProgress }) => {
           color: '#fff',
           fontSize: '0.85rem',
           fontWeight: '500',
-          cursor: isDoneToday ? 'default' : 'pointer',
-          // Keep text crisp white even when disabled
-          opacity: 1,
+          cursor: isToggling ? 'wait' : 'pointer',
+          opacity: isToggling ? 0.7 : 1,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           gap: '6px',
           transition: 'background-color 0.2s'
         }}
+        title={isDoneToday ? 'Click to unmark' : 'Click to mark as done'}
       >
-        <CheckCircle size={14} />
-        {isDoneToday ? 'Completed' : 'Mark as done'}
+        {isDoneToday ? <XCircle size={14} /> : <CheckCircle size={14} />}
+        {isToggling ? 'Updating...' : (isDoneToday ? 'Completed (click to undo)' : 'Mark as done')}
       </button>
       <Modal open={showStats} title="Goal Statistics" onClose={() => setShowStats(false)}>
-        <GoalStatsCalendar goalId={goal.id} />
+        <GoalStatsCalendar goalId={goal.id} onGoalUpdated={handleGoalUpdatedFromCalendar} />
       </Modal>
     </div>
   );

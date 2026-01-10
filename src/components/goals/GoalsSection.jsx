@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Target, Plus, ArrowRight, Calendar, CheckCircle } from 'lucide-react';
+import { Target, Plus, ArrowRight, Calendar, CheckCircle, XCircle } from 'lucide-react';
 import Skeleton from '../ui/Skeleton';
 import apiService from '../../services/api';
 import AddGoalCard from './AddGoalCard';
+import { useToast } from '../ui/ToastProvider';
 
 const GoalsSection = ({ onNavigateToGoals }) => {
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { show } = useToast();
 
   // Dummy data for home page preview (first 3 goals)
   useEffect(() => {
@@ -16,7 +18,7 @@ const GoalsSection = ({ onNavigateToGoals }) => {
         const data = await apiService.getGoals();
         if (!mounted) return;
         const d = new Date();
-        const today = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const mapped = (data || []).slice(0, 3).map(g => ({
           id: g.id,
           title: g.title,
@@ -36,7 +38,7 @@ const GoalsSection = ({ onNavigateToGoals }) => {
           })(),
         }));
         setGoals(mapped);
-  } catch {
+      } catch {
         // leave empty on failure; section can show skeleton or CTA
       } finally {
         if (mounted) setLoading(false);
@@ -53,7 +55,7 @@ const GoalsSection = ({ onNavigateToGoals }) => {
           <Skeleton height={32} width={100} />
         </div>
         <div className="card-grid">
-          {[1,2,3].map((i) => (
+          {[1, 2, 3].map((i) => (
             <div key={i}>
               <Skeleton height={160} radius={16} />
             </div>
@@ -63,63 +65,80 @@ const GoalsSection = ({ onNavigateToGoals }) => {
     );
   }
 
-  const handleMarkComplete = (goalId) => {
+  // Toggle completion - supports both marking and unmarking
+  const handleToggleComplete = async (goalId) => {
     const d = new Date();
-    const today = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const target = goals.find(g => g.id === goalId);
     if (!target) return;
-    if (target.last_completed_date === today || target._doneToday) return; // already done today
-    // Lock UI for today without changing counts; server will return updated counts
+
+    const wasDoneToday = target._doneToday || target.last_completed_date === today;
+
+    // Optimistic update
     try {
       if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(`goal_done_${goalId}`, today);
+        if (wasDoneToday) {
+          localStorage.removeItem(`goal_done_${goalId}`);
+        } else {
+          localStorage.setItem(`goal_done_${goalId}`, today);
+        }
       }
     } catch {
       // localStorage access failed
     }
-    setGoals(prev => prev.map(g => g.id === goalId ? { ...g, last_completed_date: today, _doneToday: true } : g));
-    apiService.incrementGoalProgress(goalId).then(updated => {
-      if (!updated) return;
-      setGoals(prev => prev.map(g => g.id === goalId ? {
-        ...g,
-        completed: updated.completed ?? g.completed,
-        total: updated.frequency_per_week ?? g.total,
-        streak: updated.streak ?? g.streak,
-        last_completed_date: updated.last_completed_date || today,
-        _doneToday: (() => {
-          const serverDone = updated.already_completed_today === true || (updated.last_completed_date === today);
-          if (serverDone) return true;
-          try {
-            const localVal = typeof localStorage !== 'undefined' ? localStorage.getItem(`goal_done_${goalId}`) : null;
-            return localVal === today;
-          } catch {
-            return false;
-          }
-        })(),
-        frequency: `${updated.frequency_per_week ?? g.total} days a week`
-      } : g));
-    }).catch(() => {
-      // Revert if failed
+
+    setGoals(prev => prev.map(g => g.id === goalId ? {
+      ...g,
+      _doneToday: !wasDoneToday,
+      last_completed_date: wasDoneToday ? null : today,
+      completed: wasDoneToday ? Math.max(0, g.completed - 1) : Math.min(g.total, g.completed + 1)
+    } : g));
+
+    try {
+      const result = await apiService.toggleGoalCompletion(goalId, today);
+      if (result) {
+        setGoals(prev => prev.map(g => g.id === result.id ? {
+          ...g,
+          completed: result.completed ?? g.completed,
+          total: result.frequency_per_week ?? g.total,
+          streak: result.streak ?? g.streak,
+          last_completed_date: result.last_completed_date || null,
+          _doneToday: result.already_completed_today || result.last_completed_date === today,
+          frequency: `${result.frequency_per_week ?? g.total} days a week`
+        } : g));
+        show(result.is_completed ? 'Marked complete' : 'Unmarked', 'success');
+      }
+    } catch {
+      // Revert on error
       try {
         if (typeof localStorage !== 'undefined') {
-          const existing = localStorage.getItem(`goal_done_${goalId}`);
-          if (existing === today) localStorage.removeItem(`goal_done_${goalId}`);
+          if (wasDoneToday) {
+            localStorage.setItem(`goal_done_${goalId}`, today);
+          } else {
+            localStorage.removeItem(`goal_done_${goalId}`);
+          }
         }
       } catch {
         // localStorage access failed
       }
-      setGoals(prev => prev.map(g => g.id === goalId ? { ...g, last_completed_date: target.last_completed_date || null } : g));
-    });
+      setGoals(prev => prev.map(g => g.id === goalId ? {
+        ...g,
+        _doneToday: wasDoneToday,
+        last_completed_date: wasDoneToday ? today : target.last_completed_date,
+        completed: target.completed
+      } : g));
+      show('Failed to update', 'error');
+    }
   };
 
   return (
     <div style={{ textAlign: 'left', marginTop: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <h2 style={{ 
-          margin: 0, 
-          paddingLeft: 'calc(var(--space-1) / 2)', 
-          paddingTop: 0, 
-          paddingBottom: 'calc(var(--space-1) / 2)', 
+        <h2 style={{
+          margin: 0,
+          paddingLeft: 'calc(var(--space-1) / 2)',
+          paddingTop: 0,
+          paddingBottom: 'calc(var(--space-1) / 2)',
           color: 'var(--text)',
           fontWeight: '600'
         }}>
@@ -164,15 +183,15 @@ const GoalsSection = ({ onNavigateToGoals }) => {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text)' }}>
-            <span style={{ 
-              color: 'var(--accent-600)', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              width: 28, 
-              height: 28, 
-              borderRadius: '50%', 
-              background: 'var(--accent-bg-softer)', 
+            <span style={{
+              color: 'var(--accent-600)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 28,
+              height: 28,
+              borderRadius: '50%',
+              background: 'var(--accent-bg-softer)',
               border: '1px solid var(--border)'
             }}>
               <Target size={16} strokeWidth={2} />
@@ -192,10 +211,10 @@ const GoalsSection = ({ onNavigateToGoals }) => {
         <div className="card-grid">
           <AddGoalCard onAdd={onNavigateToGoals} />
           {goals.map(goal => (
-            <GoalPreviewCard 
-              key={goal.id} 
-              goal={goal} 
-              onMarkComplete={handleMarkComplete}
+            <GoalPreviewCard
+              key={goal.id}
+              goal={goal}
+              onToggleComplete={handleToggleComplete}
             />
           ))}
         </div>
@@ -204,13 +223,14 @@ const GoalsSection = ({ onNavigateToGoals }) => {
   );
 };
 
-const GoalPreviewCard = ({ goal, onMarkComplete }) => {
+const GoalPreviewCard = ({ goal, onToggleComplete }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
   const progressPercentage = (goal.completed / goal.total) * 100;
   const isCompletedWeek = goal.completed >= goal.total;
   const isDoneToday = (() => {
     const d = new Date();
-    const today = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     try {
       const localVal = typeof localStorage !== 'undefined' ? localStorage.getItem(`goal_done_${goal.id}`) : null;
       return (localVal === today) || goal.last_completed_date === today || goal._doneToday === true;
@@ -233,16 +253,16 @@ const GoalPreviewCard = ({ goal, onMarkComplete }) => {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', position: 'relative' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, marginRight: goal.streak > 0 ? '50px' : '0' }}>
-          <span style={{ 
-            color: 'var(--accent-600)', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            width: 28, 
-            height: 28, 
-            borderRadius: '50%', 
-            background: 'var(--accent-bg-softer)', 
-            border: '1px solid var(--border)' 
+          <span style={{
+            color: 'var(--accent-600)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 28,
+            height: 28,
+            borderRadius: '50%',
+            background: 'var(--accent-bg-softer)',
+            border: '1px solid var(--border)'
           }}>
             <Target size={16} strokeWidth={2} />
           </span>
@@ -251,7 +271,7 @@ const GoalPreviewCard = ({ goal, onMarkComplete }) => {
             <span>{goal.frequency}</span>
           </div>
         </div>
-        
+
         {goal.streak > 0 && (
           <div style={{
             display: 'flex',
@@ -281,12 +301,12 @@ const GoalPreviewCard = ({ goal, onMarkComplete }) => {
         </div>
       )}
 
-  {/* Progress Bar */}
+      {/* Progress Bar */}
       <div style={{ marginBottom: '12px' }}>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
           marginBottom: '6px',
           fontSize: '0.85rem',
           color: 'var(--text)',
@@ -311,12 +331,17 @@ const GoalPreviewCard = ({ goal, onMarkComplete }) => {
         </div>
       </div>
 
-      {/* Quick Action Button */}
+      {/* Quick Action Button - now supports toggle */}
       <button
-        onClick={() => {
-          if (!isDoneToday) onMarkComplete(goal.id);
+        onClick={async () => {
+          setIsToggling(true);
+          try {
+            await onToggleComplete(goal.id);
+          } finally {
+            setIsToggling(false);
+          }
         }}
-        disabled={isDoneToday}
+        disabled={isToggling}
         style={{
           width: '100%',
           padding: '8px 12px',
@@ -326,18 +351,18 @@ const GoalPreviewCard = ({ goal, onMarkComplete }) => {
           color: '#fff',
           fontSize: '0.85rem',
           fontWeight: '500',
-          cursor: isDoneToday ? 'default' : 'pointer',
-          // Keep text crisp white even when disabled
-          opacity: 1,
+          cursor: isToggling ? 'wait' : 'pointer',
+          opacity: isToggling ? 0.7 : 1,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           gap: '6px',
           transition: 'background-color 0.2s'
         }}
+        title={isDoneToday ? 'Click to unmark' : 'Click to mark as done'}
       >
-        <CheckCircle size={14} />
-        {isDoneToday ? 'Completed' : 'Mark as done'}
+        {isDoneToday ? <XCircle size={14} /> : <CheckCircle size={14} />}
+        {isToggling ? 'Updating...' : (isDoneToday ? 'Undo' : 'Mark as done')}
       </button>
     </div>
   );

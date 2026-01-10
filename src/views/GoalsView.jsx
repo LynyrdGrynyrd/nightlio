@@ -168,6 +168,83 @@ const GoalsView = () => {
     });
   };
 
+  // Toggle completion for any date (supports marking and unmarking)
+  const handleToggleCompletion = async (goalId, dateStr) => {
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const target = goals.find(g => g.id === goalId);
+    if (!target) return;
+    
+    // Determine current state
+    const wasDoneToday = dateStr === today && (target._doneToday || target.last_completed_date === today);
+    
+    // Optimistic update
+    if (dateStr === today) {
+      try {
+        if (typeof localStorage !== 'undefined') {
+          if (wasDoneToday) {
+            localStorage.removeItem(`goal_done_${goalId}`);
+          } else {
+            localStorage.setItem(`goal_done_${goalId}`, today);
+          }
+        }
+      } catch {
+        // localStorage access failed
+      }
+      setGoals(prev => prev.map(g => g.id === goalId ? {
+        ...g,
+        _doneToday: !wasDoneToday,
+        last_completed_date: wasDoneToday ? null : today,
+        completed: wasDoneToday ? Math.max(0, g.completed - 1) : Math.min(g.total, g.completed + 1)
+      } : g));
+    }
+    
+    try {
+      const result = await apiService.toggleGoalCompletion(goalId, dateStr);
+      if (result) {
+        handleGoalUpdated(result);
+      }
+    } catch (err) {
+      // Revert on error for today
+      if (dateStr === today) {
+        try {
+          if (typeof localStorage !== 'undefined') {
+            if (wasDoneToday) {
+              localStorage.setItem(`goal_done_${goalId}`, today);
+            } else {
+              localStorage.removeItem(`goal_done_${goalId}`);
+            }
+          }
+        } catch {
+          // localStorage access failed
+        }
+        setGoals(prev => prev.map(g => g.id === goalId ? {
+          ...g,
+          _doneToday: wasDoneToday,
+          last_completed_date: wasDoneToday ? today : target.last_completed_date,
+          completed: target.completed
+        } : g));
+      }
+      throw err;
+    }
+  };
+
+  // Handle goal updates from calendar or other sources
+  const handleGoalUpdated = (updatedGoal) => {
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    
+    setGoals(prev => prev.map(g => g.id === updatedGoal.id ? {
+      ...g,
+      completed: updatedGoal.completed ?? g.completed,
+      total: updatedGoal.frequency_per_week ?? g.total,
+      streak: updatedGoal.streak ?? g.streak,
+      last_completed_date: updatedGoal.last_completed_date || null,
+      _doneToday: updatedGoal.already_completed_today || updatedGoal.last_completed_date === today,
+      frequency: `${updatedGoal.frequency_per_week ?? g.total} days a week`
+    } : g));
+  };
+
   if (showForm) {
     return (
       <div>
@@ -277,6 +354,8 @@ const GoalsView = () => {
           goals={goals} 
           onDelete={handleDeleteGoal}
           onUpdateProgress={handleUpdateProgress}
+          onToggleCompletion={handleToggleCompletion}
+          onGoalUpdated={handleGoalUpdated}
           onAdd={() => setShowForm(true)}
         />
       )}

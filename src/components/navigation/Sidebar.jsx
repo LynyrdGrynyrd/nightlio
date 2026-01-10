@@ -32,11 +32,11 @@ const Sidebar = ({ onLoadStatistics }) => {
             </div>
             <strong style={{ color: 'var(--text)', letterSpacing: '-0.01em', fontSize: '1.5rem', fontWeight: '700' }}>Nightlio</strong>
           </div>
-          <span style={{ color: 'var(--text)' , opacity: 0.85, fontSize: '0.875rem', paddingLeft: '0.25rem' }}>Your daily mood companion.</span>
+          <span style={{ color: 'var(--text)', opacity: 0.85, fontSize: '0.875rem', paddingLeft: '0.25rem' }}>Your daily mood companion.</span>
         </div>
 
         <div className="sidebar__sections">
-          {items.map(({ key, label, icon: Icon, end }) => (
+          {items.map(({ key, label, icon: Icon, end }) => ( // eslint-disable-line no-unused-vars
             <NavLink
               key={key}
               to={key}

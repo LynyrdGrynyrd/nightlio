@@ -35,6 +35,11 @@ class GoalService:
     def increment_progress(self, user_id: int, goal_id: int) -> Optional[Dict]:
         return self.db.increment_goal_progress(user_id, goal_id)
 
+    def toggle_completion(
+        self, user_id: int, goal_id: int, date_str: str
+    ) -> Optional[Dict]:
+        return self.db.toggle_goal_completion(user_id, goal_id, date_str)
+
     def get_completions(
         self,
         user_id: int,
