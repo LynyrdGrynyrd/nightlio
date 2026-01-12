@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getIconComponent } from '../ui/IconPicker';
 import { getMoodIcon } from '../../utils/moodUtils';
 import apiService from '../../services/api';
 import { useToast } from '../ui/ToastProvider';
@@ -95,7 +96,7 @@ const HistoryEntry = ({ entry, onDelete, onEdit }) => {
     >
       {/* Header: mood icon + date • time */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-  <span style={{ color, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: '50%', background: 'var(--accent-bg-softer)', border: '1px solid var(--border)' }}>
+        <span style={{ color, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: '50%', background: 'var(--accent-bg-softer)', border: '1px solid var(--border)' }}>
           <IconComponent size={18} strokeWidth={1.8} />
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
@@ -117,13 +118,34 @@ const HistoryEntry = ({ entry, onDelete, onEdit }) => {
         <div className="entry-card__excerpt">{excerpt}</div>
       )}
 
+      {/* Photo Preview */}
+      {entry.media && entry.media.length > 0 && (
+        <div style={{ display: 'flex', gap: '4px', marginTop: '8px', overflow: 'hidden' }}>
+          {entry.media.map(media => (
+            <div key={media.id} style={{ width: '40px', height: '40px', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+              <img
+                src={`/api/media/${media.file_path}`}
+                alt="attachment"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Tags at the bottom */}
       {entry.selections && entry.selections.length > 0 && (
         <div style={{ marginTop: '0.75rem' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            {entry.selections.map(selection => (
-              <span key={selection.id} className="tag">{selection.name}</span>
-            ))}
+            {entry.selections.map(selection => {
+              const Icon = getIconComponent(selection.icon);
+              return (
+                <span key={selection.id} className="tag" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                  {Icon && <Icon size={12} />}
+                  {selection.name}
+                </span>
+              );
+            })}
           </div>
         </div>
       )}

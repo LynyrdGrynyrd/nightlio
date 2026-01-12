@@ -48,11 +48,17 @@ class ApiService {
         url = `${baseNoTrail}${path}`;
       }
     }
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+
+    if (headers['Content-Type'] === undefined) {
+      delete headers['Content-Type'];
+    }
+
     const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers,
       ...options,
     };
 
@@ -156,6 +162,11 @@ class ApiService {
     return this.request('/api/streak');
   }
 
+  // Streak details for visualizer
+  async getStreakDetails() {
+    return this.request('/api/streak/details');
+  }
+
   // Groups endpoints
   async getGroups() {
     return this.request('/api/groups');
@@ -172,6 +183,20 @@ class ApiService {
     return this.request(`/api/groups/${groupId}/options`, {
       method: 'POST',
       body: JSON.stringify(optionData),
+    });
+  }
+
+  async deleteGroupOption(optionId) {
+    return this.request(`/api/options/${optionId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async moveGroupOption(optionId, newGroupId) {
+    return this.request(`/api/options/${optionId}/move`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ group_id: newGroupId }),
     });
   }
 
@@ -209,7 +234,7 @@ class ApiService {
   }
 
   async createGoal(goal) {
-    // Accept { title, description, frequency_per_week } or { title, description, frequency }
+    // Accept { title, description, frequency_per_week, frequency_type, target_count } 
     const payload = { ...goal };
     if (payload.frequency && !payload.frequency_per_week) {
       // frequency like '3 days a week' -> 3
@@ -217,6 +242,12 @@ class ApiService {
       if (!Number.isNaN(n)) payload.frequency_per_week = n;
       delete payload.frequency;
     }
+    // Map frequencyNumber to frequency_per_week if needed
+    if (payload.frequencyNumber && !payload.frequency_per_week) {
+      payload.frequency_per_week = payload.frequencyNumber;
+      delete payload.frequencyNumber;
+    }
+    // Pass frequency_type and target_count directly
     return this.request('/api/goals', {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -257,6 +288,179 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify({ date }),
     });
+  }
+
+  // Media endpoints
+  async uploadMedia(entryId, file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.request(`/api/mood/${entryId}/media`, {
+      method: 'POST',
+      headers: {
+        // multipart/form-data is set automatically by fetch when body is FormData
+        'Content-Type': undefined,
+      },
+      body: formData,
+    });
+  }
+
+  async getEntryMedia(entryId) {
+    return this.request(`/api/mood/${entryId}/media`);
+  }
+
+  async deleteMedia(mediaId) {
+    return this.request(`/api/media/${mediaId}`, { method: 'DELETE' });
+  }
+
+  // Analytics endpoints
+  async getAnalyticsCorrelations() {
+    return this.request('/api/analytics/correlations');
+  }
+
+  async getAnalyticsCoOccurrence() {
+    return this.request('/api/analytics/co-occurrence');
+  }
+
+  async getMoodStability(days = 30) {
+    return this.request(`/api/analytics/stability?days=${days}`);
+  }
+
+  async getAnalyticsCoOccurrenceByMood(mood) {
+    return this.request(`/api/analytics/co-occurrence/${mood}`);
+  }
+
+  async getAdvancedCorrelations() {
+    return this.request('/api/analytics/advanced-correlations');
+  }
+
+  // Custom Mood Definitions
+  async getMoodDefinitions() {
+    return this.request('/api/mood-definitions');
+  }
+
+  async updateMoodDefinition(score, updates) {
+    return this.request(`/api/mood-definitions/${score}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  // Scale Tracking
+  async getScales() {
+    return this.request('/api/scales');
+  }
+
+  async createScale(data) {
+    return this.request('/api/scales', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateScale(scaleId, updates) {
+    return this.request(`/api/scales/${scaleId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  async deleteScale(scaleId) {
+    return this.request(`/api/scales/${scaleId}`, { method: 'DELETE' });
+  }
+
+  async getScaleEntries(startDate, endDate) {
+    const params = new URLSearchParams();
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    return this.request(`/api/scales/entries${queryString}`);
+  }
+
+  async getEntryScales(entryId) {
+    return this.request(`/api/entries/${entryId}/scales`);
+  }
+
+  // Important Days / Countdowns
+  async getImportantDays() {
+    return this.request('/important-days');
+  }
+
+  // --- Settings / App Lock ---
+  async getUserSettings() {
+    return this.request('/user/settings');
+  }
+
+  async setPin(pin) {
+    return this.request('/auth/pin', {
+      method: 'PUT',
+      body: JSON.stringify({ pin }),
+    });
+  }
+
+  async removePin() {
+    return this.request('/auth/pin', {
+      method: 'DELETE',
+    });
+  }
+
+  async verifyPin(pin) {
+    return this.request('/auth/verify-pin', {
+      method: 'POST',
+      body: JSON.stringify({ pin }),
+    });
+  }
+
+  async updateLockTimeout(seconds) {
+    return this.request('/user/settings/lock-timeout', {
+      method: 'PUT',
+      body: JSON.stringify({ seconds }),
+    });
+  }
+
+  async createImportantDay(data) {
+    return this.request('/api/important-days', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateImportantDay(dayId, updates) {
+    return this.request(`/api/important-days/${dayId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  async deleteImportantDay(dayId) {
+    return this.request(`/api/important-days/${dayId}`, { method: 'DELETE' });
+  }
+
+  async getUpcomingImportantDays(daysAhead = 30) {
+    return this.request(`/api/important-days/upcoming?days=${daysAhead}`);
+  }
+
+  // Data Management
+  async importData(jsonData) {
+    return this.request('/export/import', {
+      method: 'POST',
+      body: JSON.stringify(jsonData)
+    });
+  }
+
+  async deleteAccount() {
+    return this.request('/auth/user', {
+      method: 'DELETE'
+    });
+  }
+
+  // Photo Gallery
+  async getGalleryPhotos({ limit = 50, offset = 0, startDate, endDate } = {}) {
+    const params = new URLSearchParams();
+    params.append('limit', limit);
+    params.append('offset', offset);
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+    return this.request(`/api/media/gallery?${params.toString()}`);
   }
 }
 

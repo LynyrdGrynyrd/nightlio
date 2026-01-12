@@ -1,0 +1,53 @@
+.offline-indicator {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  animation: slideUp 0.3s ease-out;
+}
+
+/* Offline state - red */
+.offline-indicator--offline {
+  background: var(--destructive, #ef4444);
+}
+
+/* Syncing state - amber */
+.offline-indicator--syncing {
+  background: var(--warning, #f59e0b);
+}
+
+/* Pending state - blue/accent */
+.offline-indicator--pending {
+  background: var(--accent, #3b82f6);
+}
+
+/* Spin animation for sync icon */
+.offline-indicator .spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateX(-50%) translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+}

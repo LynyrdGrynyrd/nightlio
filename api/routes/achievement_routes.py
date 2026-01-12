@@ -1,7 +1,11 @@
 from flask import Blueprint, request, jsonify
+import logging
 from api.services.achievement_service import AchievementService
 from api.utils.auth_middleware import require_auth, get_current_user_id
+from api.utils.secure_errors import secure_error_response
 from api.config import get_config
+
+logger = logging.getLogger(__name__)
 
 
 def create_achievement_routes(achievement_service: AchievementService):
@@ -18,7 +22,7 @@ def create_achievement_routes(achievement_service: AchievementService):
             return jsonify(achievements)
 
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return secure_error_response(e, 500)
 
     @achievement_bp.route("/achievements/check", methods=["POST"])
     @require_auth
@@ -34,7 +38,7 @@ def create_achievement_routes(achievement_service: AchievementService):
             )
 
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return secure_error_response(e, 500)
 
     # CORS preflight should not require auth
     @achievement_bp.route(
@@ -61,7 +65,7 @@ def create_achievement_routes(achievement_service: AchievementService):
             progress = achievement_service.db.get_achievements_progress(user_id)
             return jsonify(progress)
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return secure_error_response(e, 500)
 
     # Web3 NFT minting removed
 

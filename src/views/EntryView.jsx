@@ -11,12 +11,22 @@ const DEFAULT_MARKDOWN = `# How was your day?
 
 Write about your thoughts, feelings, and experiences...`;
 
+import PhotoPicker from '../components/media/PhotoPicker';
+import TemplateSelector from '../components/entry/TemplateSelector';
+import VoiceRecorder from '../components/entry/VoiceRecorder';
+import VoicePlayer from '../components/entry/VoicePlayer';
+import { offlineStorage } from '../services/offlineStorage';
+import { Mic } from 'lucide-react';
+import { useConfig } from '../contexts/ConfigContext'; // To get URL if needed
+import { TIMEOUTS } from '../constants/appConstants';
+
 const EntryView = ({
   selectedMood,
   groups,
   onBack,
   onCreateGroup,
   onCreateOption,
+  onMoveOption,
   onEntrySubmitted,
   onSelectMood,
   editingEntry = null,
@@ -25,7 +35,6 @@ const EntryView = ({
   targetDate = null,
 }) => {
   const isEditing = Boolean(editingEntry);
-  // For retroactive entries: use targetDate if provided, otherwise today
   const isRetroactiveEntry = Boolean(targetDate) && !isEditing;
   const entryDate = targetDate || new Date().toLocaleDateString();
   const [selectedOptions, setSelectedOptions] = useState(
@@ -34,6 +43,11 @@ const EntryView = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState('');
   const [showMoodPicker, setShowMoodPicker] = useState(false);
+  const [selectedPhotos, setSelectedPhotos] = useState([]);
+  const [audioFiles, setAudioFiles] = useState([]); // New stored audio files
+  const [showRecorder, setShowRecorder] = useState(false);
+  const [existingMedia, setExistingMedia] = useState([]);
+  const { API_BASE_URL } = useConfig();
   const markdownRef = useRef();
   const { show } = useToast();
 
@@ -42,23 +56,14 @@ const EntryView = ({
 
     setSelectedOptions(editingEntry.selections?.map((selection) => selection.id) ?? []);
 
+    // Load existing media
+    apiService.getEntryMedia(editingEntry.id).then(setExistingMedia).catch(console.error);
+
     const instance = markdownRef.current?.getInstance?.();
     if (instance && typeof instance.setMarkdown === 'function') {
       instance.setMarkdown(editingEntry.content || '');
     }
   }, [isEditing, editingEntry]);
-
-  useEffect(() => {
-    if (isEditing) {
-      setSubmitMessage('');
-    }
-  }, [isEditing]);
-
-  useEffect(() => {
-    if (!isEditing) {
-      setShowMoodPicker(false);
-    }
-  }, [isEditing]);
 
   const handleOptionToggle = (optionId) => {
     setSelectedOptions(prev => (prev.includes(optionId) ? prev.filter(id => id !== optionId) : [...prev, optionId]));
@@ -72,6 +77,16 @@ const EntryView = ({
       setShowMoodPicker(false);
     } else if (typeof onSelectMood === 'function') {
       onSelectMood(moodValue);
+    }
+  };
+
+  const handleMediaDeleted = async (mediaId) => {
+    try {
+      await apiService.deleteMedia(mediaId);
+      setExistingMedia(prev => prev.filter(m => m.id !== mediaId));
+      show('Photo removed.', 'success');
+    } catch {
+      show('Failed to remove photo.', 'error');
     }
   };
 
@@ -93,65 +108,110 @@ const EntryView = ({
         return;
       }
 
-      if (isEditing && editingEntry) {
-        const response = await apiService.updateMoodEntry(editingEntry.id, {
-          mood: selectedMood,
-          content: markdownContent,
-          selected_options: selectedOptions,
-        });
+      let entryId;
+      let finalEntry;
 
-        if (response?.entry && typeof onEntryUpdated === 'function') {
-          onEntryUpdated({
-            ...editingEntry,
-            ...response.entry,
-            selections: response.entry.selections ?? [],
+      // Online logic attempt
+      try {
+        if (isEditing && editingEntry) {
+          const response = await apiService.updateMoodEntry(editingEntry.id, {
+            mood: selectedMood,
+            content: markdownContent,
+            selected_options: selectedOptions,
           });
+          entryId = editingEntry.id;
+          finalEntry = response.entry;
+        } else {
+          const now = new Date();
+          const response = await apiService.createMoodEntry({
+            mood: selectedMood,
+            date: entryDate,
+            time: now.toISOString(),
+            content: markdownContent,
+            selected_options: selectedOptions,
+          });
+          entryId = response.entry.id;
+          finalEntry = response.entry;
+
+          if (response.new_achievements && response.new_achievements.length > 0) {
+            // Achievements toast handled by response usually or we can show it
+          }
         }
 
-        if (typeof onBack === 'function') {
-          onBack();
+        // Upload photos
+        if (selectedPhotos.length > 0) {
+          await Promise.all(selectedPhotos.map(file => apiService.uploadMedia(entryId, file)));
         }
 
-        show('Entry updated successfully!', 'success');
-        return;
+        // Upload audio
+        if (audioFiles.length > 0) {
+          await Promise.all(audioFiles.map(file => apiService.uploadMedia(entryId, file)));
+        }
+
+        // Success Handling
+        if (isEditing) {
+          if (typeof onEntryUpdated === 'function') {
+            onEntryUpdated({
+              ...editingEntry,
+              ...finalEntry,
+              selections: finalEntry.selections ?? [],
+            });
+          }
+          if (typeof onBack === 'function') onBack();
+          show('Entry updated successfully!', 'success');
+        } else {
+          setSubmitMessage('Entry saved successfully! 🎉');
+          markdownRef.current?.getInstance()?.setMarkdown(DEFAULT_MARKDOWN);
+          setSelectedOptions([]);
+          setSelectedPhotos([]);
+          setAudioFiles([]);
+          setTimeout(() => onEntrySubmitted(), TIMEOUTS.REDIRECT_DELAY_MS);
+        }
+
+      } catch (networkError) {
+        // OFFLINE FALLBACK
+        // Check if network error (fetch failed) or explicitly offline
+        if (!navigator.onLine || (networkError.message && networkError.message.includes('Failed to fetch'))) {
+          const now = new Date();
+          const payload = {
+            mood: selectedMood,
+            date: entryDate,
+            time: now.toISOString(),
+            content: markdownContent,
+            selected_options: selectedOptions,
+            photos: selectedPhotos,
+            audio: audioFiles,
+            id: isEditing ? editingEntry.id : undefined,
+            updates: isEditing ? {
+              mood: selectedMood,
+              content: markdownContent,
+              selected_options: selectedOptions
+            } : undefined
+          };
+
+          const type = isEditing ? 'UPDATE_ENTRY' : 'CREATE_ENTRY';
+          await offlineStorage.addToQueue({ type, payload });
+
+          show('Saved offline. Will sync when online.', 'info');
+
+          // Mimic success UI
+          if (isEditing) {
+            if (typeof onBack === 'function') onBack();
+          } else {
+            setSubmitMessage('Saved offline.');
+            markdownRef.current?.getInstance()?.setMarkdown(DEFAULT_MARKDOWN);
+            setSelectedOptions([]);
+            setSelectedPhotos([]);
+            setAudioFiles([]);
+            setTimeout(() => onEntrySubmitted(), TIMEOUTS.REDIRECT_DELAY_MS);
+          }
+          return;
+        }
+        throw networkError;
       }
-
-      const now = new Date();
-      const response = await apiService.createMoodEntry({
-        mood: selectedMood,
-        date: entryDate, // Use targetDate for retroactive entries, otherwise today
-        time: now.toISOString(),
-        content: markdownContent,
-        selected_options: selectedOptions,
-      });
-
-      if (response.new_achievements && response.new_achievements.length > 0) {
-        const achievementNames = {
-          'first_entry': 'First Entry',
-          'week_warrior': 'Week Warrior',
-          'consistency_king': 'Consistency King',
-          'data_lover': 'Data Lover',
-          'mood_master': 'Mood Master'
-        };
-        const readableNames = response.new_achievements.map(type => achievementNames[type] || type).join(', ');
-        setSubmitMessage(`Entry saved! 🎉 New achievement unlocked: ${readableNames}`);
-      } else {
-        setSubmitMessage('Entry saved successfully! 🎉');
-      }
-
-      markdownRef.current?.getInstance()?.setMarkdown(DEFAULT_MARKDOWN);
-
-      setSelectedOptions([]);
-      setTimeout(() => {
-        onEntrySubmitted();
-      }, 1500);
     } catch (error) {
       console.error('Failed to save entry:', error);
-      if (isEditing) {
-        show('Failed to update entry. Please try again.', 'error');
-      } else {
-        setSubmitMessage('Failed to save entry. Please try again.');
-      }
+      show(`Failed to save entry: ${error.message}`, 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -270,7 +330,10 @@ const EntryView = ({
               <p style={{ marginTop: 0, marginBottom: '0.75rem', fontWeight: 600, color: 'var(--text)' }}>
                 Pick a new mood
               </p>
-              <MoodPicker onMoodSelect={handleMoodSelection} />
+              <MoodPicker
+                onMoodSelect={handleMoodSelection}
+                selectedMood={selectedMood}
+              />
               <div style={{ marginTop: '0.75rem', textAlign: 'right' }}>
                 <button
                   type="button"
@@ -300,11 +363,75 @@ const EntryView = ({
               groups={groups}
               onCreateGroup={onCreateGroup}
               onCreateOption={onCreateOption}
+              onMoveOption={onMoveOption}
             />
+          </div>
+          <PhotoPicker
+            existingMedia={existingMedia.filter(m => m.file_type.startsWith('image/'))}
+            onFilesSelected={setSelectedPhotos}
+            onMediaDeleted={handleMediaDeleted}
+          />
+
+          {/* Voice Recording Section */}
+          <div className="mt-4 border-t border-[var(--border)] pt-4">
+            <h4 className="flex items-center gap-2 text-sm font-semibold text-[var(--text-muted)] mb-3">
+              <Mic size={16} />
+              Voice Notes
+            </h4>
+
+            {showRecorder ? (
+              <VoiceRecorder
+                onRecordingComplete={(file) => {
+                  setAudioFiles(prev => [...prev, file]);
+                  setShowRecorder(false);
+                }}
+                onCancel={() => setShowRecorder(false)}
+              />
+            ) : (
+              <button
+                onClick={() => setShowRecorder(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-dashed border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--accent-bg-soft)] hover:text-[var(--accent-600)] hover:border-[var(--accent-600)] transition-all w-full justify-center"
+              >
+                <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 text-red-500 flex items-center justify-center">
+                  <Mic size={18} />
+                </div>
+                <span>Record a voice note</span>
+              </button>
+            )}
+
+            <div className="flex flex-col gap-3 mt-4">
+              {/* Existing Audio */}
+              {existingMedia.filter(m => !m.file_type.startsWith('image/')).map((media) => (
+                <VoicePlayer
+                  key={media.id}
+                  src={`${API_BASE_URL}/uploads/${media.file_path}`}
+                  onDelete={() => handleMediaDeleted(media.id)}
+                />
+              ))}
+
+              {/* New Audio (Before Upload) */}
+              {audioFiles.map((file, idx) => (
+                <VoicePlayer
+                  key={`new-${idx}`}
+                  src={URL.createObjectURL(file)}
+                  onDelete={() => setAudioFiles(prev => prev.filter((_, i) => i !== idx))}
+                />
+              ))}
+            </div>
           </div>
         </div>
 
         <div className="entry-right">
+          <div style={{ position: 'relative', marginBottom: '0.75rem' }}>
+            <TemplateSelector
+              onSelectTemplate={(content) => {
+                const instance = markdownRef.current?.getInstance?.();
+                if (instance && typeof instance.setMarkdown === 'function') {
+                  instance.setMarkdown(content);
+                }
+              }}
+            />
+          </div>
           <MDArea ref={markdownRef} />
           <div className="entry-savebar">
             <button

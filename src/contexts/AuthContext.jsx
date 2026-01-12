@@ -16,10 +16,10 @@ export const AuthProvider = ({ children }) => {
   const { config, loading: configLoading } = useConfig();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState(localStorage.getItem('nightlio_token'));
+  const [token, setToken] = useState(localStorage.getItem('twilightio_token'));
 
   const logout = useCallback(() => {
-    localStorage.removeItem('nightlio_token');
+    localStorage.removeItem('twilightio_token');
     setToken(null);
     setUser(null);
     apiService.setAuthToken(null);
@@ -31,13 +31,13 @@ export const AuthProvider = ({ children }) => {
       const response = await apiService.localLogin();
       const { token: jwtToken, user: userData } = response;
       if (jwtToken) {
-        localStorage.setItem('nightlio_token', jwtToken);
+        localStorage.setItem('twilightio_token', jwtToken);
         setToken(jwtToken);
         setUser(userData);
         apiService.setAuthToken(jwtToken);
       }
       return { success: true };
-  } catch {
+    } catch {
       return { success: false, error: 'Local login failed' };
     } finally {
       setLoading(false);
@@ -49,7 +49,7 @@ export const AuthProvider = ({ children }) => {
       const userData = await apiService.verifyToken(token);
       setUser(userData.user);
       apiService.setAuthToken(token);
-  } catch {
+    } catch {
       // If verify fails, clear token and in self-host mode immediately local-login
       logout();
       if (!config.enable_google_oauth) {
@@ -78,7 +78,7 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       const response = await apiService.googleAuth(googleToken);
       const { token: jwtToken, user: userData } = response;
-      localStorage.setItem('nightlio_token', jwtToken);
+      localStorage.setItem('twilightio_token', jwtToken);
       setToken(jwtToken);
       setUser(userData);
       apiService.setAuthToken(jwtToken);

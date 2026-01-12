@@ -17,12 +17,12 @@ class GroupService:
 
         return self.db.create_group(name.strip())
 
-    def create_group_option(self, group_id: int, name: str) -> int:
+    def create_group_option(self, group_id: int, name: str, icon: str = None) -> int:
         """Create a new option for a group"""
         if not name.strip():
             raise ValueError("Option name cannot be empty")
 
-        return self.db.create_group_option(group_id, name.strip())
+        return self.db.create_group_option(group_id, name.strip(), icon)
 
     def delete_group(self, group_id: int) -> bool:
         """Delete a group and all its options"""
@@ -31,3 +31,7 @@ class GroupService:
     def delete_group_option(self, option_id: int) -> bool:
         """Delete a group option"""
         return self.db.delete_group_option(option_id)
+
+    def move_group_option(self, option_id: int, new_group_id: int) -> bool:
+        """Move an option to a different group"""
+        return self.db.update_option_group(option_id, new_group_id)

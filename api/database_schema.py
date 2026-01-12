@@ -34,6 +34,24 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
                 self._create_goal_completions_table(conn)
                 self._create_user_metrics_table(conn)
 
+                # Push Notifications
+                self._create_reminders_table(conn)
+                self._create_reminders_table(conn)
+                self._create_push_subscriptions_table(conn)
+                self._create_media_table(conn)
+                self._create_fts_tables(conn)
+
+                # Custom moods and scales
+                self._create_mood_definitions_table(conn)
+                self._create_scale_tables(conn)
+
+                # Important days / countdowns
+                self._create_important_days_table(conn)
+
+                # App Lock / Settings
+                if hasattr(self, "_create_settings_table"):
+                    self._create_settings_table(conn)
+
                 # Shared indexes
                 self._create_database_indexes(conn)
 
@@ -98,12 +116,24 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 group_id INTEGER NOT NULL,
                 name TEXT NOT NULL,
+                icon TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (group_id) REFERENCES groups (id) ON DELETE CASCADE
             )
             """
         )
+        self._migrate_group_options_schema(conn)
         logger.info("Group options table ready")
+
+    def _migrate_group_options_schema(self, conn: sqlite3.Connection) -> None:
+        try:
+            cur = conn.execute("PRAGMA table_info(group_options)")
+            cols: Iterable[str] = {row[1] for row in cur.fetchall()}
+            if "icon" not in cols:
+                conn.execute("ALTER TABLE group_options ADD COLUMN icon TEXT")
+                logger.info("Group options table migrated to include icon")
+        except sqlite3.Error as exc:
+            logger.warning("Group options table migration failed (non-critical): %s", exc)
 
     def _create_entry_selections_table(self, conn: sqlite3.Connection) -> None:
         conn.execute(
@@ -168,9 +198,24 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
         try:
             cur = conn.execute("PRAGMA table_info(goals)")
             cols: Iterable[str] = {row[1] for row in cur.fetchall()}
+            
             if "last_completed_date" not in cols:
                 conn.execute("ALTER TABLE goals ADD COLUMN last_completed_date TEXT")
                 logger.info("Goals table migrated to include last_completed_date")
+            
+            # Flexible recurrence columns
+            if "frequency_type" not in cols:
+                conn.execute("ALTER TABLE goals ADD COLUMN frequency_type TEXT DEFAULT 'weekly'")
+                logger.info("Goals table migrated to include frequency_type")
+            
+            if "target_count" not in cols:
+                conn.execute("ALTER TABLE goals ADD COLUMN target_count INTEGER DEFAULT 1")
+                logger.info("Goals table migrated to include target_count")
+            
+            if "custom_days" not in cols:
+                conn.execute("ALTER TABLE goals ADD COLUMN custom_days TEXT")
+                logger.info("Goals table migrated to include custom_days")
+                
         except sqlite3.Error as exc:
             logger.warning("Goals table migration failed (non-critical): %s", exc)
 
@@ -226,6 +271,111 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
             logger.info("Mood entries index ready")
         except sqlite3.Error as exc:
             logger.warning("Index creation failed (non-critical): %s", exc)
+
+    def _create_reminders_table(self, conn: sqlite3.Connection) -> None:
+        try:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS reminders (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    time TEXT NOT NULL,           -- "09:00" format
+                    days_of_week TEXT NOT NULL,   -- JSON array: [0,1,2,3,4,5,6] (Mon-Sun)
+                    message TEXT DEFAULT 'Time to log your mood!',
+                    is_active BOOLEAN DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+                )
+                """
+            )
+            logger.info("Reminders table ready")
+        except sqlite3.Error as exc:
+            logger.warning("Reminders table creation failed: %s", exc)
+
+    def _create_push_subscriptions_table(self, conn: sqlite3.Connection) -> None:
+        try:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS push_subscriptions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    endpoint TEXT NOT NULL,
+                    p256dh_key TEXT NOT NULL,
+                    auth_key TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+                    UNIQUE(user_id, endpoint)
+                )
+                """
+            )
+            logger.info("Push subscriptions table ready")
+        except sqlite3.Error as exc:
+            logger.warning("Push subscriptions table creation failed: %s", exc)
+
+    def _create_media_table(self, conn: sqlite3.Connection) -> None:
+        try:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS media_attachments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    entry_id INTEGER NOT NULL,
+                    file_path TEXT NOT NULL,
+                    file_type TEXT NOT NULL,
+                    thumbnail_path TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (entry_id) REFERENCES mood_entries (id) ON DELETE CASCADE
+                )
+                """
+            )
+            # Migration: add thumbnail_path if missing
+            try:
+                conn.execute("ALTER TABLE media_attachments ADD COLUMN thumbnail_path TEXT")
+            except sqlite3.OperationalError:
+                pass  # Column already exists
+            logger.info("Media attachments table ready")
+        except sqlite3.Error as exc:
+            logger.warning("Media table creation failed: %s", exc)
+
+    def _create_fts_tables(self, conn: sqlite3.Connection) -> None:
+        """Create Full-Text Search virtual tables and triggers."""
+        try:
+            # Check for FTS5 support
+            conn.execute("CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5(content, content='mood_entries', content_rowid='id')")
+            
+            # Triggers to keep FTS index in sync with mood_entries
+            
+            # INSERT trigger
+            conn.execute("""
+                CREATE TRIGGER IF NOT EXISTS entries_ai AFTER INSERT ON mood_entries BEGIN
+                  INSERT INTO entries_fts(rowid, content) VALUES (new.id, new.content);
+                END;
+            """)
+            
+            # DELETE trigger
+            conn.execute("""
+                CREATE TRIGGER IF NOT EXISTS entries_ad AFTER DELETE ON mood_entries BEGIN
+                  INSERT INTO entries_fts(entries_fts, rowid, content) VALUES('delete', old.id, old.content);
+                END;
+            """)
+            
+            # UPDATE trigger
+            conn.execute("""
+                CREATE TRIGGER IF NOT EXISTS entries_au AFTER UPDATE ON mood_entries BEGIN
+                  INSERT INTO entries_fts(entries_fts, rowid, content) VALUES('delete', old.id, old.content);
+                  INSERT INTO entries_fts(rowid, content) VALUES (new.id, new.content);
+                END;
+            """)
+            
+            # Populate if empty (initial migration)
+            # This is a bit expensive on every startup if we check counts, but safe.
+            # Better check strategy: if fts is empty but entries has rows.
+            cur = conn.execute("SELECT count(*) FROM entries_fts")
+            if cur.fetchone()[0] == 0:
+                 conn.execute("INSERT INTO entries_fts(rowid, content) SELECT id, content FROM mood_entries")
+
+            logger.info("FTS tables and triggers ready")
+        except sqlite3.Error as exc:
+            logger.warning("FTS table creation failed. FTS5 might not be supported: %s", exc)
 
     # --- Seed helpers -----------------------------------------------------------
     def _insert_default_groups(self) -> None:
@@ -287,6 +437,96 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
 
             conn.commit()
             logger.info("Default groups ensured")
+
+    def _create_mood_definitions_table(self, conn: sqlite3.Connection) -> None:
+        """Create table for custom mood definitions."""
+        try:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS mood_definitions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    score INTEGER NOT NULL CHECK (score BETWEEN 1 AND 5),
+                    label TEXT NOT NULL,
+                    icon TEXT NOT NULL,
+                    color_hex TEXT NOT NULL,
+                    is_active BOOLEAN DEFAULT 1,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    UNIQUE(user_id, score)
+                )
+                """
+            )
+            logger.info("Mood definitions table ready")
+        except sqlite3.Error as exc:
+            logger.warning("Mood definitions table creation failed: %s", exc)
+
+    def _create_scale_tables(self, conn: sqlite3.Connection) -> None:
+        """Create tables for custom scale tracking (Sleep, Energy, Stress, etc.)."""
+        try:
+            # Scale definitions (user-created scales)
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS scale_definitions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    name TEXT NOT NULL,
+                    min_value INTEGER DEFAULT 1,
+                    max_value INTEGER DEFAULT 10,
+                    min_label TEXT,
+                    max_label TEXT,
+                    color_hex TEXT,
+                    is_active BOOLEAN DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+                """
+            )
+            
+            # Scale entries (values recorded with mood entries)
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS scale_entries (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    entry_id INTEGER NOT NULL,
+                    scale_id INTEGER NOT NULL,
+                    value INTEGER NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (entry_id) REFERENCES mood_entries(id) ON DELETE CASCADE,
+                    FOREIGN KEY (scale_id) REFERENCES scale_definitions(id) ON DELETE CASCADE
+                )
+                """
+            )
+            logger.info("Scale tables ready")
+        except sqlite3.Error as exc:
+            logger.warning("Scale tables creation failed: %s", exc)
+
+    def _create_important_days_table(self, conn: sqlite3.Connection) -> None:
+        """Create table for important days / countdowns."""
+        try:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS important_days (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    title TEXT NOT NULL,
+                    date TEXT NOT NULL,
+                    icon TEXT DEFAULT 'calendar',
+                    category TEXT DEFAULT 'Custom',
+                    recurring_type TEXT DEFAULT 'once',
+                    remind_days_before INTEGER DEFAULT 1,
+                    notes TEXT,
+                    is_active BOOLEAN DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+                """
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_important_days_user ON important_days(user_id)"
+            )
+            logger.info("Important days table ready")
+        except sqlite3.Error as exc:
+            logger.warning("Important days table creation failed: %s", exc)
 
 
 __all__ = ["DatabaseSchemaMixin"]

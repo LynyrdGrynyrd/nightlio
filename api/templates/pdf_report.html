@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Nightlio Mood Report</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            color: #333;
+            line-height: 1.5;
+        }
+
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .header {
+            margin-bottom: 30px;
+        }
+
+        .summary {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            text-align: center;
+            margin-bottom: 40px;
+            page-break-inside: avoid;
+        }
+
+        .chart-container img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .entry {
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            page-break-inside: avoid;
+        }
+
+        .entry-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .entry-date {
+            font-weight: bold;
+            color: #555;
+        }
+
+        .entry-mood {
+            font-weight: bold;
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.9em;
+        }
+
+        .mood-5 {
+            background-color: #22c55e;
+        }
+
+        /* Rad */
+        .mood-4 {
+            background-color: #84cc16;
+        }
+
+        /* Good */
+        .mood-3 {
+            background-color: #eab308;
+        }
+
+        /* Meh */
+        .mood-2 {
+            background-color: #f97316;
+        }
+
+        /* Bad */
+        .mood-1 {
+            background-color: #ef4444;
+        }
+
+        /* Awful */
+
+        .entry-content {
+            white-space: pre-wrap;
+        }
+
+        .entry-activities {
+            margin-top: 8px;
+            font-size: 0.85em;
+            color: #666;
+        }
+
+        .activity-tag {
+            display: inline-block;
+            background: #eef2f6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-right: 4px;
+        }
+
+        .month-section {
+            page-break-before: always;
+        }
+
+        .month-section:first-of-type {
+            page-break-before: avoid;
+        }
+
+        .month-header {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2c3e50;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 8px;
+            margin-bottom: 20px;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>Nightlio Mood Report</h1>
+        <p>Generated on {{ generated_at }}</p>
+        <p>Period: {{ start_date }} to {{ end_date }}</p>
+    </div>
+
+    <div class="summary">
+        <h3>Summary</h3>
+        <p><strong>Total Entries:</strong> {{ total_entries }}</p>
+        <p><strong>Average Mood:</strong> {{ average_mood }}</p>
+    </div>
+
+    {% if chart_image %}
+    <div class="chart-container">
+        <h3>Mood Distribution</h3>
+        <img src="data:image/png;base64,{{ chart_image }}" alt="Mood Chart">
+    </div>
+    {% endif %}
+
+    <h2>Entries</h2>
+    {% for month_name, entries in month_data %}
+    <div class="month-section">
+        <h3 class="month-header">{{ month_name }}</h3>
+        {% for entry in entries %}
+        <div class="entry">
+            <div class="entry-header">
+                <span class="entry-date">{{ entry.date_formatted }}</span>
+                <span class="entry-mood mood-{{ entry.mood }}">{{ entry.mood_label }}</span>
+            </div>
+            <div class="entry-content">{{ entry.content }}</div>
+            {% if entry.activities %}
+            <div class="entry-activities">
+                Activities:
+                {% for activity in entry.activities %}
+                <span class="activity-tag">{{ activity }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+</body>
+
+</html>

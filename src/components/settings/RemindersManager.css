@@ -1,0 +1,32 @@
+/* RemindersManager.css */
+.reminders-manager {
+    max-width: 600px;
+}
+
+.btn {
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: var(--accent-600);
+    color: white;
+    border: none;
+}
+
+.btn-primary:hover {
+    background: var(--accent-700);
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+.btn-outline:hover {
+    background: var(--bg-hover);
+}

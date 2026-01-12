@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Mood Journal Summary - Clinical Report</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+
+        body {
+            font-family: 'Georgia', 'Times New Roman', serif;
+            color: #333;
+            line-height: 1.6;
+            font-size: 11pt;
+        }
+
+        h1 {
+            color: #1a1a2e;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+            font-size: 18pt;
+        }
+
+        h2 {
+            font-size: 14pt;
+            margin-top: 25px;
+            color: #333;
+        }
+
+        .header {
+            margin-bottom: 30px;
+        }
+
+        .patient-info {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border: 1px solid #ddd;
+            margin-bottom: 25px;
+        }
+
+        .patient-info p {
+            margin: 5px 0;
+        }
+
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+
+        .summary-table th,
+        .summary-table td {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: left;
+        }
+
+        .summary-table th {
+            background-color: #f0f0f0;
+            font-weight: bold;
+        }
+
+        .chart-container {
+            text-align: center;
+            margin: 30px 0;
+            page-break-inside: avoid;
+        }
+
+        .chart-container img {
+            max-width: 80%;
+            height: auto;
+        }
+
+        .mood-scale {
+            margin: 20px 0;
+            padding: 15px;
+            background: #fafafa;
+            border: 1px solid #eee;
+        }
+
+        .mood-scale h4 {
+            margin: 0 0 10px 0;
+        }
+
+        .mood-scale-item {
+            display: inline-block;
+            margin-right: 20px;
+            font-size: 10pt;
+        }
+
+        .entries-section {
+            margin-top: 30px;
+        }
+
+        .month-section {
+            page-break-before: always;
+        }
+
+        .month-section:first-of-type {
+            page-break-before: avoid;
+        }
+
+        .month-header {
+            font-size: 13pt;
+            font-weight: bold;
+            color: #1a1a2e;
+            border-bottom: 1px solid #999;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+
+        .entry {
+            margin-bottom: 20px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            background: #fefefe;
+            page-break-inside: avoid;
+        }
+
+        .entry-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .entry-date {
+            color: #444;
+        }
+
+        .entry-mood {
+            color: #333;
+        }
+
+        .entry-content {
+            white-space: pre-wrap;
+            color: #555;
+            font-style: italic;
+        }
+
+        .entry-activities {
+            margin-top: 8px;
+            font-size: 10pt;
+            color: #666;
+        }
+
+        .footer-note {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ccc;
+            font-size: 9pt;
+            color: #777;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>Mood Journal Summary</h1>
+        <p><strong>Report Period:</strong> {{ start_date }} to {{ end_date }}</p>
+        <p><strong>Generated:</strong> {{ generated_at }}</p>
+    </div>
+
+    <div class="patient-info">
+        <p><strong>Patient Name:</strong> _______________________________</p>
+        <p><strong>Clinician:</strong> _______________________________</p>
+        <p><strong>Session Date:</strong> _______________________________</p>
+    </div>
+
+    <h2>Summary Statistics</h2>
+    <table class="summary-table">
+        <tr>
+            <th>Metric</th>
+            <th>Value</th>
+        </tr>
+        <tr>
+            <td>Total Journal Entries</td>
+            <td>{{ total_entries }}</td>
+        </tr>
+        <tr>
+            <td>Average Mood Score</td>
+            <td>{{ average_mood }} / 5.0</td>
+        </tr>
+        <tr>
+            <td>Reporting Period</td>
+            <td>{{ start_date }} to {{ end_date }}</td>
+        </tr>
+    </table>
+
+    <div class="mood-scale">
+        <h4>Mood Scale Reference:</h4>
+        <span class="mood-scale-item"><strong>1</strong> = Very Low (Awful)</span>
+        <span class="mood-scale-item"><strong>2</strong> = Low (Bad)</span>
+        <span class="mood-scale-item"><strong>3</strong> = Neutral (Meh)</span>
+        <span class="mood-scale-item"><strong>4</strong> = Good</span>
+        <span class="mood-scale-item"><strong>5</strong> = Very Good (Rad)</span>
+    </div>
+
+    {% if chart_image %}
+    <div class="chart-container">
+        <h2>Mood Distribution</h2>
+        <img src="data:image/png;base64,{{ chart_image }}" alt="Mood Distribution Chart">
+    </div>
+    {% endif %}
+
+    <div class="entries-section">
+        <h2>Journal Entries</h2>
+        {% for month_name, entries in month_data %}
+        <div class="month-section">
+            <h3 class="month-header">{{ month_name }}</h3>
+            {% for entry in entries %}
+            <div class="entry">
+                <div class="entry-header">
+                    <span class="entry-date">{{ entry.date_formatted }}</span>
+                    <span class="entry-mood">Mood: {{ entry.mood }}/5 ({{ entry.mood_label }})</span>
+                </div>
+                {% if entry.content %}
+                <div class="entry-content">"{{ entry.content }}"</div>
+                {% endif %}
+                {% if entry.activities %}
+                <div class="entry-activities">
+                    <strong>Activities/Tags:</strong> {{ entry.activities | join(', ') }}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="footer-note">
+        <p>This report was generated by Nightlio Mood Tracker. The information contained herein is self-reported by the
+            patient and is intended to supplement clinical assessment.</p>
+    </div>
+</body>
+
+</html>

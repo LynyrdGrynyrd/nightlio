@@ -23,7 +23,7 @@ class GroupsMixin(DatabaseConnectionMixin):
                 group = dict(group_row)
                 options_cursor = conn.execute(
                     """
-                    SELECT id, name
+                    SELECT id, name, icon
                       FROM group_options
                      WHERE group_id = ?
                      ORDER BY name
@@ -42,11 +42,11 @@ class GroupsMixin(DatabaseConnectionMixin):
             conn.commit()
             return int(cursor.lastrowid or 0)
 
-    def create_group_option(self, group_id: int, name: str) -> int:
+    def create_group_option(self, group_id: int, name: str, icon: str = None) -> int:
         with self._connect() as conn:
             cursor = conn.execute(
-                "INSERT INTO group_options (group_id, name) VALUES (?, ?)",
-                (group_id, name),
+                "INSERT INTO group_options (group_id, name, icon) VALUES (?, ?, ?)",
+                (group_id, name, icon),
             )
             conn.commit()
             return int(cursor.lastrowid or 0)
@@ -66,6 +66,15 @@ class GroupsMixin(DatabaseConnectionMixin):
             conn.commit()
             return cursor.rowcount > 0
 
+    def update_option_group(self, option_id: int, new_group_id: int) -> bool:
+        with self._connect() as conn:
+            cursor = conn.execute(
+                "UPDATE group_options SET group_id = ? WHERE id = ?",
+                (new_group_id, option_id),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
     def add_entry_selections(self, entry_id: int, option_ids: List[int]) -> None:
         with self._connect() as conn:
             conn.executemany(
@@ -79,7 +88,7 @@ class GroupsMixin(DatabaseConnectionMixin):
             conn.row_factory = sqlite3.Row
             cursor = conn.execute(
                 """
-                SELECT go.id, go.name, g.name as group_name
+                SELECT go.id, go.name, go.icon, g.name as group_name
                   FROM entry_selections es
                   JOIN group_options go ON es.option_id = go.id
                   JOIN groups g ON go.group_id = g.id

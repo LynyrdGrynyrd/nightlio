@@ -60,17 +60,15 @@ def test_toggle_completion_count_logic(service, db):
     user_id = db.create_user("google_456", "logic@example.com", "Logic User")
     goal_id = service.create_goal(user_id, "Frequency Goal", "", 2)
     
-    today = datetime.now().date()
-    # Ensure all dates are in the current week period according to the DB logic
-    # The DB sets period_start on creation.
-    # We'll just test the method's behavior.
+    # Get the goal's period_start to ensure we use dates within the same week
+    goal = service.get_goal(user_id, goal_id)
+    period_start = goal["period_start"]
+    week_start = datetime.strptime(period_start, "%Y-%m-%d").date()
     
-    d1 = today.strftime("%Y-%m-%d")
-    d2 = (today + timedelta(days=1)).strftime("%Y-%m-%d")
-    d3 = (today + timedelta(days=2)).strftime("%Y-%m-%d")
-    
-    # Week start logic might affect this if d2/d3 cross into next week, 
-    # but let's assume valid week dates for now or just check return values.
+    # Use dates from the start of the goal's week to avoid week boundary issues
+    d1 = week_start.strftime("%Y-%m-%d")
+    d2 = (week_start + timedelta(days=1)).strftime("%Y-%m-%d")
+    d3 = (week_start + timedelta(days=2)).strftime("%Y-%m-%d")
     
     # Mark 1st
     res = service.toggle_completion(user_id, goal_id, d1)
@@ -80,15 +78,12 @@ def test_toggle_completion_count_logic(service, db):
     res = service.toggle_completion(user_id, goal_id, d2)
     assert res["completed"] == 2
     
-    # Mark 3rd (above freq, assuming count logic allows going above freq? 
-    # The original increment logic capped it usually or logic in toggle handles it.
-    # Let's check implementation in database_goals.py:
-    # "if is_current_week and current_completed < freq: current_completed += 1"
-    # So it is capped at frequency for the counter.
+    # Mark 3rd (above freq, count should be capped at frequency for display)
     res = service.toggle_completion(user_id, goal_id, d3)
-    assert res["completed"] == 2 # Capped at 2
+    assert res["completed"] == 2  # Capped at frequency of 2
     
     # Unmark d1
     res = service.toggle_completion(user_id, goal_id, d1)
-    # logic: "if is_current_week and current_completed > 0: current_completed -= 1"
-    assert res["completed"] == 1
+    # After removing d1, there are 2 completions (d2, d3) in the week, capped at 2
+    assert res["completed"] == 2
+

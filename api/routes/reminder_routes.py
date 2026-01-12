@@ -1,0 +1,72 @@
+from flask import Blueprint, request, jsonify
+try:
+    from api.utils.auth_middleware import require_auth, get_current_user_id
+except ImportError:
+    from utils.auth_middleware import require_auth, get_current_user_id
+
+def create_reminder_routes(scheduler_service, push_service):
+    bp = Blueprint('reminders', __name__)
+
+    @bp.route('/push/vapid-public-key', methods=['GET'])
+    @require_auth
+    def get_vapid_key():
+        key = push_service.get_vapid_public_key()
+        if not key:
+            return jsonify({"error": "VAPID keys not configured"}), 500
+        return jsonify({"publicKey": key})
+
+    @bp.route('/push/subscribe', methods=['POST'])
+    @require_auth
+    def subscribe():
+        user_id = get_current_user_id()
+        data = request.json
+        if not data:
+            return jsonify({"error": "Missing subscription data"}), 400
+        
+        success = push_service.subscribe_user(user_id, data)
+        if success:
+            # Send a test notification immediately? Maybe not, can be annoying.
+            # But it confirms it works.
+            # push_service.send_notification(user_id, "Notifications enabled successfully!")
+            return jsonify({"status": "subscribed"}), 201
+        return jsonify({"error": "Failed to subscribe"}), 400
+
+    @bp.route('/reminders', methods=['GET'])
+    @require_auth
+    def get_reminders():
+        user_id = get_current_user_id()
+        reminders = scheduler_service.get_user_reminders(user_id)
+        return jsonify(reminders)
+
+    @bp.route('/reminders', methods=['POST'])
+    @require_auth
+    def create_reminder():
+        user_id = get_current_user_id()
+        data = request.json
+        time = data.get('time')
+        days = data.get('days', [0, 1, 2, 3, 4, 5, 6]) # Default all days
+        
+        if not time:
+            return jsonify({"error": "Time is required"}), 400
+
+        scheduler_service.create_reminder(user_id, time, days)
+        return jsonify({"status": "created"}), 201
+
+    @bp.route('/reminders/<int:reminder_id>', methods=['DELETE'])
+    @require_auth
+    def delete_reminder(reminder_id):
+        user_id = get_current_user_id()
+        scheduler_service.delete_reminder(user_id, reminder_id)
+        return jsonify({"status": "deleted"})
+        
+    @bp.route('/push/test', methods=['POST'])
+    @require_auth
+    def test_push():
+        """Send a test notification to self."""
+        user_id = get_current_user_id()
+        count = push_service.send_notification(user_id, "This is a test notification from Nightlio!")
+        if count > 0:
+            return jsonify({"message": f"Sent to {count} devices"})
+        return jsonify({"error": "No active subscriptions found"}), 404
+
+    return bp

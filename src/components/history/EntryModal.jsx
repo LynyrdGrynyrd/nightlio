@@ -1,4 +1,5 @@
 import ReactMarkdown from 'react-markdown';
+import { getIconComponent } from '../ui/IconPicker';
 import { useEffect } from 'react';
 
 const backdropStyle = {
@@ -57,9 +58,9 @@ const EntryModal = ({ isOpen, entry, onClose, onDelete, isDeleting, onEdit }) =>
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [isOpen, onClose]);
-  
+
   if (!isOpen || !entry) return null;
-  
+
   const onBackdrop = (e) => {
     if (e.target === e.currentTarget) onClose();
   };
@@ -122,11 +123,43 @@ const EntryModal = ({ isOpen, entry, onClose, onDelete, isDeleting, onEdit }) =>
         )}
         {entry.selections?.length > 0 && (
           <div className="tag-list" style={{ marginBottom: 12 }}>
-            {entry.selections.map((s) => (
-              <span key={s.id} className="tag">{s.name}</span>
+            {entry.selections.map((s) => {
+              const Icon = getIconComponent(s.icon);
+              return (
+                <span key={s.id} className="tag" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  {Icon && <Icon size={12} />}
+                  {s.name}
+                </span>
+              );
+            })}
+          </div>
+        )}
+
+        {entry.media && entry.media.length > 0 && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+            gap: '12px',
+            marginBottom: '20px'
+          }}>
+            {entry.media.map(media => (
+              <a
+                key={media.id}
+                href={`/api/media/${media.file_path}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)', display: 'block' }}
+              >
+                <img
+                  src={`/api/media/${media.file_path}`}
+                  alt="Attachment"
+                  style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', display: 'block' }}
+                />
+              </a>
             ))}
           </div>
         )}
+
         <div className="history-markdown">
           <ReactMarkdown>{body}</ReactMarkdown>
         </div>

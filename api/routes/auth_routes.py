@@ -8,12 +8,14 @@ from datetime import datetime, timedelta, timezone
 from api.services.user_service import UserService
 from api.utils.rate_limiter import rate_limit
 from api.config import get_config
+from api.utils.auth_middleware import require_auth, get_current_user_id
 
 
 def create_auth_routes(user_service: UserService):
     auth_bp = Blueprint("auth", __name__)
 
     @auth_bp.route("/auth/google", methods=["POST"])
+    @rate_limit(max_requests=30, window_minutes=1)  # SECURITY: Prevent auth brute-force
     def google_auth():
         """Handle Google OAuth token verification"""
         try:
@@ -152,6 +154,18 @@ def create_auth_routes(user_service: UserService):
         except Exception as e:
             current_app.logger.error(f"Local login error: {e}")
             return jsonify({"error": "Authentication failed"}), 500
+
+    @auth_bp.route("/auth/user", methods=["DELETE"])
+    @require_auth
+    def delete_account():
+        """Permanently delete user account and data."""
+        try:
+            user_id = get_current_user_id()
+            user_service.delete_user_data(user_id)
+            return jsonify({"message": "Account deleted successfully"}), 200
+        except Exception as e:
+            current_app.logger.error(f"Account deletion failed: {e}")
+            return jsonify({"error": "Deletion failed"}), 500
 
     def verify_google_token(token: str) -> dict:
         """Verify Google OAuth token and return user info"""

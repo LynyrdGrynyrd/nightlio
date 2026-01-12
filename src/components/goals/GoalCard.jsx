@@ -57,6 +57,15 @@ const GoalCard = ({ goal, onDelete, onUpdateProgress, onToggleCompletion, onGoal
       return;
     }
     onUpdateProgress(goal.id);
+    if (!isDoneToday) {
+      import('canvas-confetti').then((confetti) => {
+        confetti.default({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      });
+    }
     show('Progress updated!', 'success');
   };
 

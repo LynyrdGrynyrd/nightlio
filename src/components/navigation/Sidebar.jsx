@@ -4,10 +4,10 @@ import { NavLink, useLocation } from 'react-router-dom';
 
 const Sidebar = ({ onLoadStatistics }) => {
   const items = [
-    { key: '', label: 'Home', icon: Home, end: true },
-    { key: 'goals', label: 'Goals', icon: Target },
-    { key: 'stats', label: 'Statistics', icon: BarChart3 },
-    { key: 'achievements', label: 'Achievements', icon: Trophy },
+    { key: '/dashboard', label: 'Home', icon: Home, end: true },
+    { key: '/dashboard/goals', label: 'Goals', icon: Target },
+    { key: '/dashboard/stats', label: 'Statistics', icon: BarChart3 },
+    { key: '/dashboard/achievements', label: 'Achievements', icon: Trophy },
   ];
 
   const location = useLocation();
@@ -26,11 +26,11 @@ const Sidebar = ({ onLoadStatistics }) => {
             <div style={{ width: 36, height: 36, borderRadius: 10, background: 'transparent', display: 'grid', placeItems: 'center', color: 'var(--text)', overflow: 'hidden' }}>
               <img
                 src={'/logo.png'}
-                alt="Nightlio"
+                alt="Twilightio"
                 style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', background: 'transparent', outline: 'none' }}
               />
             </div>
-            <strong style={{ color: 'var(--text)', letterSpacing: '-0.01em', fontSize: '1.5rem', fontWeight: '700' }}>Nightlio</strong>
+            <strong style={{ color: 'var(--text)', letterSpacing: '-0.01em', fontSize: '1.5rem', fontWeight: '700' }}>Twilightio</strong>
           </div>
           <span style={{ color: 'var(--text)', opacity: 0.85, fontSize: '0.875rem', paddingLeft: '0.25rem' }}>Your daily mood companion.</span>
         </div>
@@ -53,7 +53,7 @@ const Sidebar = ({ onLoadStatistics }) => {
 
         <div className="sidebar__footer">
           <NavLink
-            to="settings"
+            to="/dashboard/settings"
             className={({ isActive }) => `sidebar__item ${isActive ? 'is-active' : ''}`}
             title="Settings"
           >

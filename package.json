@@ -1,5 +1,5 @@
 {
-  "name": "nightlio",
+  "name": "twilightio",
   "private": true,
   "version": "0.1.7",
   "type": "module",
@@ -35,11 +35,16 @@
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
     "setup": "./setup.sh",
-    "test": "./test.sh"
+    "test": "./test.sh",
+    "test:ui": "vitest run"
   },
   "dependencies": {
     "@mdxeditor/editor": "^3.11.6",
     "@tanstack/react-query": "^5.85.3",
+    "browser-image-compression": "^2.0.2",
+    "canvas-confetti": "^1.9.4",
+    "framer-motion": "^12.25.0",
+    "html2canvas": "^1.4.1",
     "lucide-react": "^0.460.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
@@ -49,6 +54,10 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.1",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.1.9",
     "@types/react-dom": "^19.1.7",
     "@vitejs/plugin-react": "^4.7.0",
@@ -56,7 +65,10 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.3.0",
+    "jsdom": "^27.4.0",
     "rollup-plugin-visualizer": "^6.0.5",
-    "vite": "^7.1.0"
+    "vite": "^7.1.0",
+    "vite-plugin-pwa": "^1.2.0",
+    "vitest": "^4.0.16"
   }
 }

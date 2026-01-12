@@ -1,6 +1,10 @@
 from flask import Blueprint, request, jsonify
+import logging
 from api.services.goal_service import GoalService
 from api.utils.auth_middleware import require_auth, get_current_user_id
+from api.utils.secure_errors import secure_error_response
+
+logger = logging.getLogger(__name__)
 
 
 def create_goal_routes(goal_service: GoalService):
@@ -16,7 +20,7 @@ def create_goal_routes(goal_service: GoalService):
             goals = goal_service.list_goals(user_id)
             return jsonify(goals)
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return secure_error_response(e, 500)
 
     @bp.route("/goals", methods=["POST"])
     @require_auth
@@ -38,9 +42,11 @@ def create_goal_routes(goal_service: GoalService):
             goal_id = goal_service.create_goal(user_id, title, description, frequency)
             return jsonify({"id": goal_id}), 201
         except ValueError as e:
-            return jsonify({"error": str(e)}), 400
+            # SECURITY: Log but don't expose validation details
+            logger.warning(f"Goal validation error: {e}")
+            return jsonify({"error": "Invalid input"}), 400
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return secure_error_response(e, 500)
 
     @bp.route("/goals/<int:goal_id>", methods=["GET"])
     @require_auth
@@ -54,7 +60,7 @@ def create_goal_routes(goal_service: GoalService):
                 return jsonify({"error": "Not found"}), 404
             return jsonify(goal)
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return secure_error_response(e, 500)
 
     @bp.route("/goals/<int:goal_id>", methods=["PUT", "PATCH"])
     @require_auth
@@ -81,9 +87,10 @@ def create_goal_routes(goal_service: GoalService):
                 return jsonify({"error": "No changes or goal not found"}), 404
             return jsonify({"status": "ok"})
         except ValueError as e:
-            return jsonify({"error": str(e)}), 400
+            logger.warning(f"Goal update validation error: {e}")
+            return jsonify({"error": "Invalid input"}), 400
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return secure_error_response(e, 500)
 
     @bp.route("/goals/<int:goal_id>", methods=["DELETE"])
     @require_auth
@@ -97,7 +104,7 @@ def create_goal_routes(goal_service: GoalService):
                 return jsonify({"error": "Not found"}), 404
             return jsonify({"status": "ok"})
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return secure_error_response(e, 500)
 
     @bp.route("/goals/<int:goal_id>/progress", methods=["POST"])
     @require_auth
@@ -111,7 +118,7 @@ def create_goal_routes(goal_service: GoalService):
                 return jsonify({"error": "Not found"}), 404
             return jsonify(updated)
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return secure_error_response(e, 500)
 
     @bp.route("/goals/<int:goal_id>/toggle-completion", methods=["POST"])
     @require_auth
@@ -129,7 +136,7 @@ def create_goal_routes(goal_service: GoalService):
                 return jsonify({"error": "Not found"}), 404
             return jsonify(updated)
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return secure_error_response(e, 500)
 
     @bp.route(
         "/goals/<int:goal_id>/completions",
@@ -157,6 +164,6 @@ def create_goal_routes(goal_service: GoalService):
             rows = goal_service.get_completions(user_id, goal_id, start_date, end_date)
             return jsonify(rows)
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return secure_error_response(e, 500)
 
     return bp

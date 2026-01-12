@@ -227,24 +227,24 @@ const LoginPage = () => {
     <div className="login-page">
       <div className="login-page__card" style={{ maxWidth: '420px', padding: '3rem 2rem' }}>
         <div style={{ marginBottom: '0.5rem' }}>
-          <h1 className="login-page__brand-title" style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
+          <h1 className="login-page__brand-title" style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             gap: '0.5rem',
             marginBottom: '0.75rem'
           }}>
-            <img 
-              src="/logo.png" 
-              alt="Nightlio logo"
-              style={{ 
-                width: '1em', 
-                height: '1em', 
+            <img
+              src="/logo.png"
+              alt="Twilightio logo"
+              style={{
+                width: '1em',
+                height: '1em',
                 objectFit: 'contain',
                 display: 'block'
-              }} 
+              }}
             />
-            Nightlio
+            Twilightio
           </h1>
           <p className="login-page__brand-subtitle" style={{ marginBottom: 0 }}>Your daily mood companion.</p>
         </div>
@@ -252,7 +252,7 @@ const LoginPage = () => {
         <div style={{ marginTop: '0.5rem' }}>
           <p className="login-page__description" style={{ marginBottom: '1.5rem', fontSize: '0.925rem' }}>
             {isSelfHost
-              ? 'Click continue to start using Nightlio locally.'
+              ? 'Click continue to start using Twilightio locally.'
               : 'Sign in to continue tracking your mood journey.'}
           </p>
 
@@ -304,9 +304,9 @@ const LoginPage = () => {
             </button>
           )}
 
-          <div className="login-page__footer" style={{ 
-            marginTop: '1.75rem', 
-            fontSize: '0.8rem', 
+          <div className="login-page__footer" style={{
+            marginTop: '1.75rem',
+            fontSize: '0.8rem',
             opacity: 0.6,
             display: 'flex',
             alignItems: 'center',

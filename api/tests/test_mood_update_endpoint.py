@@ -66,6 +66,8 @@ def test_update_mood_entry_returns_updated_payload(client):
             "selected_options": [option_b_id],
         },
     )
+    if update_resp.status_code != 200:
+        print(f"Update failed with 500. Error: {update_resp.get_json()}")
     assert update_resp.status_code == 200
     update_data = update_resp.get_json()
     assert update_data["status"] == "success"

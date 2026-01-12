@@ -9,24 +9,27 @@ export const useMoodData = () => {
   const loadHistory = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const data = await apiService.getMoodEntries();
-      
-      // Fetch selections for each entry
-      const entriesWithSelections = await Promise.all(
+
+      // Fetch selections and media for each entry
+      const hydratedEntries = await Promise.all(
         data.map(async (entry) => {
           try {
-            const selections = await apiService.getEntrySelections(entry.id);
-            return { ...entry, selections };
+            const [selections, media] = await Promise.all([
+              apiService.getEntrySelections(entry.id),
+              apiService.getEntryMedia(entry.id)
+            ]);
+            return { ...entry, selections, media };
           } catch (error) {
-            console.error(`Failed to load selections for entry ${entry.id}:`, error);
-            return { ...entry, selections: [] };
+            console.error(`Failed to hydrate entry ${entry.id}:`, error);
+            return { ...entry, selections: [], media: [] };
           }
         })
       );
-      
-      setPastEntries(entriesWithSelections);
+
+      setPastEntries(hydratedEntries);
     } catch (error) {
       console.error('Failed to load history:', error);
       setError('Failed to load mood history');

@@ -6,20 +6,27 @@
 */
 :root {
   /* Colors */
-  --bg: #F7F8FB;              /* app background */
-  --surface: #FFFFFF;          /* cards, panels */
-  --text: #1F2937;             /* gray-800 */
-  --text-muted: #667085;       /* gray-600 */
-  --border: #E6E8EC;           /* subtle dividers */
-  --border-soft: #F0F2F5;      /* extra soft */
+  --bg: #F7F8FB;
+  /* app background */
+  --surface: #FFFFFF;
+  /* cards, panels */
+  --text: #1F2937;
+  /* gray-800 */
+  --text-muted: #667085;
+  /* gray-600 */
+  --border: #E6E8EC;
+  /* subtle dividers */
+  --border-soft: #F0F2F5;
+  /* extra soft */
 
   /* Calming teal/blue accent */
-  --accent-50:  #EEF7F8;
+  --accent-50: #EEF7F8;
   --accent-100: #D6EEF0;
   --accent-200: #BFE5E7;
   --accent-400: #4FA9B3;
   --accent-500: #348F99;
-  --accent-600: #2F7E89;       /* primary */
+  --accent-600: #2F7E89;
+  /* primary */
   --accent-700: #22626B;
 
   /* Typography */
@@ -50,44 +57,55 @@
   /* Semantic accent backgrounds (used only for backgrounds) */
   --accent-bg: var(--accent-600);
   --accent-bg-2: var(--accent-700);
-  --accent-bg-soft: var(--accent-50);                 /* subtle background tints */
+  --accent-bg-soft: var(--accent-50);
+  /* subtle background tints */
   --accent-bg-softer: color-mix(in oklab, var(--accent-600) 10%, transparent);
-  --accent-chip-bg: color-mix(in oklab, var(--accent-600) 16%, transparent); /* chips/pills */
+  --accent-chip-bg: color-mix(in oklab, var(--accent-600) 16%, transparent);
+  /* chips/pills */
 
   /* Radii */
   --radius: 12px;
   --radius-sm: 8px;
-  --radius-1: 8px;   /* compat */
-  --radius-2: 12px;  /* compat */
+  --radius-1: 8px;
+  /* compat */
+  --radius-2: 12px;
+  /* compat */
   --radius-3: 16px;
   --radius-4: 24px;
   --radius-pill: 9999px;
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(16,24,40,0.06), 0 1px 1.5px rgba(16,24,40,0.03);
-  --shadow-md: 0 4px 12px rgba(16,24,40,0.08), 0 2px 4px rgba(16,24,40,0.06);
-  --shadow-lg: 0 10px 30px rgba(16,24,40,0.10), 0 3px 6px rgba(16,24,40,0.08);
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 1.5px rgba(16, 24, 40, 0.03);
+  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08), 0 2px 4px rgba(16, 24, 40, 0.06);
+  --shadow-lg: 0 10px 30px rgba(16, 24, 40, 0.10), 0 3px 6px rgba(16, 24, 40, 0.08);
   /* compat */
   --shadow-1: var(--shadow-md);
   --shadow-2: var(--shadow-lg);
-  --shadow-3: 0 20px 60px rgba(16,24,40,0.14);
+  --shadow-3: 0 20px 60px rgba(16, 24, 40, 0.14);
 
   /* Interaction */
-  --ring: 0 0 0 3px rgba(47,126,137,0.28);
+  --ring: 0 0 0 3px rgba(47, 126, 137, 0.28);
 
   /* Semantic status colors */
-  --success: #16a34a;          /* emerald-600 */
-  --danger: #ef4444;           /* red-500 */
+  --success: #16a34a;
+  /* emerald-600 */
+  --danger: #ef4444;
+  /* red-500 */
   /* Mood scale (light theme defaults) */
-  --mood-1: #ef4444; /* red */
-  --mood-2: #f59e0b; /* orange */
-  --mood-3: #facc15; /* yellow */
-  --mood-4: #22c55e; /* green */
-  --mood-5: #3b82f6; /* blue */
+  --mood-1: #ef4444;
+  /* red */
+  --mood-2: #f59e0b;
+  /* orange */
+  --mood-3: #facc15;
+  /* yellow */
+  --mood-4: #22c55e;
+  /* green */
+  --mood-5: #3b82f6;
+  /* blue */
   /* Overlays and skeleton shimmer */
-  --overlay: rgba(16,24,40,0.45);
-  --skeleton-a: rgba(0,0,0,0.06);
-  --skeleton-b: rgba(0,0,0,0.12);
+  --overlay: rgba(16, 24, 40, 0.45);
+  --skeleton-a: rgba(0, 0, 0, 0.06);
+  --skeleton-b: rgba(0, 0, 0, 0.12);
 
   /* Legacy mapping for existing code */
   color-scheme: light;
@@ -101,17 +119,40 @@
 
   /* Shared background gradient */
   --gradient-background: radial-gradient(circle at top, rgba(80, 94, 255, 0.18), transparent 55%),
-                         radial-gradient(circle at 20% 30%, rgba(255, 194, 99, 0.12), transparent 40%),
-                         linear-gradient(180deg, var(--bg) 0%, var(--surface) 100%);
+    radial-gradient(circle at 20% 30%, rgba(255, 194, 99, 0.12), transparent 40%),
+    linear-gradient(180deg, var(--bg) 0%, var(--surface) 100%);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Standard icon sizes */
+  --icon-xs: 14px;
+  --icon-sm: 16px;
+  --icon-md: 20px;
+  --icon-lg: 24px;
+  --icon-xl: 32px;
 }
 
-a { font-weight: 500; color: var(--accent-600); text-decoration: none; }
-a:hover { color: var(--accent-700); text-decoration: underline; }
+/* Consistent icon sizing */
+.icon-standard svg,
+button svg:not(.icon-custom),
+.nav-item svg {
+  width: var(--icon-lg);
+  height: var(--icon-lg);
+}
+
+a {
+  font-weight: 500;
+  color: var(--accent-600);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--accent-700);
+  text-decoration: underline;
+}
 
 body {
   margin: 0;
@@ -126,10 +167,29 @@ body {
 }
 
 /* Headings */
-h1, h2, h3 { color: var(--text); margin: 0 0 var(--space-2); line-height: 1.25; letter-spacing: -0.01em; }
-h1 { font-size: clamp(1.75rem, 2vw + 1rem, 2.25rem); font-weight: 700; }
-h2 { font-size: 1.5rem; font-weight: 600; }
-h3 { font-size: 1.25rem; font-weight: 600; }
+h1,
+h2,
+h3 {
+  color: var(--text);
+  margin: 0 0 var(--space-2);
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+h1 {
+  font-size: clamp(1.75rem, 2vw + 1rem, 2.25rem);
+  font-weight: 700;
+}
+
+h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
 
 h1 {
   font-size: 2rem;
@@ -146,16 +206,41 @@ button {
   background-color: var(--surface);
   color: var(--text);
   cursor: pointer;
-  transition: transform 180ms cubic-bezier(.2,.6,.2,1), box-shadow 180ms cubic-bezier(.2,.6,.2,1), background-color 180ms cubic-bezier(.2,.6,.2,1);
+  transition: transform 180ms cubic-bezier(.2, .6, .2, 1), box-shadow 180ms cubic-bezier(.2, .6, .2, 1), background-color 180ms cubic-bezier(.2, .6, .2, 1);
 }
-button:hover { background-color: #f8fafc; box-shadow: var(--shadow-sm); }
-button:focus-visible { outline: none; box-shadow: var(--ring); }
+
+button:hover {
+  background-color: #f8fafc;
+  box-shadow: var(--shadow-sm);
+}
+
+button:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
 
 /* Primary button variant */
-button.primary { color: #fff; background: var(--accent-bg); box-shadow: var(--shadow-sm); }
-button.primary:hover { background: var(--accent-bg-2); transform: translateY(-1px) scale(1.02); box-shadow: var(--shadow-md); }
-button.primary:active { transform: translateY(0) scale(0.99); box-shadow: var(--shadow-sm); }
-button.primary:disabled { opacity: .6; cursor: not-allowed; }
+button.primary {
+  color: #fff;
+  background: var(--accent-bg);
+  box-shadow: var(--shadow-sm);
+}
+
+button.primary:hover {
+  background: var(--accent-bg-2);
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: var(--shadow-md);
+}
+
+button.primary:active {
+  transform: translateY(0) scale(0.99);
+  box-shadow: var(--shadow-sm);
+}
+
+button.primary:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
 
 /* Theme overrides (optional). Keep accent consistent. */
 html[data-theme="light"] {
@@ -170,21 +255,27 @@ html[data-theme="light"] {
 
 html[data-theme="dark"] {
   /* Dracula palette */
-  --bg: #282a36;               /* background */
-  --surface: #343746;          /* elevated surfaces */
-  --text: #f5f5f5;             /* foreground - lighter/whiter */
-  --text-muted: #9ca3af;       /* comments - lighter gray */
-  --border: #44475a;           /* current line */
-  --bg-card: rgba(52,55,70,0.92);
+  --bg: #282a36;
+  /* background */
+  --surface: #343746;
+  /* elevated surfaces */
+  --text: #f5f5f5;
+  /* foreground - lighter/whiter */
+  --text-muted: #9ca3af;
+  /* comments - lighter gray */
+  --border: #44475a;
+  /* current line */
+  --bg-card: rgba(52, 55, 70, 0.92);
   --fg-body: var(--text);
 
   /* Accents mapped to Dracula purple as primary */
-  --accent-50:  #f7f3ff;
+  --accent-50: #f7f3ff;
   --accent-100: #efe7ff;
   --accent-200: #e0d1ff;
   --accent-400: #d5befe;
   --accent-500: #c9aefc;
-  --accent-600: #bd93f9;       /* primary */
+  --accent-600: #bd93f9;
+  /* primary */
   --accent-700: #a97cf3;
 
   /* Darker backgrounds for lavender surfaces (only affects backgrounds using these tokens) */
@@ -195,24 +286,301 @@ html[data-theme="dark"] {
   --accent-chip-bg: color-mix(in oklab, var(--accent-600) 24%, transparent);
 
   /* Focus ring tuned to accent */
-  --ring: 0 0 0 3px rgba(189,147,249,0.35);
+  --ring: 0 0 0 3px rgba(189, 147, 249, 0.35);
 
   /* Semantic status colors for Dracula */
-  --success: #50fa7b;          /* green */
-  --danger: #ff5555;           /* red */
+  --success: #50fa7b;
+  /* green */
+  --danger: #ff5555;
+  /* red */
   /* Mood scale mapped to Dracula */
-  --mood-1: #ff5555; /* red */
-  --mood-2: #ffb86c; /* orange */
-  --mood-3: #f1fa8c; /* yellow */
-  --mood-4: #50fa7b; /* green */
-  --mood-5: #8be9fd; /* cyan */
+  --mood-1: #ff5555;
+  /* red */
+  --mood-2: #ffb86c;
+  /* orange */
+  --mood-3: #f1fa8c;
+  /* yellow */
+  --mood-4: #50fa7b;
+  /* green */
+  --mood-5: #8be9fd;
+  /* cyan */
   /* Overlays and skeleton */
-  --overlay: rgba(0,0,0,0.55);
-  --skeleton-a: rgba(255,255,255,0.06);
-  --skeleton-b: rgba(255,255,255,0.12);
+  --overlay: rgba(0, 0, 0, 0.55);
+  --skeleton-a: rgba(255, 255, 255, 0.06);
+  --skeleton-b: rgba(255, 255, 255, 0.12);
 
   color-scheme: dark;
 }
 
 /* Subtle hover in dark mode */
-html[data-theme="dark"] button:hover { background-color: rgba(255,255,255,0.04); box-shadow: var(--shadow-sm); }
+html[data-theme="dark"] button:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ============================================
+   THEME PRESETS
+   ============================================ */
+
+/* Ocean Theme - Deep sea blues */
+html[data-theme="ocean"] {
+  --bg: #0c1929;
+  --surface: #132d46;
+  --text: #e8f1f8;
+  --text-muted: #8aa8c4;
+  --border: #1e4264;
+  --bg-card: rgba(19, 45, 70, 0.92);
+  --fg-body: var(--text);
+
+  --accent-50: #e6f4fa;
+  --accent-100: #cce9f5;
+  --accent-200: #99d3ea;
+  --accent-400: #4db8e0;
+  --accent-500: #2aa3d5;
+  --accent-600: #0ea5e9;
+  --accent-700: #0284c7;
+
+  --accent-bg: var(--accent-600);
+  --accent-bg-2: var(--accent-700);
+  --accent-bg-soft: rgba(14, 165, 233, 0.18);
+  --accent-bg-softer: rgba(14, 165, 233, 0.12);
+  --accent-chip-bg: rgba(14, 165, 233, 0.22);
+
+  --ring: 0 0 0 3px rgba(14, 165, 233, 0.35);
+  --success: #22d3ee;
+  --danger: #f87171;
+  --mood-1: #f87171;
+  --mood-2: #fb923c;
+  --mood-3: #fbbf24;
+  --mood-4: #34d399;
+  --mood-5: #22d3ee;
+
+  --overlay: rgba(0, 0, 0, 0.55);
+  --skeleton-a: rgba(255, 255, 255, 0.06);
+  --skeleton-b: rgba(255, 255, 255, 0.12);
+  color-scheme: dark;
+}
+
+html[data-theme="ocean"] button:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+/* Forest Theme - Natural greens */
+html[data-theme="forest"] {
+  --bg: #0d1f14;
+  --surface: #132d1a;
+  --text: #e8f5eb;
+  --text-muted: #88c497;
+  --border: #1d4a28;
+  --bg-card: rgba(19, 45, 26, 0.92);
+  --fg-body: var(--text);
+
+  --accent-50: #ecfdf5;
+  --accent-100: #d1fae5;
+  --accent-200: #a7f3d0;
+  --accent-400: #4ade80;
+  --accent-500: #22c55e;
+  --accent-600: #16a34a;
+  --accent-700: #15803d;
+
+  --accent-bg: var(--accent-600);
+  --accent-bg-2: var(--accent-700);
+  --accent-bg-soft: rgba(22, 163, 74, 0.18);
+  --accent-bg-softer: rgba(22, 163, 74, 0.12);
+  --accent-chip-bg: rgba(22, 163, 74, 0.22);
+
+  --ring: 0 0 0 3px rgba(22, 163, 74, 0.35);
+  --success: #4ade80;
+  --danger: #f87171;
+  --mood-1: #f87171;
+  --mood-2: #fb923c;
+  --mood-3: #fbbf24;
+  --mood-4: #4ade80;
+  --mood-5: #34d399;
+
+  --overlay: rgba(0, 0, 0, 0.55);
+  --skeleton-a: rgba(255, 255, 255, 0.06);
+  --skeleton-b: rgba(255, 255, 255, 0.12);
+  color-scheme: dark;
+}
+
+html[data-theme="forest"] button:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+/* Sunset Theme - Warm oranges and pinks */
+html[data-theme="sunset"] {
+  --bg: #1f1315;
+  --surface: #2d1a1e;
+  --text: #fceced;
+  --text-muted: #d4a5ab;
+  --border: #4a2830;
+  --bg-card: rgba(45, 26, 30, 0.92);
+  --fg-body: var(--text);
+
+  --accent-50: #fff7ed;
+  --accent-100: #ffedd5;
+  --accent-200: #fed7aa;
+  --accent-400: #fb923c;
+  --accent-500: #f97316;
+  --accent-600: #ea580c;
+  --accent-700: #c2410c;
+
+  --accent-bg: var(--accent-600);
+  --accent-bg-2: var(--accent-700);
+  --accent-bg-soft: rgba(234, 88, 12, 0.18);
+  --accent-bg-softer: rgba(234, 88, 12, 0.12);
+  --accent-chip-bg: rgba(234, 88, 12, 0.22);
+
+  --ring: 0 0 0 3px rgba(234, 88, 12, 0.35);
+  --success: #4ade80;
+  --danger: #f87171;
+  --mood-1: #ef4444;
+  --mood-2: #f97316;
+  --mood-3: #fbbf24;
+  --mood-4: #84cc16;
+  --mood-5: #ec4899;
+
+  --overlay: rgba(0, 0, 0, 0.55);
+  --skeleton-a: rgba(255, 255, 255, 0.06);
+  --skeleton-b: rgba(255, 255, 255, 0.12);
+  color-scheme: dark;
+}
+
+html[data-theme="sunset"] button:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+/* Lavender Theme - Soft purples */
+html[data-theme="lavender"] {
+  --bg: #1a1625;
+  --surface: #251f35;
+  --text: #f5f0fa;
+  --text-muted: #b8a5d4;
+  --border: #3d2f55;
+  --bg-card: rgba(37, 31, 53, 0.92);
+  --fg-body: var(--text);
+
+  --accent-50: #faf5ff;
+  --accent-100: #f3e8ff;
+  --accent-200: #e9d5ff;
+  --accent-400: #c084fc;
+  --accent-500: #a855f7;
+  --accent-600: #9333ea;
+  --accent-700: #7e22ce;
+
+  --accent-bg: var(--accent-600);
+  --accent-bg-2: var(--accent-700);
+  --accent-bg-soft: rgba(147, 51, 234, 0.18);
+  --accent-bg-softer: rgba(147, 51, 234, 0.12);
+  --accent-chip-bg: rgba(147, 51, 234, 0.22);
+
+  --ring: 0 0 0 3px rgba(147, 51, 234, 0.35);
+  --success: #4ade80;
+  --danger: #f87171;
+  --mood-1: #f87171;
+  --mood-2: #fb923c;
+  --mood-3: #fbbf24;
+  --mood-4: #4ade80;
+  --mood-5: #c084fc;
+
+  --overlay: rgba(0, 0, 0, 0.55);
+  --skeleton-a: rgba(255, 255, 255, 0.06);
+  --skeleton-b: rgba(255, 255, 255, 0.12);
+  color-scheme: dark;
+}
+
+html[data-theme="lavender"] button:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+/* Midnight Theme - Deep dark blues with subtle accent */
+html[data-theme="midnight"] {
+  --bg: #0a0e17;
+  --surface: #111827;
+  --text: #f9fafb;
+  --text-muted: #9ca3af;
+  --border: #1f2937;
+  --bg-card: rgba(17, 24, 39, 0.92);
+  --fg-body: var(--text);
+
+  --accent-50: #f0f9ff;
+  --accent-100: #e0f2fe;
+  --accent-200: #bae6fd;
+  --accent-400: #38bdf8;
+  --accent-500: #0ea5e9;
+  --accent-600: #6366f1;
+  --accent-700: #4f46e5;
+
+  --accent-bg: var(--accent-600);
+  --accent-bg-2: var(--accent-700);
+  --accent-bg-soft: rgba(99, 102, 241, 0.18);
+  --accent-bg-softer: rgba(99, 102, 241, 0.12);
+  --accent-chip-bg: rgba(99, 102, 241, 0.22);
+
+  --ring: 0 0 0 3px rgba(99, 102, 241, 0.35);
+  --success: #10b981;
+  --danger: #ef4444;
+  --mood-1: #ef4444;
+  --mood-2: #f59e0b;
+  --mood-3: #eab308;
+  --mood-4: #22c55e;
+  --mood-5: #6366f1;
+
+  --overlay: rgba(0, 0, 0, 0.65);
+  --skeleton-a: rgba(255, 255, 255, 0.05);
+  --skeleton-b: rgba(255, 255, 255, 0.10);
+  color-scheme: dark;
+}
+
+html[data-theme="midnight"] button:hover {
+  background-color: #312e81;
+  /* slate 900 */
+}
+
+html[data-theme="oled"] {
+  /* True Black Background */
+  --bg-primary: #000000;
+  --bg-secondary: #000000;
+  --bg-tertiary: #121212;
+  --bg-card: #000000;
+  --bg-modal: #000000;
+
+  --text-primary: #ffffff;
+  --text-secondary: #a3a3a3;
+  --text-muted: #525252;
+
+  --border: #333333;
+  --border-light: #222222;
+
+  /* High Contrast Accents */
+  --accent-50: #fafafa;
+  --accent-100: #f4f4f5;
+  --accent-200: #e4e4e7;
+  --accent-300: #d4d4d8;
+  --accent-400: #a1a1aa;
+  --accent-500: #71717a;
+  --accent-600: #ffffff;
+  /* White accent for max contrast */
+  --accent-700: #3f3f46;
+  --accent-800: #27272a;
+  --accent-900: #18181b;
+
+  --accent-bg: #ffffff;
+  --accent-bg-2: #27272a;
+  --accent-bg-soft: #121212;
+  --accent-text: #000000;
+
+  --shadow-sm: none;
+  --shadow: none;
+  --shadow-md: 0 4px 6px -1px rgba(255, 255, 255, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(255, 255, 255, 0.1);
+
+  --ring: rgba(255, 255, 255, 0.5);
+
+  color-scheme: dark;
+}
+
+html[data-theme="oled"] .card {
+  border: 1px solid #333333;
+}

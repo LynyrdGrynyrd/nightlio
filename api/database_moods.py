@@ -11,6 +11,98 @@ except ImportError:  # pragma: no cover
     from database_common import DatabaseConnectionMixin  # type: ignore
 
 
+# Default mood definitions for new users
+DEFAULT_MOODS = [
+    {"score": 1, "label": "Terrible", "icon": "😢", "color_hex": "#ef4444"},
+    {"score": 2, "label": "Bad", "icon": "😕", "color_hex": "#f97316"},
+    {"score": 3, "label": "Okay", "icon": "😐", "color_hex": "#eab308"},
+    {"score": 4, "label": "Good", "icon": "🙂", "color_hex": "#22c55e"},
+    {"score": 5, "label": "Amazing", "icon": "😄", "color_hex": "#10b981"},
+]
+
+
+class MoodDefinitionMixin(DatabaseConnectionMixin):
+    """CRUD helpers for custom mood definitions."""
+
+    def get_user_mood_definitions(self, user_id: int) -> List[Dict]:
+        """Get mood definitions for a user. Creates defaults if none exist."""
+        with self._connect() as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                "SELECT id, user_id, score, label, icon, color_hex, is_active FROM mood_definitions WHERE user_id = ? ORDER BY score",
+                (user_id,),
+            )
+            rows = [dict(row) for row in cursor.fetchall()]
+            
+            # If no definitions exist, create defaults
+            if not rows:
+                self._create_default_moods(user_id)
+                cursor = conn.execute(
+                    "SELECT id, user_id, score, label, icon, color_hex, is_active FROM mood_definitions WHERE user_id = ? ORDER BY score",
+                    (user_id,),
+                )
+                rows = [dict(row) for row in cursor.fetchall()]
+            
+            return rows
+
+    def _create_default_moods(self, user_id: int) -> None:
+        """Create default mood definitions for a new user."""
+        with self._connect() as conn:
+            for mood in DEFAULT_MOODS:
+                conn.execute(
+                    """
+                    INSERT OR IGNORE INTO mood_definitions (user_id, score, label, icon, color_hex, is_active)
+                    VALUES (?, ?, ?, ?, ?, 1)
+                    """,
+                    (user_id, mood["score"], mood["label"], mood["icon"], mood["color_hex"]),
+                )
+            conn.commit()
+
+    def update_mood_definition(
+        self,
+        user_id: int,
+        score: int,
+        label: Optional[str] = None,
+        icon: Optional[str] = None,
+        color_hex: Optional[str] = None,
+    ) -> Optional[Dict]:
+        """Update a specific mood definition for a user."""
+        # Ensure user has mood definitions
+        self.get_user_mood_definitions(user_id)
+        
+        with self._connect() as conn:
+            conn.row_factory = sqlite3.Row
+            
+            # Build dynamic UPDATE query
+            updates = []
+            params = []
+            if label is not None:
+                updates.append("label = ?")
+                params.append(label)
+            if icon is not None:
+                updates.append("icon = ?")
+                params.append(icon)
+            if color_hex is not None:
+                updates.append("color_hex = ?")
+                params.append(color_hex)
+            
+            if not updates:
+                return None
+            
+            params.extend([user_id, score])
+            query = f"UPDATE mood_definitions SET {', '.join(updates)} WHERE user_id = ? AND score = ?"
+            conn.execute(query, params)
+            conn.commit()
+            
+            # Return updated row
+            cursor = conn.execute(
+                "SELECT id, user_id, score, label, icon, color_hex, is_active FROM mood_definitions WHERE user_id = ? AND score = ?",
+                (user_id, score),
+            )
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+
 class MoodEntriesMixin(DatabaseConnectionMixin):
     """CRUD helpers for mood entries and their selections."""
 
@@ -167,14 +259,62 @@ class MoodEntriesMixin(DatabaseConnectionMixin):
             conn.commit()
             return updated or bool(selected_options is not None)
 
-    def delete_mood_entry(self, user_id: int, entry_id: int) -> bool:
-        with self._connect() as conn:
             cursor = conn.execute(
                 "DELETE FROM mood_entries WHERE id = ? AND user_id = ?",
                 (entry_id, user_id),
             )
             conn.commit()
             return cursor.rowcount > 0
+
+    def search_mood_entries(
+        self,
+        user_id: int,
+        query: str,
+        moods: Optional[List[int]] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None
+    ) -> List[Dict]:
+        """Search entries using FTS and filters."""
+        sql = """
+            SELECT m.id, m.date, m.mood, m.content, m.created_at, m.updated_at
+            FROM mood_entries m
+        """
+        params = []
+        where_clauses = ["m.user_id = ?"]
+        params.append(user_id)
+
+        # FTS Join if query present
+        if query:
+            sql += " JOIN entries_fts f ON f.rowid = m.id "
+            where_clauses.append("entries_fts MATCH ?")
+            params.append(query) # Using FTS query syntax directly or sanitized. 
+                                 # Standard match accepts simple text like "foo bar".
+
+        if moods:
+            placeholders = ','.join('?' for _ in moods)
+            where_clauses.append(f"m.mood IN ({placeholders})")
+            params.extend(moods)
+
+        if start_date:
+            where_clauses.append("m.date >= ?")
+            params.append(start_date)
+        
+        if end_date:
+            where_clauses.append("m.date <= ?")
+            params.append(end_date)
+
+        sql += " WHERE " + " AND ".join(where_clauses)
+        sql += " ORDER BY m.date DESC, m.created_at DESC"
+
+        with self._connect() as conn:
+            conn.row_factory = sqlite3.Row
+            try:
+                cursor = conn.execute(sql, params)
+                return [dict(row) for row in cursor.fetchall()]
+            except sqlite3.OperationalError as e:
+                # FTS might fail on invalid syntax
+                logger.warning(f"Search query failed: {e}")
+                return []
 
 
 __all__ = ["MoodEntriesMixin"]

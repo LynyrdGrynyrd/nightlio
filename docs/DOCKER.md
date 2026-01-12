@@ -1,16 +1,6 @@
-# 🐳 Docker Quick Start Guide for Nightlio
+# 🐳 Docker Quick Start Guide for Twilightio
 
-This guide will help you get Nightlio running with Docker in just a f### Changing Ports
-Edit `docker-compose.yml` to change ports:
-```yaml
-services:
-  frontend:
-    ports:
-      - "8080:80"   # Frontend: localhost:8080 instead of 5173
-  api:
-    ports:
-      - "5001:5000" # API: localhost:5001 instead of 5000
-```
+This guide will help you get Twilightio running with Docker in just a few minutes.
 
 ## Prerequisites
 
@@ -21,8 +11,8 @@ services:
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/shirsakm/nightlio.git
-   cd nightlio
+   git clone https://github.com/shirsakm/twilightio.git
+   cd twilightio
    ```
 
 2. **Create environment file**
@@ -109,13 +99,13 @@ docker-compose up -d
 ### Data Management
 ```bash
 # Backup your data
-docker run --rm -v nightlio_nightlio_data:/data -v $(pwd):/backup alpine tar czf /backup/nightlio-backup.tar.gz -C /data .
+docker run --rm -v twilightio_twilightio_data:/data -v $(pwd):/backup alpine tar czf /backup/twilightio-backup.tar.gz -C /data .
 
 # Restore data
-docker run --rm -v nightlio_nightlio_data:/data -v $(pwd):/backup alpine tar xzf /backup/nightlio-backup.tar.gz -C /data
+docker run --rm -v twilightio_twilightio_data:/data -v $(pwd):/backup alpine tar xzf /backup/twilightio-backup.tar.gz -C /data
 
 # View data volume
-docker volume inspect nightlio_nightlio_data
+docker volume inspect twilightio_twilightio_data
 ```
 
 ## Customization
@@ -138,7 +128,7 @@ You can mount an external SQLite database:
 services:
   api:
     volumes:
-      - ./path/to/your/nightlio.db:/app/data/nightlio.db
+      - ./path/to/your/twilightio.db:/app/data/twilightio.db
 ```
 
 ### Behind a Reverse Proxy
@@ -166,7 +156,7 @@ docker-compose up --build
 ```bash
 # Reset database (WARNING: deletes all data)
 docker-compose down
-docker volume rm nightlio_nightlio_data
+docker volume rm twilightio_twilightio_data
 docker-compose up -d
 ```
 

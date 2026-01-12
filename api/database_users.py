@@ -84,9 +84,40 @@ class UsersMixin(DatabaseConnectionMixin):
                     ).fetchone()
                 conn.commit()
                 return dict(row) if row else None
-            except Exception:
                 conn.rollback()
                 raise
+
+    def delete_user_data(self, user_id: int) -> None:
+        """Permanently delete all data for a user."""
+        with self._connect() as conn:
+            # Enable foreign keys just in case
+            conn.execute("PRAGMA foreign_keys = ON")
+            
+            # Manual cleanup if cascades miss something (or for safety)
+            tables = [
+                "mood_entry_selections", # No user_id, linked to entry
+                "mood_entries", 
+                "goals", 
+                "groups", 
+                "user_settings", 
+                "achievement_unlocks"
+            ]
+            
+            # Selections are tough without CASCADE. 
+            # If we delete entries, selection links should die if CASCADE is on.
+            # Let's trust FK CASCADE for entry->selection.
+            
+            # Direct user_id tables:
+            direct_tables = ["mood_entries", "goals", "groups", "user_settings", "achievement_unlocks", "important_days"]
+            for table in direct_tables:
+                try:
+                    conn.execute(f"DELETE FROM {table} WHERE user_id = ?", (user_id,))
+                except Exception:
+                    pass
+            
+            # Finally delete user
+            conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+            conn.commit()
 
 
 __all__ = ["UsersMixin"]

@@ -6,6 +6,8 @@ const GoalForm = forwardRef(({ onSubmit, onCancel, showInlineSuggestions = true 
     title: '',
     description: '',
     frequencyNumber: 3,
+    frequencyType: 'weekly', // daily, weekly, monthly
+    targetCount: 1,
   });
 
   const [errors, setErrors] = useState({});
@@ -15,7 +17,15 @@ const GoalForm = forwardRef(({ onSubmit, onCancel, showInlineSuggestions = true 
   const descMax = 280;
   const titleLen = formData.title.length;
   const descLen = formData.description.length;
-  const freqLabel = useMemo(() => `${formData.frequencyNumber} ${formData.frequencyNumber === 1 ? 'day' : 'days'} a week`, [formData.frequencyNumber]);
+
+  const freqLabel = useMemo(() => {
+    if (formData.frequencyType === 'daily') {
+      return formData.targetCount === 1 ? 'Once daily' : `${formData.targetCount}x daily`;
+    } else if (formData.frequencyType === 'monthly') {
+      return formData.targetCount === 1 ? 'Once a month' : `${formData.targetCount}x monthly`;
+    }
+    return `${formData.frequencyNumber} ${formData.frequencyNumber === 1 ? 'day' : 'days'} a week`;
+  }, [formData.frequencyNumber, formData.frequencyType, formData.targetCount]);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -27,11 +37,11 @@ const GoalForm = forwardRef(({ onSubmit, onCancel, showInlineSuggestions = true 
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     if (!formData.title.trim()) {
       newErrors.title = 'Title is required';
     }
-    
+
     if (!formData.description.trim()) {
       newErrors.description = 'Description is required';
     }
@@ -49,6 +59,9 @@ const GoalForm = forwardRef(({ onSubmit, onCancel, showInlineSuggestions = true 
         title: formData.title.trim(),
         description: formData.description.trim(),
         frequency: freqLabel,
+        frequencyType: formData.frequencyType,
+        frequencyNumber: formData.frequencyType === 'weekly' ? formData.frequencyNumber : formData.targetCount,
+        targetCount: formData.frequencyType === 'weekly' ? formData.frequencyNumber : formData.targetCount,
       });
     } finally {
       setSubmitting(false);
@@ -88,10 +101,10 @@ const GoalForm = forwardRef(({ onSubmit, onCancel, showInlineSuggestions = true 
 
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: '24px' }}>
-          <label htmlFor="goal-title" style={{ 
-            display: 'block', 
-            marginBottom: '8px', 
-            fontWeight: '500', 
+          <label htmlFor="goal-title" style={{
+            display: 'block',
+            marginBottom: '8px',
+            fontWeight: '500',
             color: 'var(--text)',
             fontSize: '0.95rem'
           }}>
@@ -134,10 +147,10 @@ const GoalForm = forwardRef(({ onSubmit, onCancel, showInlineSuggestions = true 
         </div>
 
         <div style={{ marginBottom: '24px' }}>
-      <label htmlFor="goal-desc" style={{ 
-            display: 'block', 
-            marginBottom: '8px', 
-            fontWeight: '500', 
+          <label htmlFor="goal-desc" style={{
+            display: 'block',
+            marginBottom: '8px',
+            fontWeight: '500',
             color: 'var(--text)',
             fontSize: '0.95rem'
           }}>
@@ -157,7 +170,7 @@ const GoalForm = forwardRef(({ onSubmit, onCancel, showInlineSuggestions = true 
               background: 'var(--surface)',
               color: 'var(--text)',
               fontSize: '1rem',
-        fontFamily: 'inherit',
+              fontFamily: 'inherit',
               outline: 'none',
               resize: 'vertical',
               minHeight: '100px',
@@ -183,39 +196,101 @@ const GoalForm = forwardRef(({ onSubmit, onCancel, showInlineSuggestions = true 
 
         <div style={{ marginBottom: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <label style={{ fontWeight: 500, color: 'var(--text)', fontSize: '0.95rem' }}>Frequency</label>
+            <label style={{ fontWeight: 500, color: 'var(--text)', fontSize: '0.95rem' }}>Frequency Type</label>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
+            {['daily', 'weekly', 'monthly'].map(type => {
+              const active = formData.frequencyType === type;
+              const labels = { daily: '📅 Daily', weekly: '📆 Weekly', monthly: '🗓️ Monthly' };
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => handleInputChange('frequencyType', type)}
+                  aria-pressed={active}
+                  style={{
+                    padding: '12px',
+                    borderRadius: 10,
+                    border: `2px solid ${active ? 'var(--accent-600)' : 'var(--border)'}`,
+                    background: active ? 'var(--accent-bg-soft)' : 'var(--surface)',
+                    color: active ? 'var(--accent-600)' : 'var(--text)',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  {labels[type]}
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <label style={{ fontWeight: 500, color: 'var(--text)', fontSize: '0.95rem' }}>
+              {formData.frequencyType === 'weekly' ? 'Days per week' : 'Times per period'}
+            </label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
               <Calendar size={14} />
               <span>{freqLabel}</span>
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8 }}>
-            {Array.from({ length: 7 }, (_, i) => i + 1).map(n => {
-              const active = formData.frequencyNumber === n;
-              return (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => handleInputChange('frequencyNumber', n)}
-                  aria-pressed={active}
-                  style={{
-                    padding: '10px 0',
-                    borderRadius: 8,
-                    border: `1px solid ${active ? 'color-mix(in oklab, var(--accent-600), transparent 30%)' : 'var(--border)'}`,
-                    background: active ? 'var(--accent-600)' : 'var(--surface)',
-                    color: active ? 'white' : 'var(--text)',
-                    cursor: 'pointer',
-                    fontWeight: 600
-                  }}
-                >
-                  {n}
-                </button>
-              );
-            })}
-          </div>
+
+          {formData.frequencyType === 'weekly' ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8 }}>
+              {Array.from({ length: 7 }, (_, i) => i + 1).map(n => {
+                const active = formData.frequencyNumber === n;
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => handleInputChange('frequencyNumber', n)}
+                    aria-pressed={active}
+                    style={{
+                      padding: '10px 0',
+                      borderRadius: 8,
+                      border: `1px solid ${active ? 'color-mix(in oklab, var(--accent-600), transparent 30%)' : 'var(--border)'}`,
+                      background: active ? 'var(--accent-600)' : 'var(--surface)',
+                      color: active ? 'white' : 'var(--text)',
+                      cursor: 'pointer',
+                      fontWeight: 600
+                    }}
+                  >
+                    {n}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <input
+                type="number"
+                min="1"
+                max={formData.frequencyType === 'daily' ? 10 : 30}
+                value={formData.targetCount}
+                onChange={(e) => handleInputChange('targetCount', Math.max(1, parseInt(e.target.value) || 1))}
+                style={{
+                  width: 80,
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface)',
+                  color: 'var(--text)',
+                  fontSize: '1rem',
+                  textAlign: 'center'
+                }}
+              />
+              <span style={{ color: 'var(--text-muted)' }}>
+                {formData.frequencyType === 'daily' ? 'time(s) per day' : 'time(s) per month'}
+              </span>
+            </div>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
             <Info size={14} />
-            <span>This sets your weekly target. You can mark progress daily.</span>
+            <span>
+              {formData.frequencyType === 'daily' && 'Resets every day at midnight.'}
+              {formData.frequencyType === 'weekly' && 'This sets your weekly target. Resets every Monday.'}
+              {formData.frequencyType === 'monthly' && 'Resets on the 1st of each month.'}
+            </span>
           </div>
         </div>
 
@@ -223,7 +298,7 @@ const GoalForm = forwardRef(({ onSubmit, onCancel, showInlineSuggestions = true 
           <div style={{ marginBottom: '28px' }}>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 8 }}>Quick suggestions</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {[{t:'Morning Meditation',d:'10 minutes of mindfulness'}, {t:'Evening Walk',d:'30-minute walk outside'}, {t:'Read Before Bed',d:'Read 20 minutes'}].map((s) => (
+              {[{ t: 'Morning Meditation', d: '10 minutes of mindfulness' }, { t: 'Evening Walk', d: '30-minute walk outside' }, { t: 'Read Before Bed', d: 'Read 20 minutes' }].map((s) => (
                 <button
                   key={s.t}
                   type="button"

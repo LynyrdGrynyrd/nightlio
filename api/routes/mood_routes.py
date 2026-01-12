@@ -1,7 +1,11 @@
 from typing import Any, List, Optional
 from flask import Blueprint, request, jsonify
+import logging
 from api.services.mood_service import MoodService
 from api.utils.auth_middleware import require_auth, get_current_user_id
+from api.utils.secure_errors import secure_error_response
+
+logger = logging.getLogger(__name__)
 
 
 def _normalise_selected_options(
@@ -19,7 +23,7 @@ def _normalise_selected_options(
         raise ValueError("selected_options must contain integers") from exc
 
 
-def create_mood_routes(mood_service: MoodService):
+def create_mood_routes(mood_service: MoodService, media_service: Any = None):
     mood_bp = Blueprint("mood", __name__)
 
     @mood_bp.route("/mood", methods=["POST"])
@@ -77,9 +81,11 @@ def create_mood_routes(mood_service: MoodService):
             )
 
         except ValueError as e:
-            return jsonify({"error": str(e)}), 400
+            # SECURITY: Log validation errors but return generic message
+            logger.warning(f"Mood entry validation error: {e}")
+            return jsonify({"error": "Invalid input"}), 400
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return secure_error_response(e, 500)
 
     @mood_bp.route("/moods", methods=["GET"])
     @require_auth
@@ -100,7 +106,7 @@ def create_mood_routes(mood_service: MoodService):
             return jsonify(entries)
 
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return secure_error_response(e, 500)
 
     @mood_bp.route("/mood/<int:entry_id>", methods=["GET"])
     @require_auth
@@ -116,7 +122,7 @@ def create_mood_routes(mood_service: MoodService):
                 return jsonify({"error": "Entry not found"}), 404
 
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return secure_error_response(e, 500)
 
     @mood_bp.route("/mood/<int:entry_id>", methods=["PUT"])
     @require_auth
@@ -188,9 +194,10 @@ def create_mood_routes(mood_service: MoodService):
             )
 
         except ValueError as e:
-            return jsonify({"error": str(e)}), 400
+            logger.warning(f"Mood update validation error: {e}")
+            return jsonify({"error": "Invalid input"}), 400
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return secure_error_response(e, 500)
 
     @mood_bp.route("/mood/<int:entry_id>", methods=["DELETE"])
     @require_auth
@@ -202,6 +209,8 @@ def create_mood_routes(mood_service: MoodService):
             success = mood_service.delete_entry(user_id, entry_id)
 
             if success:
+                if media_service:
+                    media_service.delete_all_media_for_entry(entry_id)
                 return jsonify(
                     {"status": "success", "message": "Mood entry deleted successfully"}
                 )
@@ -209,7 +218,7 @@ def create_mood_routes(mood_service: MoodService):
                 return jsonify({"error": "Entry not found"}), 404
 
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return secure_error_response(e, 500)
 
     @mood_bp.route("/statistics", methods=["GET"])
     @require_auth
@@ -222,7 +231,7 @@ def create_mood_routes(mood_service: MoodService):
             return jsonify(stats)
 
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return secure_error_response(e, 500)
 
     @mood_bp.route("/streak", methods=["GET"])
     @require_auth
@@ -240,7 +249,7 @@ def create_mood_routes(mood_service: MoodService):
             )
 
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return secure_error_response(e, 500)
 
     @mood_bp.route("/mood/<int:entry_id>/selections", methods=["GET"])
     @require_auth
@@ -253,6 +262,19 @@ def create_mood_routes(mood_service: MoodService):
             return jsonify(selections)
 
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return secure_error_response(e, 500)
+
+    @mood_bp.route("/streak/details", methods=["GET"])
+    @require_auth
+    def get_streak_details():
+        try:
+            user_id = get_current_user_id()
+            if user_id is None:
+                return jsonify({"error": "Unauthorized"}), 401
+            details = mood_service.get_streak_details(user_id)
+            return jsonify(details)
+
+        except Exception as e:
+            return secure_error_response(e, 500)
 
     return mood_bp

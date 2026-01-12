@@ -1,2 +1,2 @@
 #!/bin/bash
-PYTHONPATH=. api/venv/bin/pytest
+npx vitest run && PYTHONPATH=. api/venv/bin/pytest

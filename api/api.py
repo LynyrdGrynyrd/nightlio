@@ -1,4 +1,11 @@
+"""Legacy standalone API - kept for backward compatibility.
+
+NOTE: The main application uses app.py with blueprints from routes/.
+This file is kept for simple testing and backward compatibility.
+"""
+
 import time
+import logging
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from database import MoodDatabase
@@ -8,6 +15,18 @@ CORS(app)
 
 # Initialize database
 db = MoodDatabase()
+logger = logging.getLogger(__name__)
+
+
+def _secure_error(error, status_code=500):
+    """Log error internally but return generic message to client."""
+    logger.error(f"API error (status {status_code}): {error}")
+    messages = {
+        400: "Invalid request",
+        404: "Resource not found", 
+        500: "An internal error occurred",
+    }
+    return jsonify({"error": messages.get(status_code, "An error occurred")}), status_code
 
 
 @app.route("/api/time")
@@ -47,7 +66,7 @@ def create_mood_entry():
         )
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _secure_error(e, 500)
 
 
 @app.route("/api/moods", methods=["GET"])
@@ -65,7 +84,7 @@ def get_mood_entries():
         return jsonify(entries)
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _secure_error(e, 500)
 
 
 @app.route("/api/mood/<int:entry_id>", methods=["GET"])
@@ -78,7 +97,7 @@ def get_mood_entry(entry_id):
             return jsonify({"error": "Entry not found"}), 404
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _secure_error(e, 500)
 
 
 @app.route("/api/mood/<int:entry_id>", methods=["PUT"])
@@ -102,7 +121,7 @@ def update_mood_entry(entry_id):
             return jsonify({"error": "Entry not found or no changes made"}), 404
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _secure_error(e, 500)
 
 
 @app.route("/api/mood/<int:entry_id>", methods=["DELETE"])
@@ -118,7 +137,7 @@ def delete_mood_entry(entry_id):
             return jsonify({"error": "Entry not found"}), 404
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _secure_error(e, 500)
 
 
 @app.route("/api/statistics", methods=["GET"])
@@ -137,7 +156,7 @@ def get_mood_statistics():
         )
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _secure_error(e, 500)
 
 
 @app.route("/api/streak", methods=["GET"])
@@ -152,7 +171,7 @@ def get_current_streak():
         )
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _secure_error(e, 500)
 
 
 @app.route("/api/groups", methods=["GET"])
@@ -162,7 +181,7 @@ def get_groups():
         return jsonify(groups)
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _secure_error(e, 500)
 
 
 @app.route("/api/groups", methods=["POST"])
@@ -188,7 +207,7 @@ def create_group():
         )
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _secure_error(e, 500)
 
 
 @app.route("/api/groups/<int:group_id>/options", methods=["POST"])
@@ -214,7 +233,7 @@ def create_group_option(group_id):
         )
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _secure_error(e, 500)
 
 
 @app.route("/api/groups/<int:group_id>", methods=["DELETE"])
@@ -230,11 +249,11 @@ def delete_group(group_id):
             return jsonify({"error": "Group not found"}), 404
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _secure_error(e, 500)
 
 
 @app.route("/api/options/<int:option_id>", methods=["DELETE"])
-def delete_option():
+def delete_option(option_id):
     try:
         success = db.delete_group_option(option_id)
 
@@ -246,7 +265,7 @@ def delete_option():
             return jsonify({"error": "Option not found"}), 404
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _secure_error(e, 500)
 
 
 @app.route("/api/mood/<int:entry_id>/selections", methods=["GET"])
@@ -256,4 +275,4 @@ def get_entry_selections(entry_id):
         return jsonify(selections)
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _secure_error(e, 500)

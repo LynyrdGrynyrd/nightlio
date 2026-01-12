@@ -117,3 +117,19 @@ class MoodService:
         if not entry:
             return []
         return self.db.get_entry_selections(entry_id)
+
+    def search_entries(
+        self,
+        user_id: int,
+        query: str,
+        moods: Optional[List[int]] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None
+    ) -> List[Dict]:
+        """Search entries for a user"""
+        return self.db.search_mood_entries(user_id, query, moods, start_date, end_date)
+
+    def get_streak_details(self, user_id: int) -> Dict:
+        """Get detailed streak information for a user"""
+        return self.db.get_streak_details(user_id)
+

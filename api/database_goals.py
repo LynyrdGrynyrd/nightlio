@@ -31,6 +31,27 @@ class GoalsMixin(DatabaseConnectionMixin):
             date_obj = datetime.now().date()
         start = date_obj - timedelta(days=date_obj.weekday())
         return start.strftime("%Y-%m-%d")
+    
+    @staticmethod
+    def _month_start_iso(date_obj: Optional[date] = None) -> str:
+        if date_obj is None:
+            date_obj = datetime.now().date()
+        return date_obj.replace(day=1).strftime("%Y-%m-%d")
+    
+    @staticmethod
+    def _day_start_iso(date_obj: Optional[date] = None) -> str:
+        if date_obj is None:
+            date_obj = datetime.now().date()
+        return date_obj.strftime("%Y-%m-%d")
+    
+    def _get_period_start(self, frequency_type: str, date_obj: Optional[date] = None) -> str:
+        """Get period start based on frequency type."""
+        if frequency_type == "daily":
+            return self._day_start_iso(date_obj)
+        elif frequency_type == "monthly":
+            return self._month_start_iso(date_obj)
+        else:  # weekly (default)
+            return self._week_start_iso(date_obj)
 
     def _rollover_goal_if_needed(
         self,
@@ -90,33 +111,44 @@ class GoalsMixin(DatabaseConnectionMixin):
         user_id: int,
         title: str,
         description: str,
-        frequency_per_week: int,
+        frequency_per_week: int = 1,
+        frequency_type: str = "weekly",
+        target_count: int = 1,
+        custom_days: Optional[str] = None,
     ) -> int:
         if not isinstance(user_id, int) or user_id <= 0:
             raise ValueError("user_id must be a positive integer")
         if not title or not title.strip():
             raise ValueError("Title is required and cannot be empty")
-        if not isinstance(frequency_per_week, int) or not (
-            1 <= frequency_per_week <= 7
-        ):
-            raise ValueError("frequency_per_week must be between 1 and 7")
+        if frequency_type not in ("daily", "weekly", "monthly", "custom"):
+            raise ValueError("frequency_type must be daily, weekly, monthly, or custom")
+        if target_count < 1:
+            raise ValueError("target_count must be at least 1")
+        
+        # For weekly: validate frequency_per_week
+        if frequency_type == "weekly" and not (1 <= frequency_per_week <= 7):
+            raise ValueError("frequency_per_week must be between 1 and 7 for weekly goals")
 
-        period_start = self._week_start_iso()
+        period_start = self._get_period_start(frequency_type)
 
         try:
             with self._connect() as conn:
                 cursor = conn.execute(
                     """
                     INSERT INTO goals (user_id, title, description, frequency_per_week,
-                                        completed, streak, period_start)
-                    VALUES (?, ?, ?, ?, 0, 0, ?)
+                                        completed, streak, period_start, frequency_type,
+                                        target_count, custom_days)
+                    VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?, ?)
                     """,
                     (
                         user_id,
                         title.strip(),
                         (description or "").strip(),
-                        frequency_per_week,
+                        frequency_per_week if frequency_type == "weekly" else target_count,
                         period_start,
+                        frequency_type,
+                        target_count,
+                        custom_days,
                     ),
                 )
                 conn.commit()
@@ -272,7 +304,7 @@ class GoalsMixin(DatabaseConnectionMixin):
         
         If completion exists for that date, remove it.
         If completion doesn't exist, add it.
-        Updates completed count if the date is within current week.
+        Updates completed count based on actual completions in the toggled date's week.
         """
         with self._connect() as conn:
             conn.row_factory = sqlite3.Row
@@ -286,8 +318,19 @@ class GoalsMixin(DatabaseConnectionMixin):
                 return None
             
             goal = self._rollover_goal_if_needed(conn, row)
-            current_completed = int(goal.get("completed") or 0)
-            period_start = goal.get("period_start")
+            freq = int(goal.get("frequency_per_week") or 0)
+            
+            # Parse the toggled date and determine its week boundaries
+            try:
+                target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+                target_week_start = self._week_start_iso(target_date)
+                target_week_start_date = datetime.strptime(target_week_start, "%Y-%m-%d").date()
+                target_week_end = target_week_start_date + timedelta(days=6)
+                target_week_end_str = target_week_end.strftime("%Y-%m-%d")
+            except ValueError:
+                # Fallback if date parsing fails
+                target_week_start = goal.get("period_start")
+                target_week_end_str = target_week_start
             
             # Check if completion exists for this date
             existing = conn.execute(
@@ -295,33 +338,12 @@ class GoalsMixin(DatabaseConnectionMixin):
                 (user_id, goal_id, date_str),
             ).fetchone()
             
-            # Determine if the date is within the current week
-            try:
-                target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-                target_week_start = self._week_start_iso(target_date)
-                is_current_week = target_week_start == period_start
-            except ValueError:
-                is_current_week = False
-            
             if existing:
                 # Remove the completion
                 conn.execute(
                     "DELETE FROM goal_completions WHERE user_id = ? AND goal_id = ? AND date = ?",
                     (user_id, goal_id, date_str),
                 )
-                # Decrement completed count if within current week
-                if is_current_week and current_completed > 0:
-                    current_completed -= 1
-                    conn.execute(
-                        """
-                        UPDATE goals
-                           SET completed = ?,
-                               last_completed_date = NULL,
-                               updated_at = CURRENT_TIMESTAMP
-                         WHERE id = ? AND user_id = ?
-                        """,
-                        (current_completed, goal_id, user_id),
-                    )
                 was_completed = False
             else:
                 # Add the completion
@@ -329,21 +351,34 @@ class GoalsMixin(DatabaseConnectionMixin):
                     "INSERT INTO goal_completions (user_id, goal_id, date) VALUES (?, ?, ?)",
                     (user_id, goal_id, date_str),
                 )
-                # Increment completed count if within current week
-                freq = int(goal.get("frequency_per_week") or 0)
-                if is_current_week and current_completed < freq:
-                    current_completed += 1
-                    conn.execute(
-                        """
-                        UPDATE goals
-                           SET completed = ?,
-                               last_completed_date = ?,
-                               updated_at = CURRENT_TIMESTAMP
-                         WHERE id = ? AND user_id = ?
-                        """,
-                        (current_completed, date_str, goal_id, user_id),
-                    )
                 was_completed = True
+            
+            # Count actual completions within the toggled date's week
+            completion_count_row = conn.execute(
+                """
+                SELECT COUNT(*) as cnt FROM goal_completions 
+                WHERE user_id = ? AND goal_id = ? AND date >= ? AND date <= ?
+                """,
+                (user_id, goal_id, target_week_start, target_week_end_str),
+            ).fetchone()
+            actual_completed = completion_count_row["cnt"] if completion_count_row else 0
+            
+            # Cap at frequency for display purposes
+            display_completed = min(actual_completed, freq) if freq > 0 else actual_completed
+            
+            # Update the goals table with the recalculated count and the new period_start
+            # if we're toggling a date in a different week
+            conn.execute(
+                """
+                UPDATE goals
+                   SET completed = ?,
+                       period_start = ?,
+                       last_completed_date = ?,
+                       updated_at = CURRENT_TIMESTAMP
+                 WHERE id = ? AND user_id = ?
+                """,
+                (display_completed, target_week_start, date_str if was_completed else None, goal_id, user_id),
+            )
             
             conn.commit()
             

@@ -20,6 +20,8 @@ def setup_error_handlers(app):
 
     @app.errorhandler(ValueError)
     def value_error(error):
-        return jsonify({"error": str(error)}), 400
+        # SECURITY: Log error details internally but don't expose to client
+        logging.warning(f"ValueError caught: {error}")
+        return jsonify({"error": "Invalid input provided"}), 400
 
     return app

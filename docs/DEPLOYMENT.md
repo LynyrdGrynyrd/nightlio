@@ -1,6 +1,6 @@
 # 🚀 Production Deployment Guide
 
-This guide covers deploying Nightlio in production environments with proper security, performance, and reliability.
+This guide covers deploying Twilightio in production environments with proper security, performance, and reliability.
 
 ## Quick Production Setup
 
@@ -8,8 +8,8 @@ This guide covers deploying Nightlio in production environments with proper secu
 
 ```bash
 # Clone and configure
-git clone https://github.com/shirsakm/nightlio.git
-cd nightlio
+git clone https://github.com/shirsakm/twilightio.git
+cd twilightio
 cp .env.docker .env
 
 # Generate secure secrets
@@ -144,19 +144,19 @@ server {
 ```yaml
 version: '3.8'
 services:
-  nightlio-api:
+  twilightio-api:
     # ... your api config
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.nightlio-api.rule=Host(`yourdomain.com`) && PathPrefix(`/api`)"
-      - "traefik.http.routers.nightlio-api.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.twilightio-api.rule=Host(`yourdomain.com`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.twilightio-api.tls.certresolver=letsencrypt"
 
-  nightlio-frontend:
+  twilightio-frontend:
     # ... your frontend config
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.nightlio.rule=Host(`yourdomain.com`)"
-      - "traefik.http.routers.nightlio.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.twilightio.rule=Host(`yourdomain.com`)"
+      - "traefik.http.routers.twilightio.tls.certresolver=letsencrypt"
 ```
 
 ### Caddy
@@ -188,7 +188,7 @@ docker stats
 #!/bin/bash
 # backup.sh - Run daily via cron
 
-BACKUP_DIR="/backups/nightlio"
+BACKUP_DIR="/backups/twilightio"
 DATE=$(date +%Y%m%d_%H%M%S)
 
 # Create backup directory
@@ -196,20 +196,20 @@ mkdir -p $BACKUP_DIR
 
 # Backup database
 docker run --rm \
-  -v nightlio_nightlio_data:/data \
+  -v twilightio_twilightio_data:/data \
   -v $BACKUP_DIR:/backup \
-  alpine tar czf /backup/nightlio-$DATE.tar.gz -C /data .
+  alpine tar czf /backup/twilightio-$DATE.tar.gz -C /data .
 
 # Keep only last 7 days
-find $BACKUP_DIR -name "nightlio-*.tar.gz" -mtime +7 -delete
+find $BACKUP_DIR -name "twilightio-*.tar.gz" -mtime +7 -delete
 
 # Upload to cloud storage (optional)
-# aws s3 cp $BACKUP_DIR/nightlio-$DATE.tar.gz s3://your-bucket/
+# aws s3 cp $BACKUP_DIR/twilightio-$DATE.tar.gz s3://your-bucket/
 ```
 
 ### Log Rotation
 
-Add to `/etc/logrotate.d/docker-nightlio`:
+Add to `/etc/logrotate.d/docker-twilightio`:
 
 ```
 /var/lib/docker/containers/*/*-json.log {
@@ -271,7 +271,7 @@ iptables -A INPUT -j DROP
 sudo apt update && sudo apt upgrade -y
 
 # Update Docker images
-cd /path/to/nightlio
+cd /path/to/twilightio
 git pull
 docker-compose down
 docker-compose build --no-cache
@@ -289,7 +289,7 @@ docker image prune -f
 # Enable WAL mode for better concurrency
 docker-compose exec api python -c "
 import sqlite3
-conn = sqlite3.connect('/app/data/nightlio.db')
+conn = sqlite3.connect('/app/data/twilightio.db')
 conn.execute('PRAGMA journal_mode=WAL;')
 conn.close()
 "
@@ -326,7 +326,7 @@ gzip_types text/plain text/css application/json application/javascript text/xml 
    ```bash
    # Restore from backup
    docker-compose down
-   docker run --rm -v nightlio_nightlio_data:/data -v $(pwd):/backup alpine tar xzf /backup/nightlio-backup.tar.gz -C /data
+   docker run --rm -v twilightio_twilightio_data:/data -v $(pwd):/backup alpine tar xzf /backup/twilightio-backup.tar.gz -C /data
    docker-compose up -d
    ```
 
@@ -377,24 +377,24 @@ For high-traffic deployments, consider:
 ```bash
 # Build and push to ECR
 aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 123456789012.dkr.ecr.us-east-1.amazonaws.com
-docker build -t nightlio .
-docker tag nightlio:latest 123456789012.dkr.ecr.us-east-1.amazonaws.com/nightlio:latest
-docker push 123456789012.dkr.ecr.us-east-1.amazonaws.com/nightlio:latest
+docker build -t twilightio .
+docker tag twilightio:latest 123456789012.dkr.ecr.us-east-1.amazonaws.com/twilightio:latest
+docker push 123456789012.dkr.ecr.us-east-1.amazonaws.com/twilightio:latest
 ```
 
 ### Google Cloud Run
 
 ```bash
 # Build and deploy
-gcloud builds submit --tag gcr.io/PROJECT-ID/nightlio
-gcloud run deploy --image gcr.io/PROJECT-ID/nightlio --platform managed
+gcloud builds submit --tag gcr.io/PROJECT-ID/twilightio
+gcloud run deploy --image gcr.io/PROJECT-ID/twilightio --platform managed
 ```
 
 ### DigitalOcean App Platform
 
 ```yaml
 # .do/app.yaml
-name: nightlio
+name: twilightio
 services:
 - name: api
   source_dir: /api

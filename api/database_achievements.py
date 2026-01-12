@@ -126,6 +126,77 @@ class AchievementsMixin(DatabaseConnectionMixin):
                 break
         return streak
 
+    def get_longest_streak(self, user_id: int) -> int:
+        """Calculate the longest streak ever achieved by the user."""
+        try:
+            dates = self._get_user_entry_dates(user_id)
+            if not dates:
+                return 0
+            parsed_dates = self._parse_date_strings(dates)
+            if not parsed_dates:
+                return 0
+            return self._calculate_longest_streak(parsed_dates)
+        except Exception as exc:
+            logger.warning("Error calculating longest streak for user %s: %s", user_id, exc)
+            return 0
+
+    def _calculate_longest_streak(self, parsed_dates: List[date]) -> int:
+        """Find the longest consecutive streak from a sorted list of dates."""
+        if not parsed_dates:
+            return 0
+        
+        # Sort ascending for easier processing
+        sorted_dates = sorted(set(parsed_dates))
+        
+        longest = 1
+        current = 1
+        
+        for i in range(1, len(sorted_dates)):
+            if (sorted_dates[i] - sorted_dates[i-1]).days == 1:
+                current += 1
+                longest = max(longest, current)
+            else:
+                current = 1
+        
+        return longest
+
+    def get_streak_details(self, user_id: int) -> Dict:
+        """Get current streak, longest streak, and recent 5 days with entry status."""
+        try:
+            dates = self._get_user_entry_dates(user_id)
+            parsed_dates = self._parse_date_strings(dates) if dates else []
+            entry_dates_set = set(parsed_dates)
+            
+            current_streak = self._calculate_streak_from_dates(parsed_dates) if parsed_dates else 0
+            longest_streak = self._calculate_longest_streak(parsed_dates) if parsed_dates else 0
+            
+            # Generate recent 5 days including today
+            today = datetime.now().date()
+            day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+            
+            recent_days = []
+            for i in range(4, -1, -1):  # 4 days ago to today
+                day = today - timedelta(days=i)
+                recent_days.append({
+                    "date": day.strftime("%Y-%m-%d"),
+                    "dayName": day_names[day.weekday()],
+                    "hasEntry": day in entry_dates_set,
+                    "isToday": day == today
+                })
+            
+            return {
+                "current_streak": current_streak,
+                "longest_streak": longest_streak,
+                "recent_days": recent_days
+            }
+        except Exception as exc:
+            logger.warning("Error getting streak details for user %s: %s", user_id, exc)
+            return {
+                "current_streak": 0,
+                "longest_streak": 0,
+                "recent_days": []
+            }
+
     # --- Achievements ---------------------------------------------------------
     def add_achievement(self, user_id: int, achievement_type: str) -> Optional[int]:
         with self._connect() as conn:
@@ -174,16 +245,60 @@ class AchievementsMixin(DatabaseConnectionMixin):
 
     def check_achievements(self, user_id: int) -> List[str]:
         new_achievements: List[str] = []
-        total_entries = self.get_mood_statistics(user_id)["total_entries"]
+        stats = self.get_mood_statistics(user_id)
+        total_entries = stats["total_entries"]
         current_streak = self.get_current_streak(user_id)
+        longest_streak = self.get_longest_streak(user_id)
         stats_views = int(self.get_user_metrics(user_id).get("stats_views") or 0)
+        mood_counts = self.get_mood_counts(user_id)
+        
+        # Check if user has used all 5 mood levels
+        unique_moods_count = sum(1 for count in mood_counts.values() if count > 0)
+        
+        # Get goal completions and photo counts (may need to query separately)
+        goal_completions = 0
+        photo_count = 0
+        try:
+            with self._connect() as conn:
+                cursor = conn.execute(
+                    "SELECT COUNT(*) FROM goals WHERE user_id = ? AND completed = 1",
+                    (user_id,)
+                )
+                goal_completions = cursor.fetchone()[0]
+                
+                cursor = conn.execute(
+                    """SELECT COUNT(*) FROM media_attachments ma 
+                       JOIN mood_entries me ON ma.entry_id = me.id 
+                       WHERE me.user_id = ?""",
+                    (user_id,)
+                )
+                photo_count = cursor.fetchone()[0]
+        except:
+            pass
 
         achievements_to_check = [
+            # Original achievements
             ("first_entry", total_entries >= 1),
             ("week_warrior", current_streak >= 7),
             ("consistency_king", current_streak >= 30),
             ("data_lover", stats_views >= 10),
             ("mood_master", total_entries >= 100),
+            
+            # New achievements
+            ("complex_person", unique_moods_count >= 5),  # All 5 mood levels used
+            ("century", total_entries >= 100),  # 100 entries
+            ("devoted", current_streak >= 365),  # 1 year streak
+            ("photographer", photo_count >= 50),  # 50 photos
+            ("goal_crusher", goal_completions >= 10),  # 10 goals completed
+            ("half_year", current_streak >= 180),  # 6 month streak
+            ("early_adopter", total_entries >= 1),  # First entry (same as first but clearer)
+            ("wordsmith", False),  # Checked separately - 1000+ chars in entry
+            ("comeback_king", longest_streak > current_streak and current_streak >= 7),
+            
+            # Milestone achievements
+            ("milestone_50", total_entries >= 50),
+            ("milestone_250", total_entries >= 250),
+            ("milestone_500", total_entries >= 500),
         ]
 
         for achievement_type, condition in achievements_to_check:
@@ -198,17 +313,56 @@ class AchievementsMixin(DatabaseConnectionMixin):
         stats = self.get_mood_statistics(user_id)
         total_entries = int(stats.get("total_entries") or 0)
         current_streak = int(self.get_current_streak(user_id) or 0)
+        longest_streak = int(self.get_longest_streak(user_id) or 0)
         stats_views = int(self.get_user_metrics(user_id).get("stats_views") or 0)
+        mood_counts = self.get_mood_counts(user_id)
+        unique_moods = sum(1 for count in mood_counts.values() if count > 0)
+        
+        # Get goal completions and photo counts
+        goal_completions = 0
+        photo_count = 0
+        try:
+            with self._connect() as conn:
+                cursor = conn.execute(
+                    "SELECT COUNT(*) FROM goals WHERE user_id = ? AND completed = 1",
+                    (user_id,)
+                )
+                goal_completions = cursor.fetchone()[0]
+                
+                cursor = conn.execute(
+                    """SELECT COUNT(*) FROM media_attachments ma 
+                       JOIN mood_entries me ON ma.entry_id = me.id 
+                       WHERE me.user_id = ?""",
+                    (user_id,)
+                )
+                photo_count = cursor.fetchone()[0]
+        except:
+            pass
 
         def clamp(value: int, maximum: int) -> int:
             return max(0, min(int(value), int(maximum)))
 
         return {
+            # Original achievements
             "first_entry": {"current": clamp(total_entries, 1), "max": 1},
             "week_warrior": {"current": clamp(current_streak, 7), "max": 7},
             "consistency_king": {"current": clamp(current_streak, 30), "max": 30},
             "data_lover": {"current": clamp(stats_views, 10), "max": 10},
             "mood_master": {"current": clamp(total_entries, 100), "max": 100},
+            
+            # New achievements
+            "complex_person": {"current": clamp(unique_moods, 5), "max": 5},
+            "century": {"current": clamp(total_entries, 100), "max": 100},
+            "devoted": {"current": clamp(current_streak, 365), "max": 365},
+            "photographer": {"current": clamp(photo_count, 50), "max": 50},
+            "goal_crusher": {"current": clamp(goal_completions, 10), "max": 10},
+            "half_year": {"current": clamp(current_streak, 180), "max": 180},
+            "comeback_king": {"current": clamp(current_streak, 7), "max": 7},
+            
+            # Milestones
+            "milestone_50": {"current": clamp(total_entries, 50), "max": 50},
+            "milestone_250": {"current": clamp(total_entries, 250), "max": 250},
+            "milestone_500": {"current": clamp(total_entries, 500), "max": 500},
         }
 
 

@@ -1,6 +1,7 @@
 import HistoryEntry from './HistoryEntry';
 import AddEntryCard from './AddEntryCard';
 import Skeleton from '../ui/Skeleton';
+import EmptyState from '../ui/EmptyState';
 
 const HistoryList = ({ entries, loading, error, onDelete, onEdit }) => {
   if (loading) {
@@ -8,7 +9,7 @@ const HistoryList = ({ entries, loading, error, onDelete, onEdit }) => {
       <div style={{ textAlign: 'left', padding: '1rem 0' }}>
         <Skeleton height={28} width={220} style={{ marginBottom: 12 }} />
         <div className="card-grid">
-          {[1,2,3,4,5,6].map((i) => (
+          {[1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i}>
               <Skeleton height={220} radius={16} />
             </div>
@@ -31,6 +32,13 @@ const HistoryList = ({ entries, loading, error, onDelete, onEdit }) => {
       <div style={{ textAlign: 'left', marginTop: 0 }}>
         <div className="card-grid">
           <AddEntryCard />
+          <div className="col-span-full">
+            <EmptyState
+              variant="noHistory"
+              actionLabel="Create Entry"
+              onAction={() => document.getElementById('fab-main-button')?.click()}
+            />
+          </div>
         </div>
       </div>
     );
@@ -41,9 +49,9 @@ const HistoryList = ({ entries, loading, error, onDelete, onEdit }) => {
       <div className="card-grid">
         <AddEntryCard />
         {entries.map(entry => (
-          <HistoryEntry 
-            key={entry.id || entry.date} 
-            entry={entry} 
+          <HistoryEntry
+            key={entry.id || entry.date}
+            entry={entry}
             onDelete={onDelete}
             onEdit={onEdit}
           />

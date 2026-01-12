@@ -6,6 +6,7 @@ import apiService from '../services/api';
 
 // All possible achievements
 const getAllAchievements = () => [
+  // Original achievements
   {
     achievement_type: 'first_entry',
     name: 'First Entry',
@@ -40,7 +41,76 @@ const getAllAchievements = () => [
     description: 'Log 100 total entries',
     icon: 'Target',
     rarity: 'legendary'
-  }
+  },
+
+  // New achievements
+  {
+    achievement_type: 'complex_person',
+    name: 'Complex Person',
+    description: 'Experience all 5 mood levels',
+    icon: 'Sparkles',
+    rarity: 'uncommon'
+  },
+  {
+    achievement_type: 'half_year',
+    name: 'Half Year Hero',
+    description: 'Maintain a 180-day streak',
+    icon: 'Medal',
+    rarity: 'legendary'
+  },
+  {
+    achievement_type: 'devoted',
+    name: 'Devoted',
+    description: 'Maintain a 365-day streak',
+    icon: 'Trophy',
+    rarity: 'legendary',
+    secret: true
+  },
+  {
+    achievement_type: 'photographer',
+    name: 'Photographer',
+    description: 'Attach 50 photos to entries',
+    icon: 'Camera',
+    rarity: 'rare'
+  },
+  {
+    achievement_type: 'goal_crusher',
+    name: 'Goal Crusher',
+    description: 'Complete 10 goals',
+    icon: 'CheckCircle2',
+    rarity: 'rare'
+  },
+  {
+    achievement_type: 'comeback_king',
+    name: 'Comeback King',
+    description: 'Return to a 7-day streak after losing a longer one',
+    icon: 'RefreshCw',
+    rarity: 'rare',
+    secret: true
+  },
+
+  // Milestone achievements
+  {
+    achievement_type: 'milestone_50',
+    name: 'Getting Started',
+    description: 'Log 50 entries',
+    icon: 'Award',
+    rarity: 'uncommon'
+  },
+  {
+    achievement_type: 'milestone_250',
+    name: 'Journaling Journey',
+    description: 'Log 250 entries',
+    icon: 'Star',
+    rarity: 'rare'
+  },
+  {
+    achievement_type: 'milestone_500',
+    name: 'Prolific Writer',
+    description: 'Log 500 entries',
+    icon: 'Gem',
+    rarity: 'legendary'
+  },
 ];
 
 const AchievementsView = () => {
@@ -91,7 +161,7 @@ const AchievementsView = () => {
   return (
     <div style={{ marginTop: '1.5rem' }}>
 
-  {/* Web3 notice removed */}
+      {/* Web3 notice removed */}
 
       {/* Achievements Grid */}
       <div style={{
@@ -123,7 +193,7 @@ const AchievementsView = () => {
                 display: 'flex'
               }}
             >
-              <AchievementNFT 
+              <AchievementNFT
                 achievement={unlockedAchievement || achievement}
                 isUnlocked={isUnlocked}
                 progressValue={progressValue}

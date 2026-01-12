@@ -6,3 +6,8 @@ python-jose[cryptography]==3.3.0
 python-dotenv==1.0.0
 pytest==7.4.3
 gunicorn==21.2.0
+pywebpush==1.14.0
+APScheduler==3.10.4
+WeasyPrint>=63.0
+matplotlib==3.8.2
+Pillow>=10.0.0

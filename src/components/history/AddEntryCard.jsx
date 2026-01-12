@@ -2,7 +2,7 @@ import { Plus } from 'lucide-react';
 
 const AddEntryCard = () => {
   const handleAdd = () => {
-    window.dispatchEvent(new CustomEvent('nightlio:new-entry'));
+    window.dispatchEvent(new CustomEvent('twilightio:new-entry'));
   };
   return (
     <div

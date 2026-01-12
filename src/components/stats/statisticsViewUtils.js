@@ -66,7 +66,7 @@ export const buildMoodDistributionData = (moodDistribution) =>
     fill: color,
   }));
 
-export const aggregateTagStats = (entries, minOccurrences = MIN_TAG_OCCURRENCES) => {
+export const aggregateTagStats = (entries, minOccurrences = MIN_TAG_OCCURRENCES, globalAverage = 0) => {
   if (!entries?.length) {
     return { topPositive: [], topNegative: [], all: [] };
   }
@@ -79,18 +79,27 @@ export const aggregateTagStats = (entries, minOccurrences = MIN_TAG_OCCURRENCES)
 
     for (const selection of entry.selections) {
       const key = selection.name || selection.label || String(selection.id);
-      const aggregate = aggregateMap.get(key) ?? { tag: key, count: 0, sum: 0 };
+      const aggregate = aggregateMap.get(key) ?? { tag: key, count: 0, sum: 0, icon: selection.icon };
       aggregate.count += 1;
       aggregate.sum += mood;
+      // Keep successful icon if we find one
+      if (!aggregate.icon && selection.icon) {
+        aggregate.icon = selection.icon;
+      }
       aggregateMap.set(key, aggregate);
     }
   }
 
-  const rows = Array.from(aggregateMap.values()).map(({ tag, count, sum }) => ({
-    tag,
-    count,
-    avgMood: count ? sum / count : 0,
-  }));
+  const rows = Array.from(aggregateMap.values()).map(({ tag, count, sum, icon }) => {
+    const avgMood = count ? sum / count : 0;
+    return {
+      tag,
+      count,
+      avgMood,
+      icon,
+      impact: globalAverage ? avgMood - globalAverage : 0,
+    };
+  });
 
   const ranked = rows.filter((row) => row.count >= minOccurrences).sort((a, b) => b.avgMood - a.avgMood);
 
@@ -99,6 +108,41 @@ export const aggregateTagStats = (entries, minOccurrences = MIN_TAG_OCCURRENCES)
     topNegative: ranked.slice(-5).reverse(),
     all: rows,
   };
+};
+
+export const calculateFrequentPairs = (entries, minOccurrences = 2) => {
+  if (!entries?.length) return [];
+
+  const pairMap = new Map();
+
+  for (const entry of entries) {
+    if (!entry.selections || entry.selections.length < 2) continue;
+
+    // Sort selections by name to ensure consistent pair keys (A+B = B+A)
+    const sorted = [...entry.selections].sort((a, b) => a.name.localeCompare(b.name));
+
+    for (let i = 0; i < sorted.length; i++) {
+      for (let j = i + 1; j < sorted.length; j++) {
+        const item1 = sorted[i];
+        const item2 = sorted[j];
+        const key = `${item1.name}|${item2.name}`;
+
+        const existing = pairMap.get(key) ?? {
+          key,
+          item1: { name: item1.name, icon: item1.icon },
+          item2: { name: item2.name, icon: item2.icon },
+          count: 0
+        };
+        existing.count += 1;
+        pairMap.set(key, existing);
+      }
+    }
+  }
+
+  return Array.from(pairMap.values())
+    .filter(p => p.count >= minOccurrences)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
 };
 
 export const buildCalendarDays = (entries) => {

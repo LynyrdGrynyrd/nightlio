@@ -9,7 +9,7 @@ export const useGroups = () => {
   const loadGroups = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const data = await apiService.getGroups();
       setGroups(data);
@@ -57,6 +57,18 @@ export const useGroups = () => {
     }
   };
 
+  const moveGroupOption = async (optionId, newGroupId) => {
+    try {
+      await apiService.moveGroupOption(optionId, newGroupId);
+      await loadGroups();
+      return true;
+    } catch (error) {
+      console.error('Failed to move option:', error);
+      setError('Failed to move option');
+      return false;
+    }
+  };
+
   useEffect(() => {
     loadGroups();
   }, []);
@@ -68,6 +80,7 @@ export const useGroups = () => {
     createGroup,
     createGroupOption,
     deleteGroup,
+    moveGroupOption,
     refreshGroups: loadGroups,
   };
 };

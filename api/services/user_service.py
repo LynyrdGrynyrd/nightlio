@@ -83,3 +83,9 @@ class UserService:
             avatar_url=None,
         )
         return user
+
+    def delete_user_data(self, user_id: int):
+        """
+        Permanently delete ONE user's data.
+        """
+        self.db.delete_user_data(user_id)

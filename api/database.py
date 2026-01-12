@@ -7,6 +7,7 @@ from typing import Optional
 
 try:  # pragma: no cover - fallback for script execution
     from .database_achievements import AchievementsMixin
+    from .database_analytics import AnalyticsMixin
     from .database_common import (
         DatabaseConnectionMixin,
         DatabaseError,
@@ -15,11 +16,17 @@ try:  # pragma: no cover - fallback for script execution
     )
     from .database_goals import GoalsMixin
     from .database_groups import GroupsMixin
-    from .database_moods import MoodEntriesMixin
+    from .database_important_days import ImportantDaysMixin
+    from .database_media import MediaMixin
+    from .database_moods import MoodEntriesMixin, MoodDefinitionMixin
+    from .database_scales import ScalesMixin
+    from .database_schema import DatabaseSchemaMixin
     from .database_schema import DatabaseSchemaMixin
     from .database_users import UsersMixin
+    from .database_settings import SettingsMixin
 except ImportError:  # pragma: no cover - executed when run as a script module
     from database_achievements import AchievementsMixin  # type: ignore
+    from database_analytics import AnalyticsMixin  # type: ignore
     from database_common import (  # type: ignore
         DatabaseConnectionMixin,
         DatabaseError,
@@ -28,9 +35,13 @@ except ImportError:  # pragma: no cover - executed when run as a script module
     )
     from database_goals import GoalsMixin  # type: ignore
     from database_groups import GroupsMixin  # type: ignore
-    from database_moods import MoodEntriesMixin  # type: ignore
+    from database_important_days import ImportantDaysMixin  # type: ignore
+    from database_media import MediaMixin  # type: ignore
+    from database_moods import MoodEntriesMixin, MoodDefinitionMixin  # type: ignore
+    from database_scales import ScalesMixin  # type: ignore
     from database_schema import DatabaseSchemaMixin  # type: ignore
     from database_users import UsersMixin  # type: ignore
+    from database_settings import SettingsMixin  # type: ignore
 
 
 class MoodDatabase(
@@ -38,8 +49,14 @@ class MoodDatabase(
     UsersMixin,
     GoalsMixin,
     MoodEntriesMixin,
+    MoodDefinitionMixin,
+    ScalesMixin,
     GroupsMixin,
     AchievementsMixin,
+    MediaMixin,
+    AnalyticsMixin,
+    ImportantDaysMixin,
+    SettingsMixin,
 ):
     """High-level facade composing all database-related mixins."""
 

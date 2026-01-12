@@ -60,12 +60,15 @@ const shouldSkipShortcut = (target) => {
   return false;
 };
 
+import SearchModal from './search/SearchModal';
+
 const Header = ({ currentStreak }) => {
   const { user, logout } = useAuth();
   useConfig();
   const { theme, cycle } = useTheme();
-  const { show } = useToast();
+  useToast();
   const [showAvatar, setShowAvatar] = useState(true);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const handleSearchShortcut = useCallback(
     (event) => {
@@ -78,18 +81,9 @@ const Header = ({ currentStreak }) => {
       }
 
       event.preventDefault();
-
-      if (typeof document === 'undefined') {
-        return;
-      }
-
-      const input = document.getElementById('global-search-input');
-      if (input) {
-        input.focus();
-        show('Search focused — search not yet implemented', 'info', 1500);
-      }
+      setIsSearchOpen(true);
     },
-    [show]
+    []
   );
 
   useEffect(() => {
@@ -103,6 +97,8 @@ const Header = ({ currentStreak }) => {
 
   return (
     <header className="header">
+      <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+
       <div className="header__inner">
         <div className="header__left">
           {currentStreak > 0 && (
@@ -113,8 +109,8 @@ const Header = ({ currentStreak }) => {
           )}
         </div>
 
-        <div className="header__search">
-          {/* Search disabled globally */}
+        <div className="header__search" onClick={() => setIsSearchOpen(true)}>
+          <SearchPlaceholder />
         </div>
 
         {user && (

@@ -1,0 +1,115 @@
+.frequently-together {
+    padding: 0;
+    margin-bottom: var(--space-2);
+}
+
+.frequently-together--empty {
+    padding: var(--space-2);
+    text-align: center;
+    color: var(--muted-foreground);
+}
+
+.frequently-together__header {
+    padding: var(--space-2);
+    border-bottom: 1px solid var(--border);
+}
+
+.frequently-together__title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.frequently-together__subtitle {
+    margin: 4px 0 0;
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.frequently-together__mood-select {
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--card);
+    color: var(--text);
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+.frequently-together__mood-select:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.frequently-together__label {
+    margin: 0;
+    padding: var(--space-1) var(--space-2) 0;
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.frequently-together__loading,
+.frequently-together__empty-state {
+    padding: var(--space-2);
+    text-align: center;
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+}
+
+.frequently-together__grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-2) var(--space-2);
+}
+
+.frequently-together__card {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: var(--space-1);
+    background: var(--muted);
+    border-radius: var(--radius);
+    min-width: 80px;
+    text-align: center;
+}
+
+.frequently-together__icons {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text);
+}
+
+.frequently-together__plus {
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+}
+
+.frequently-together__names {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 0.75rem;
+    color: var(--text);
+    line-height: 1.2;
+}
+
+.frequently-together__names span:nth-child(2) {
+    font-size: 0.6rem;
+    color: var(--muted-foreground);
+}
+
+.frequently-together__count {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--accent);
+}
