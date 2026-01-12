@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState, memo } from 'react';
 import {
   BarChart,
   Bar,
@@ -14,6 +14,16 @@ import {
 import Skeleton from '../ui/Skeleton';
 import { exportSVGToPNG, exportDataToCSV } from '../../utils/exportUtils';
 import useStatisticsViewData from './useStatisticsViewData';
+import ScaleTrendChart from './ScaleTrendChart';
+
+
+import YearInPixels from './YearInPixels';
+import ActivityCorrelations from './ActivityCorrelations';
+import FrequentlyTogether from './FrequentlyTogether';
+import AdvancedCorrelations from './AdvancedCorrelations';
+import StreakChain from './StreakChain';
+import MoodStability from './MoodStability';
+import { ImportantDaysList } from '../ImportantDays';
 import {
   RANGE_OPTIONS,
   TOOLTIP_STYLE,
@@ -24,7 +34,8 @@ import {
 } from './statisticsViewUtils';
 import './StatisticsView.css';
 
-const MoodLegend = () => (
+// ⚡ Perf: Memoized - static component that never needs to re-render
+const MoodLegend = memo(() => (
   <div className="statistics-view__legend">
     {MOOD_LEGEND.map(({ value, icon, color, label }) => {
       const LegendIcon = icon;
@@ -36,9 +47,10 @@ const MoodLegend = () => (
       );
     })}
   </div>
-);
+));
 
-const StatisticsOverviewGrid = ({ cards }) => (
+// ⚡ Perf: Memoized - only re-renders when cards data changes
+const StatisticsOverviewGrid = memo(({ cards }) => (
   <div className="statistics-view__overview-grid">
     {cards.map(({ key, value, label, tone }) => {
       const valueClassName = tone === 'danger'
@@ -53,16 +65,18 @@ const StatisticsOverviewGrid = ({ cards }) => (
       );
     })}
   </div>
-);
+));
 
-const SectionHeader = ({ title, children }) => (
+// ⚡ Perf: Memoized - only re-renders when title or children change
+const SectionHeader = memo(({ title, children }) => (
   <div className="statistics-view__section-header">
     <h3 className="statistics-view__section-title">{title}</h3>
     <div className="statistics-view__button-row">{children}</div>
   </div>
-);
+));
 
-const RangeSelector = ({ range, onChange }) => (
+// ⚡ Perf: Memoized - only re-renders when range value changes
+const RangeSelector = memo(({ range, onChange }) => (
   <div className="statistics-view__range-buttons">
     {RANGE_OPTIONS.map((option) => (
       <button
@@ -75,7 +89,7 @@ const RangeSelector = ({ range, onChange }) => (
       </button>
     ))}
   </div>
-);
+));
 
 const MoodTrendSection = ({ chartData, range, onChangeRange, onExportPNG, onExportCSV, containerRef }) => (
   <div ref={containerRef} className="statistics-view__card statistics-view__section" id="mood-trend">
@@ -164,58 +178,11 @@ const DistributionSection = ({ chartData, onExportPNG, onExportCSV, containerRef
   </div>
 );
 
-const TagList = ({ heading, toneClass, tags, emptyLabel, valueColor }) => (
-  <div className="statistics-view__tag-list">
-    <h4 className={`statistics-view__tag-heading ${toneClass}`}>{heading}</h4>
-    {tags.length === 0 && <div className="statistics-view__tag-empty">{emptyLabel}</div>}
-    {tags.map((tag) => (
-      <div key={tag.tag} className="statistics-view__tag-item">
-        <span>{tag.tag}</span>
-        <span style={{ color: valueColor }}>
-          {tag.avgMood.toFixed(2)} ({tag.count})
-        </span>
-      </div>
-    ))}
-  </div>
-);
 
-const TagCorrelationsSection = ({ tagStats, onExportCSV }) => {
-  const hasTags = tagStats.topPositive.length > 0 || tagStats.topNegative.length > 0;
-  if (!hasTags) return null;
-
-  return (
-    <div className="statistics-view__card statistics-view__section">
-      <SectionHeader title="Tag Correlations">
-        <button type="button" className="statistics-view__ghost-button" onClick={onExportCSV}>
-          Export CSV
-        </button>
-      </SectionHeader>
-
-      <div className="statistics-view__tag-grid">
-        <TagList
-          heading="Top Positive"
-          toneClass="statistics-view__tag-heading--positive"
-          tags={tagStats.topPositive}
-          emptyLabel="No tags yet"
-          valueColor="var(--mood-4)"
-        />
-        <TagList
-          heading="Top Negative"
-          toneClass="statistics-view__tag-heading--negative"
-          tags={tagStats.topNegative}
-          emptyLabel="No tags yet"
-          valueColor="var(--mood-1)"
-        />
-      </div>
-
-      <div className="statistics-view__tag-note">
-        Note: simple average mood per tag; requires at least 2 occurrences to rank.
-      </div>
-    </div>
-  );
-};
 
 const MoodCalendarSection = ({ days, onDayClick, onEntryClick }) => {
+  const [moodFilter, setMoodFilter] = useState('all');
+
   const handleDayClick = (day) => {
     if (day.isFuture) return; // Prevent future date clicks
     if (day.entry && onEntryClick) {
@@ -232,9 +199,46 @@ const MoodCalendarSection = ({ days, onDayClick, onEntryClick }) => {
     }
   };
 
+  // Filter days based on mood selection
+  const filteredDays = days.map(day => {
+    if (moodFilter === 'all') return day;
+    if (!day.entry) return day;
+    const moodMatch = day.entry.mood === parseInt(moodFilter);
+    return { ...day, dimmed: !moodMatch };
+  });
+
+  const moodOptions = [
+    { value: 'all', label: 'All Moods' },
+    { value: '5', label: '😊 Rad' },
+    { value: '4', label: '🙂 Good' },
+    { value: '3', label: '😐 Meh' },
+    { value: '2', label: '😔 Bad' },
+    { value: '1', label: '😢 Awful' },
+  ];
+
   return (
     <div className="statistics-view__card statistics-view__calendar-card">
-      <h3 className="statistics-view__calendar-title">Mood Calendar</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+        <h3 className="statistics-view__calendar-title" style={{ margin: 0 }}>Mood Calendar</h3>
+        <select
+          value={moodFilter}
+          onChange={(e) => setMoodFilter(e.target.value)}
+          style={{
+            padding: '6px 12px',
+            borderRadius: '8px',
+            border: '1px solid var(--border)',
+            background: 'var(--surface)',
+            color: 'var(--text)',
+            fontSize: '0.85rem',
+            cursor: 'pointer'
+          }}
+          aria-label="Filter by mood"
+        >
+          {moodOptions.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
       <p className="statistics-view__calendar-hint">Click a day to add or view an entry</p>
       <div className="statistics-view__calendar-grid">
         {WEEK_DAYS.map((day) => (
@@ -243,8 +247,8 @@ const MoodCalendarSection = ({ days, onDayClick, onEntryClick }) => {
           </div>
         ))}
 
-        {days.map((day) => {
-          const { key, label, entry, IconComponent, iconColor, isCurrentMonth, isToday, isFuture } = day;
+        {filteredDays.map((day) => {
+          const { key, label, entry, IconComponent, iconColor, isCurrentMonth, isToday, isFuture, dimmed } = day;
           const isClickable = !isFuture && (onDayClick || onEntryClick);
           return (
             <div
@@ -257,10 +261,21 @@ const MoodCalendarSection = ({ days, onDayClick, onEntryClick }) => {
               style={{
                 background: entry && iconColor ? `color-mix(in oklab, ${iconColor} 18%, transparent)` : undefined,
                 color: entry && iconColor ? iconColor : undefined,
+                opacity: dimmed ? 0.3 : 1,
+                transition: 'opacity 0.2s'
               }}
               aria-label={entry ? `View entry for ${day.dateString}` : isFuture ? `${day.dateString} (future)` : `Add entry for ${day.dateString}`}
             >
-              {entry && IconComponent ? <IconComponent size={16} /> : label}
+              {entry && IconComponent ? (
+                <IconComponent size={16} />
+              ) : !isFuture && !entry ? (
+                <div className="statistics-view__calendar-add">
+                  <div className="plus-icon">+</div>
+                  <span className="day-label">{label}</span>
+                </div>
+              ) : (
+                label
+              )}
             </div>
           );
         })}
@@ -269,7 +284,8 @@ const MoodCalendarSection = ({ days, onDayClick, onEntryClick }) => {
   );
 };
 
-const LoadingState = () => (
+// ⚡ Perf: Memoized - static loading skeleton that never needs to re-render
+const LoadingState = memo(() => (
   <div className="statistics-view">
     <div className="statistics-view__overview-grid">
       {[1, 2, 3, 4].map((i) => (
@@ -279,11 +295,12 @@ const LoadingState = () => (
     <Skeleton height={36} width={260} style={{ marginBottom: 12 }} />
     <Skeleton height={320} radius={16} />
   </div>
-);
+));
 
-const ErrorState = ({ message }) => (
+// ⚡ Perf: Memoized - only re-renders when error message changes
+const ErrorState = memo(({ message }) => (
   <div className="statistics-view statistics-view__status statistics-view__status--error">{message}</div>
-);
+));
 
 const EmptyState = () => (
   <div className="statistics-view statistics-view__status">No statistics available</div>
@@ -300,6 +317,7 @@ const StatisticsView = ({ statistics, pastEntries, loading, error, onDayClick, o
     trendChartData,
     moodDistributionData,
     tagStats,
+    frequentPairs,
     calendarDays,
     overviewCards,
   } = useStatisticsViewData(statistics, pastEntries, range);
@@ -327,9 +345,7 @@ const StatisticsView = ({ statistics, pastEntries, loading, error, onDayClick, o
     exportDataToCSV(rows, ['mood', 'count'], 'mood-distribution.csv');
   }, [moodDistributionData]);
 
-  const handleExportTagCSV = useCallback(() => {
-    exportDataToCSV(tagStats.all, ['tag', 'count', 'avgMood'], 'tag-correlations.csv');
-  }, [tagStats]);
+
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
@@ -337,6 +353,9 @@ const StatisticsView = ({ statistics, pastEntries, loading, error, onDayClick, o
 
   return (
     <div className="statistics-view">
+      <StreakChain />
+      <MoodStability />
+      <ImportantDaysList />
       <StatisticsOverviewGrid cards={overviewCards} />
       <MoodTrendSection
         chartData={trendChartData}
@@ -346,13 +365,22 @@ const StatisticsView = ({ statistics, pastEntries, loading, error, onDayClick, o
         onExportCSV={handleExportTrendCSV}
         containerRef={trendRef}
       />
+
+      {/* Scale Trend Section */}
+      <div className="statistics-view__card statistics-view__section">
+        <h3 className="statistics-view__section-title">Scale Trends</h3>
+        <ScaleTrendChart data={trendChartData} scales={tagStats?.scales || []} />
+      </div>
+
       <DistributionSection
         chartData={moodDistributionData}
         onExportPNG={handleExportDistributionPNG}
         onExportCSV={handleExportDistributionCSV}
         containerRef={distributionRef}
       />
-      <TagCorrelationsSection tagStats={tagStats} onExportCSV={handleExportTagCSV} />
+      <ActivityCorrelations data={tagStats} />
+      <FrequentlyTogether data={frequentPairs} />
+      <YearInPixels entries={pastEntries} onDayClick={onDayClick} />
       <MoodCalendarSection days={calendarDays} onDayClick={onDayClick} onEntryClick={onEntryClick} />
     </div>
   );
