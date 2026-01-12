@@ -1,4 +1,4 @@
-const DB_NAME = 'nightlio_offline_db';
+const DB_NAME = 'twilightio_offline_db';
 const DB_VERSION = 1;
 const STORE_NAME = 'sync_queue';
 

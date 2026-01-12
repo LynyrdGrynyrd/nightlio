@@ -24,7 +24,7 @@ const ImportData = () => {
             try {
                 const json = JSON.parse(event.target.result);
                 await processImport(json);
-            } catch (err) {
+            } catch {
                 show('Failed to parse JSON file', 'error');
             }
         };

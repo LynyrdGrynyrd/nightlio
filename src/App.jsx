@@ -61,7 +61,7 @@ const AppContent = () => {
 
   // Hotkeys
   useHotkeys('c', () => navigate('entry'));
-  useHotkeys('cmd+k', (e) => {
+  useHotkeys('cmd+k', () => {
     // Ideal: trigger generic command palette or focus search
     // For now: navigate to search/HistoryView?
     // Or rely on global listener in Header if implemented.

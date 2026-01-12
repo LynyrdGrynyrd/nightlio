@@ -1,4 +1,6 @@
+/* eslint-disable no-unused-vars */
 import { motion } from 'framer-motion';
+/* eslint-enable no-unused-vars */
 
 const variants = {
     initial: { opacity: 0, y: 15 },

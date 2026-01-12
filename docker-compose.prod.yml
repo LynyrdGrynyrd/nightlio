@@ -1,10 +1,10 @@
-# Production Docker Compose for Nightlio
+# Production Docker Compose for Twilightio
 # Use this for production deployments with better security and performance
 
 services:
   api:
-    image: ${API_IMAGE:-ghcr.io/shirsakm/nightlio-api:latest}
-    container_name: nightlio-api-prod
+    image: ${API_IMAGE:-ghcr.io/shirsakm/twilightio-api:latest}
+    container_name: twilightio-api-prod
     restart: unless-stopped
     environment:
       - RAILWAY_ENVIRONMENT=production
@@ -13,15 +13,15 @@ services:
       - CORS_ORIGINS=https://yourdomain.com
       - ENABLE_GOOGLE_OAUTH=${ENABLE_GOOGLE_OAUTH:-0}
       - DEFAULT_SELF_HOST_ID=${DEFAULT_SELF_HOST_ID:-selfhost_default_user}
-      - DATABASE_PATH=/app/data/nightlio.db
+      - DATABASE_PATH=/app/data/twilightio.db
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
       - GOOGLE_CALLBACK_URL=${GOOGLE_CALLBACK_URL:-}
       - PORT=5000
     volumes:
-      - nightlio_data:/app/data
+      - twilightio_data:/app/data
     networks:
-      - nightlio-network
+      - twilightio-network
     # Only expose to internal network in production
     expose:
       - "5000"
@@ -39,8 +39,8 @@ services:
           memory: 256M
 
   frontend:
-    image: ${WEB_IMAGE:-ghcr.io/shirsakm/nightlio-frontend:latest}
-    container_name: nightlio-frontend-prod
+    image: ${WEB_IMAGE:-ghcr.io/shirsakm/twilightio-frontend:latest}
+    container_name: twilightio-frontend-prod
     restart: unless-stopped
     # Only expose to internal network in production
     expose:
@@ -49,7 +49,7 @@ services:
       api:
         condition: service_healthy
     networks:
-      - nightlio-network
+      - twilightio-network
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
       interval: 30s
@@ -65,7 +65,7 @@ services:
   # Reverse proxy for production
   nginx:
     image: nginx:alpine
-    container_name: nightlio-nginx-prod
+    container_name: twilightio-nginx-prod
     restart: unless-stopped
     ports:
       - "80:80"
@@ -77,7 +77,7 @@ services:
       - frontend
       - api
     networks:
-      - nightlio-network
+      - twilightio-network
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
       interval: 30s
@@ -85,12 +85,12 @@ services:
       retries: 3
 
 networks:
-  nightlio-network:
+  twilightio-network:
     driver: bridge
     ipam:
       config:
         - subnet: 172.20.0.0/16
 
 volumes:
-  nightlio_data:
+  twilightio_data:
     driver: local

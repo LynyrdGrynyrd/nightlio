@@ -1337,7 +1337,7 @@ async function setupBiometric(userId, userName) {
   const credential = await navigator.credentials.create({
     publicKey: {
       challenge: Uint8Array.from(challenge.value, c => c.charCodeAt(0)),
-      rp: { name: "Nightlio", id: window.location.hostname },
+      rp: { name: "Twilightio", id: window.location.hostname },
       user: {
         id: Uint8Array.from(userId, c => c.charCodeAt(0)),
         name: userName,
@@ -1692,7 +1692,7 @@ def analyze_temporal_patterns(user_id: int, days: int = 90) -> dict:
 ## 6. File Structure Guide
 
 ```
-nightlio/
+twilightio/
 ├── backend/
 │   ├── app.py                    # Flask app entry
 │   ├── routes/
@@ -1737,7 +1737,7 @@ nightlio/
 │   │       └── themes.css        # NEW: CSS variable themes
 │
 ├── data/
-│   ├── nightlio.db               # SQLite database
+│   ├── twilightio.db               # SQLite database
 │   └── media/                    # NEW: Uploaded files
 │
 └── docker-compose.yml            # UPDATE: Add media volume
@@ -1783,7 +1783,7 @@ pillow>=10.0            # Image processing (thumbnails)
 - ❌ = Missing
 - 🎯 = Priority target
 
-| Category | Feature | Daylio | Nightlio | Priority |
+| Category | Feature | Daylio | Twilightio | Priority |
 |----------|---------|--------|----------|----------|
 | **IMPORT/EXPORT** | | | | |
 | | Import .daylio backups | N/A | ❌ | 🎯 CRITICAL |
@@ -1856,7 +1856,7 @@ pillow>=10.0            # Image processing (thumbnails)
 
 ---
 
-## 9. Nightlio Advantages (Preserve These)
+## 9. Twilightio Advantages (Preserve These)
 
 | Advantage | Description |
 |-----------|-------------|
@@ -1876,7 +1876,7 @@ pillow>=10.0            # Image processing (thumbnails)
 
 - [Daylio Official Website](https://daylio.net/)
 - [Daylio Knowledge Base](https://daylio.net/faq/docs/daylio-faq/)
-- [Nightlio GitHub](https://github.com/shirsakm/nightlio)
+- [Twilightio GitHub](https://github.com/shirsakm/twilightio)
 - [Web Push Protocol (RFC 8030)](https://datatracker.ietf.org/doc/html/rfc8030)
 - [WebAuthn Specification](https://www.w3.org/TR/webauthn-2/)
 - [Workbox Documentation](https://developer.chrome.com/docs/workbox/)

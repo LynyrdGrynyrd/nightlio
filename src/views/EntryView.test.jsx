@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import EntryView from './EntryView';
 
 // Mocks
@@ -53,7 +53,7 @@ vi.mock('../components/groups/GroupManager', () => ({
 }));
 
 vi.mock('../components/MarkdownArea.jsx', () => ({
-    default: ({ forwardRef }) => <div data-testid="markdown-area">MarkdownArea</div>, // Simplified
+    default: () => <div data-testid="markdown-area">MarkdownArea</div>, // Simplified
 }));
 
 // We need to mock the ref implementation for MarkdownArea since EntryView uses it

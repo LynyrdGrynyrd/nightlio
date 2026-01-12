@@ -13,7 +13,7 @@ registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html')));
 
 // Push Notification Handler
 self.addEventListener('push', (event) => {
-    let title = 'Nightlio';
+    let title = 'Twilightio';
     let body = 'Time to log your mood!';
     let icon = '/logo.png';
 

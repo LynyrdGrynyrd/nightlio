@@ -1,5 +1,5 @@
 import { MOODS } from '../../utils/moodUtils';
-import { motion } from 'framer-motion';
+// import { motion } from 'framer-motion';
 import './MoodPicker.css';
 
 const MoodPicker = ({ onMoodSelect, selectedMood }) => {

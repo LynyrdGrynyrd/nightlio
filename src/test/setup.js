@@ -1,3 +1,5 @@
+/* eslint-env node, jest */
+/* global global */
 import '@testing-library/jest-dom'
 import React from 'react';
 import { vi } from 'vitest';
@@ -57,7 +59,7 @@ global.indexedDB = {
 
 // Mock Notification
 global.Notification = class {
-    constructor(title, options) { }
+    constructor() { }
     static requestPermission() {
         return Promise.resolve('granted');
     }
@@ -65,7 +67,7 @@ global.Notification = class {
 global.Notification.permission = 'default';
 
 // Mock fetch
-global.fetch = vi.fn((url) => {
+global.fetch = vi.fn(() => {
     return Promise.resolve({
         ok: true,
         json: () => Promise.resolve({}),
@@ -99,7 +101,6 @@ vi.mock('@mdxeditor/editor', () => ({
     BlockTypeSelect: () => { },
     BoldItalicUnderlineToggles: () => { },
     CreateLink: () => { },
-    InsertImage: () => { },
     InsertTable: () => { },
     InsertThematicBreak: () => { },
     ListsToggle: () => { },

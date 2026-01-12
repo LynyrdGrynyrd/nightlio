@@ -97,7 +97,7 @@ export const useOfflineSync = () => {
             }
 
             show('Offline sync complete!', 'success');
-            window.dispatchEvent(new Event('nightlio-synced'));
+            window.dispatchEvent(new Event('twilightio-synced'));
 
         } catch (err) {
             console.error("Sync process error", err);

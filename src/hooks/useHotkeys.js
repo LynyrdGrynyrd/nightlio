@@ -47,7 +47,8 @@ const useHotkeys = (key, callback, deps = []) => {
 
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [key, ...deps]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [key, callback, ...deps]);
 };
 
 // Helper to ignore input fields
