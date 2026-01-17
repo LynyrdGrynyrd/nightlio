@@ -63,7 +63,7 @@ const shouldSkipShortcut = (target) => {
 import SearchModal from './search/SearchModal';
 
 const Header = ({ currentStreak }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, isMockMode } = useAuth();
   useConfig();
   const { theme, cycle } = useTheme();
   useToast();
@@ -101,6 +101,11 @@ const Header = ({ currentStreak }) => {
 
       <div className="header__inner">
         <div className="header__left">
+          {isMockMode && (
+            <div className="header__mockBadge" title="Mock Mode - Using local data only">
+              🎭 MOCK
+            </div>
+          )}
           {currentStreak > 0 && (
             <div className="header__streakBadge">
               <Flame size={14} strokeWidth={2} />

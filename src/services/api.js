@@ -464,5 +464,9 @@ class ApiService {
   }
 }
 
-const apiService = new ApiService();
+// Import mock mode support
+import { isMockMode, mockApiService } from './mockData';
+
+// Export the appropriate service based on mock mode
+const apiService = isMockMode ? mockApiService : new ApiService();
 export default apiService;

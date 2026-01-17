@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import apiService from '../services/api';
 import { useConfig } from './ConfigContext';
+import { isMockMode, mockUser } from '../services/mockData';
 
 const AuthContext = createContext();
 
@@ -14,11 +15,20 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const { config, loading: configLoading } = useConfig();
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState(localStorage.getItem('twilightio_token'));
+  // In mock mode, start with mock user already authenticated
+  const [user, setUser] = useState(isMockMode ? mockUser : null);
+  const [loading, setLoading] = useState(!isMockMode); // No loading in mock mode
+  const [token, setToken] = useState(() =>
+    isMockMode ? 'mock-token' : localStorage.getItem('twilightio_token')
+  );
 
   const logout = useCallback(() => {
+    if (isMockMode) {
+      // In mock mode, just reset to mock user after a brief "logout"
+      setUser(null);
+      setTimeout(() => setUser(mockUser), 100);
+      return;
+    }
     localStorage.removeItem('twilightio_token');
     setToken(null);
     setUser(null);
@@ -62,6 +72,11 @@ export const AuthProvider = ({ children }) => {
   }, [token, config.enable_google_oauth, logout, localLogin]);
 
   useEffect(() => {
+    // Skip all auth verification in mock mode
+    if (isMockMode) {
+      setLoading(false);
+      return;
+    }
     if (configLoading) return;
     if (token) {
       verifyToken();
@@ -95,7 +110,8 @@ export const AuthProvider = ({ children }) => {
     loading,
     login,
     logout,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    isMockMode,
   };
 
   return (

@@ -200,7 +200,14 @@ VITE_API_URL=http://localhost:5000
 
 # Required for Google OAuth (if enabled)
 VITE_GOOGLE_CLIENT_ID=
+
+# Mock Mode - bypasses OAuth and uses localStorage instead of database
+# Useful for UI testing without container startup
+VITE_MOCK_MODE=true
 ```
+
+> [!TIP]
+> **Quick UI Testing:** Run `VITE_MOCK_MODE=true npm run dev` to instantly access the app with mock data—no login or backend required.
 
 <div align="center">🌙</div>
 
