@@ -84,6 +84,7 @@ class UsersMixin(DatabaseConnectionMixin):
                     ).fetchone()
                 conn.commit()
                 return dict(row) if row else None
+            except Exception:
                 conn.rollback()
                 raise
 

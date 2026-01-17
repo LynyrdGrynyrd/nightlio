@@ -36,7 +36,7 @@ const RemindersManager = () => {
     const loadReminders = async () => {
         try {
             const res = await fetch('/api/reminders', {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('twilightio_token')}` }
             });
             if (res.ok) {
                 const data = await res.json();
@@ -57,7 +57,7 @@ const RemindersManager = () => {
 
             // 2. Get Public Key
             const resKey = await fetch('/api/push/vapid-public-key', {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('twilightio_token')}` }
             });
             if (!resKey.ok) throw new Error("Failed to get VAPID key");
 
@@ -76,7 +76,7 @@ const RemindersManager = () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('twilightio_token')}`
                 },
                 body: JSON.stringify(subscription)
             });
@@ -97,7 +97,7 @@ const RemindersManager = () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('twilightio_token')}`
                 },
                 body: JSON.stringify({ time: newTime })
             });
@@ -113,7 +113,7 @@ const RemindersManager = () => {
         try {
             await fetch(`/api/reminders/${id}`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('twilightio_token')}` }
             });
             loadReminders();
         } catch (err) {
@@ -124,7 +124,7 @@ const RemindersManager = () => {
     const handleTestPush = async () => {
         await fetch('/api/push/test', {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('twilightio_token')}` }
         });
     };
 

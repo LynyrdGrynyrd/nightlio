@@ -83,7 +83,7 @@ const SearchModal = ({ isOpen, onClose }) => {
                 if (endDate) params.append('end_date', endDate);
 
                 const res = await fetch(`/api/search?${params.toString()}`, {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('twilightio_token')}` }
                 });
                 if (res.ok) {
                     const data = await res.json();

@@ -143,7 +143,7 @@ const AppContent = () => {
 
             <main className="app-main">
               <AnimatePresence mode="wait">
-                <Routes location={location} key={location.pathname}>
+                <Routes key={location.pathname}>
                   <Route index element={
                     <PageTransition>
                       <HistoryView

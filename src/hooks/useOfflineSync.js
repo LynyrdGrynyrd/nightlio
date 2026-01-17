@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { offlineStorage } from '../services/offlineStorage';
 import apiService from '../services/api';
 import { useToast } from '../components/ui/ToastProvider';
@@ -55,6 +55,7 @@ export const useOfflineSync = () => {
     const [isSyncing, setIsSyncing] = useState(false);
     const [pendingCount, setPendingCount] = useState(0);
     const { show } = useToast();
+    const syncInProgress = useRef(false);
 
     // Refresh pending count from IndexedDB
     const refreshPendingCount = useCallback(async () => {
@@ -67,16 +68,16 @@ export const useOfflineSync = () => {
     }, []);
 
     const processQueue = useCallback(async () => {
-        if (isSyncing) return;
-        setIsSyncing(true);
+        if (syncInProgress.current) return;
 
         try {
             const queue = await offlineStorage.getQueue();
             if (queue.length === 0) {
-                setIsSyncing(false);
                 return;
             }
 
+            syncInProgress.current = true;
+            setIsSyncing(true);
             show(`Syncing ${queue.length} offline changes...`, 'info');
 
             for (const item of queue) {
@@ -102,10 +103,11 @@ export const useOfflineSync = () => {
         } catch (err) {
             console.error("Sync process error", err);
         } finally {
+            syncInProgress.current = false;
             setIsSyncing(false);
             refreshPendingCount();
         }
-    }, [isSyncing, show, refreshPendingCount]);
+    }, [show, refreshPendingCount]);
 
     useEffect(() => {
         // Check pending count on mount

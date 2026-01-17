@@ -21,7 +21,7 @@ const API_BASE_URL = normalizeBaseUrl(
 
 class ApiService {
   constructor() {
-    this.token = null;
+    this.token = localStorage.getItem('twilightio_token');
   }
 
   setAuthToken(token) {
@@ -382,36 +382,36 @@ class ApiService {
 
   // Important Days / Countdowns
   async getImportantDays() {
-    return this.request('/important-days');
+    return this.request('/api/important-days');
   }
 
   // --- Settings / App Lock ---
   async getUserSettings() {
-    return this.request('/user/settings');
+    return this.request('/api/user/settings');
   }
 
   async setPin(pin) {
-    return this.request('/auth/pin', {
+    return this.request('/api/auth/pin', {
       method: 'PUT',
       body: JSON.stringify({ pin }),
     });
   }
 
   async removePin() {
-    return this.request('/auth/pin', {
+    return this.request('/api/auth/pin', {
       method: 'DELETE',
     });
   }
 
   async verifyPin(pin) {
-    return this.request('/auth/verify-pin', {
+    return this.request('/api/auth/verify-pin', {
       method: 'POST',
       body: JSON.stringify({ pin }),
     });
   }
 
   async updateLockTimeout(seconds) {
-    return this.request('/user/settings/lock-timeout', {
+    return this.request('/api/user/settings/lock-timeout', {
       method: 'PUT',
       body: JSON.stringify({ seconds }),
     });
@@ -441,14 +441,14 @@ class ApiService {
 
   // Data Management
   async importData(jsonData) {
-    return this.request('/export/import', {
+    return this.request('/api/export/import', {
       method: 'POST',
       body: JSON.stringify(jsonData)
     });
   }
 
   async deleteAccount() {
-    return this.request('/auth/user', {
+    return this.request('/api/auth/user', {
       method: 'DELETE'
     });
   }

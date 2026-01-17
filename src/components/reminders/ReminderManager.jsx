@@ -32,7 +32,8 @@ const ReminderManager = () => {
                     await Notification.requestPermission();
                 }
 
-                const days = await apiService.getImportantDays();
+                const response = await apiService.getImportantDays();
+                const days = response.days || [];
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
 

@@ -1,5 +1,5 @@
 import { MOODS } from '../../utils/moodUtils';
-// import { motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import './MoodPicker.css';
 
 const MoodPicker = ({ onMoodSelect, selectedMood }) => {
@@ -13,7 +13,7 @@ const MoodPicker = ({ onMoodSelect, selectedMood }) => {
           <motion.button
             key={mood.value}
             onClick={() => onMoodSelect(mood.value)}
-            className={`mood-button ${isSelected ? 'is-selected' : ''}`}
+            className={`mood-button ${isSelected ? 'selected' : ''}`}
             style={{ color: mood.color }}
             title={mood.label}
             whileHover={{ scale: 1.1 }}
