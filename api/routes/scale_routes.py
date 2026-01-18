@@ -93,4 +93,17 @@ def create_scale_routes(db):
         scale_entries = db.get_scale_entries_for_mood(entry_id)
         return jsonify(scale_entries)
 
+    @bp.route('/entries/<int:entry_id>/scales', methods=['POST'])
+    @require_auth
+    def save_entry_scales(entry_id):
+        """Save scale values for a mood entry."""
+        data = request.get_json()
+        scale_values = data.get('scale_values', {})
+
+        # Convert string keys to integers if necessary
+        scale_values_int = {int(k): int(v) for k, v in scale_values.items()}
+
+        db.save_scale_entries(entry_id, scale_values_int)
+        return jsonify({"success": True, "message": "Scale entries saved"})
+
     return bp

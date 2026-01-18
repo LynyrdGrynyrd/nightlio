@@ -871,6 +871,7 @@ localStorage.setItem('theme', selectedTheme);
 - [x] **Include scales in correlations analysis**
 
 **Effort:** High | **Files:** `backend/database_scales.py`, `frontend/src/components/ScaleSlider.tsx`
+**Status:** ⚠️ **PARTIAL** - Backend fully implemented, basic UI exists, needs UX polish and better settings integration
 
 <details>
 <summary>Schema Definition</summary>
@@ -912,6 +913,7 @@ This section covers UI/UX enhancements observed in Daylio that improve the overa
 - [x] **Stats/More context: "New Goal", "New Important Day"**
 
 **Effort:** Low | **Files:** `src/components/ui/SmartFAB.jsx`
+**Status:** ✅ **IMPLEMENTED** (Confirmed in `src/components/FAB.tsx`)
 
 <details>
 <summary>Technical Specification</summary>
@@ -966,6 +968,7 @@ const SmartFAB = ({ context }) => {
 - [x] **"Add Group or Scale" button at bottom**
 
 **Effort:** Medium | **Files:** `src/components/groups/GroupManager.jsx`, `src/components/groups/GroupCard.jsx`
+**Status:** ✅ **IMPLEMENTED** (Confirmed in `src/components/groups/GroupManager.tsx`)
 
 <details>
 <summary>Technical Specification</summary>
@@ -1000,11 +1003,12 @@ const GROUP_COLORS = [
 ---
 
 ##### 4.5.3 Calendar Enhancements
-- [x] **Add faint + button in empty calendar cells**
-- [x] **Implement mood filter dropdown**
-- [x] **Quick entry creation from empty cell tap**
+- [ ] **Add faint + button in empty calendar cells**
+- [ ] **Implement mood filter dropdown**
+- [ ] **Quick entry creation from empty cell tap**
 
 **Effort:** Low | **Files:** `src/components/calendar/CalendarGrid.jsx`
+**Status:** ⚠️ **PARTIAL** - Year in Pixels exists but calendar grid enhancements need verification
 
 <details>
 <summary>Technical Specification</summary>
@@ -1036,6 +1040,7 @@ const GROUP_COLORS = [
 - [x] **Consistent icon sizing (24px standard)**
 
 **Effort:** Low | **Files:** `src/styles/themes.css`, various components
+**Status:** ✅ **IMPLEMENTED** (OLED theme confirmed in `src/contexts/ThemeContext.tsx`)
 
 <details>
 <summary>Implementation Details</summary>
@@ -1076,6 +1081,7 @@ const EMPTY_STATE_MESSAGES = {
 - [x] **"You often do this:" label format**
 
 **Effort:** Low | **Files:** `src/components/stats/FrequentlyTogether.jsx`
+**Status:** ✅ **IMPLEMENTED** (Confirmed as `FrequentlyTogether` and `AdvancedCorrelations` components)
 
 <details>
 <summary>Technical Specification</summary>

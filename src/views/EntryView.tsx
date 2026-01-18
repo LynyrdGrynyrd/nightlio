@@ -4,12 +4,13 @@ import MoodDisplay from '../components/mood/MoodDisplay';
 import GroupSelector from '../components/groups/GroupSelector';
 import GroupManager from '../components/groups/GroupManager';
 import MDArea from '../components/MarkdownArea';
-import apiService, { Group, Media } from '../services/api';
+import apiService, { Group, Media, Scale } from '../services/api';
 import { useToast } from '../components/ui/ToastProvider';
 import PhotoPicker from '../components/media/PhotoPicker';
 import TemplateSelector from '../components/entry/TemplateSelector';
 import VoiceRecorder from '../components/entry/VoiceRecorder';
 import VoicePlayer from '../components/entry/VoicePlayer';
+import ScaleSlider from '../components/entry/ScaleSlider';
 import { offlineStorage } from '../services/offlineStorage';
 import { Mic } from 'lucide-react';
 import { useConfig } from '../contexts/ConfigContext';
@@ -75,9 +76,30 @@ const EntryView = ({
   const [audioFiles, setAudioFiles] = useState<File[]>([]);
   const [showRecorder, setShowRecorder] = useState(false);
   const [existingMedia, setExistingMedia] = useState<Media[]>([]);
+  const [scales, setScales] = useState<Scale[]>([]);
+  const [scaleValues, setScaleValues] = useState<Record<number, number>>({});
   const { API_BASE_URL } = useConfig();
   const markdownRef = useRef<MarkdownEditorHandle>(null);
   const { show } = useToast();
+
+  // Load user scales on mount
+  useEffect(() => {
+    const loadScales = async () => {
+      try {
+        const userScales = await apiService.getScales();
+        setScales(userScales);
+        // Initialize scale values to middle (5)
+        const initialValues: Record<number, number> = {};
+        userScales.forEach(scale => {
+          initialValues[scale.id] = 5;
+        });
+        setScaleValues(initialValues);
+      } catch (error) {
+        console.error('Failed to load scales:', error);
+      }
+    };
+    loadScales();
+  }, []);
 
   useEffect(() => {
     if (!isEditing || !editingEntry) return;
@@ -86,6 +108,15 @@ const EntryView = ({
 
     // Load existing media
     apiService.getEntryMedia(editingEntry.id).then(setExistingMedia).catch(console.error);
+
+    // Load existing scale values
+    apiService.getEntryScales(editingEntry.id).then((entryScales) => {
+      const values: Record<number, number> = {};
+      entryScales.forEach(scaleEntry => {
+        values[scaleEntry.scale_id] = scaleEntry.value;
+      });
+      setScaleValues(values);
+    }).catch(console.error);
 
     const instance = markdownRef.current?.getInstance?.();
     if (instance && typeof instance.setMarkdown === 'function') {
@@ -176,6 +207,11 @@ const EntryView = ({
           await Promise.all(audioFiles.map(file => apiService.uploadMedia(entryId, file)));
         }
 
+        // Save scale values
+        if (Object.keys(scaleValues).length > 0) {
+          await apiService.saveEntryScales(entryId, scaleValues);
+        }
+
         // Success Handling
         if (isEditing) {
           if (typeof onEntryUpdated === 'function') {
@@ -193,6 +229,12 @@ const EntryView = ({
           setSelectedOptions([]);
           setSelectedPhotos([]);
           setAudioFiles([]);
+          // Reset scale values to middle (5)
+          const resetScaleValues: Record<number, number> = {};
+          scales.forEach(scale => {
+            resetScaleValues[scale.id] = 5;
+          });
+          setScaleValues(resetScaleValues);
           setTimeout(() => onEntrySubmitted(), TIMEOUTS.REDIRECT_DELAY_MS);
         }
 
@@ -208,11 +250,13 @@ const EntryView = ({
             selected_options: selectedOptions,
             photos: selectedPhotos,
             audio: audioFiles,
+            scale_values: scaleValues,
             id: isEditing ? editingEntry?.id : undefined,
             updates: isEditing ? {
               mood: selectedMood,
               content: markdownContent,
-              selected_options: selectedOptions
+              selected_options: selectedOptions,
+              scale_values: scaleValues
             } : undefined
           };
 
@@ -230,6 +274,12 @@ const EntryView = ({
             setSelectedOptions([]);
             setSelectedPhotos([]);
             setAudioFiles([]);
+            // Reset scale values to middle (5)
+            const resetScaleValues: Record<number, number> = {};
+            scales.forEach(scale => {
+              resetScaleValues[scale.id] = 5;
+            });
+            setScaleValues(resetScaleValues);
             setTimeout(() => onEntrySubmitted(), TIMEOUTS.REDIRECT_DELAY_MS);
           }
           return;
@@ -378,6 +428,13 @@ const EntryView = ({
               onMoveOption={onMoveOption}
             />
           </div>
+          <ScaleSlider
+            scales={scales}
+            values={scaleValues}
+            onChange={(scaleId, value) => {
+              setScaleValues(prev => ({ ...prev, [scaleId]: value }));
+            }}
+          />
           <PhotoPicker
             existingMedia={existingMedia.filter(m => m.file_type.startsWith('image/'))}
             onFilesSelected={setSelectedPhotos}

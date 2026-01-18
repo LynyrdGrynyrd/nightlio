@@ -701,6 +701,13 @@ class ApiService {
     return this.request<ScaleEntry[]>(`/api/entries/${entryId}/scales`);
   }
 
+  async saveEntryScales(entryId: number, scaleValues: Record<number, number>): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(`/api/entries/${entryId}/scales`, {
+      method: 'POST',
+      body: JSON.stringify({ scale_values: scaleValues }),
+    });
+  }
+
   // ========== Important Days / Countdowns ==========
   async getImportantDays(): Promise<ImportantDay[]> {
     return this.request<ImportantDay[]>('/api/important-days');

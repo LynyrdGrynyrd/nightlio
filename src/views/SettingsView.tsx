@@ -3,6 +3,7 @@ import ExportData from '../components/Settings/ExportData';
 import ImportData from '../components/settings/ImportData';
 import ThemeSelector from '../components/Settings/ThemeSelector';
 import CustomizeMoods from '../components/Settings/CustomizeMoods';
+import ScalesSettings from '../components/Settings/ScalesSettings';
 import SecuritySettings from '../components/settings/SecuritySettings';
 import { CSSProperties } from 'react';
 
@@ -43,6 +44,10 @@ const SettingsView = () => {
 
       <section style={sectionStyle}>
         <CustomizeMoods />
+      </section>
+
+      <section style={sectionStyle}>
+        <ScalesSettings />
       </section>
 
       <section style={sectionStyle}>
