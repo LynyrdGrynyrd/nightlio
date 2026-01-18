@@ -3,7 +3,7 @@ import MoodPicker from '../components/mood/MoodPicker';
 import MoodDisplay from '../components/mood/MoodDisplay';
 import GroupSelector from '../components/groups/GroupSelector';
 import GroupManager from '../components/groups/GroupManager';
-import MDArea from '../components/MarkdownArea.jsx';
+import MDArea from '../components/MarkdownArea';
 import apiService, { Group, Media } from '../services/api';
 import { useToast } from '../components/ui/ToastProvider';
 import PhotoPicker from '../components/media/PhotoPicker';
