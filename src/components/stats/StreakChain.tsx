@@ -1,27 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, CSSProperties } from 'react';
 import { Flame, Check, Plus, Trophy, Share2 } from 'lucide-react';
 import apiService from '../../services/api';
 import './StreakChain.css';
 
-// ========== Types ==========
-
-interface StreakDay {
+interface DayInfo {
   date: string;
+  dayName: string;
   hasEntry: boolean;
   isToday: boolean;
-  dayName: string;
 }
 
-interface StreakChainData {
+interface StreakData {
   current_streak: number;
   longest_streak: number;
-  recent_days: StreakDay[];
+  recent_days: DayInfo[];
 }
 
-// ========== Component ==========
-
 const StreakChain = () => {
-  const [data, setData] = useState<StreakChainData | null>(null);
+  const [data, setData] = useState<StreakData | null>(null);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
 
@@ -29,7 +25,7 @@ const StreakChain = () => {
     const fetchData = async () => {
       try {
         const details = await apiService.getStreakDetails();
-        setData(details as unknown as StreakChainData);
+        setData(details);
       } catch (err) {
         console.error('Failed to fetch streak details:', err);
       } finally {
@@ -59,7 +55,7 @@ const StreakChain = () => {
         alert('Streak copied to clipboard!');
       }
     } catch (err) {
-      if (err instanceof Error && err.name !== 'AbortError') {
+      if ((err as Error).name !== 'AbortError') {
         console.error('Share failed:', err);
       }
     } finally {
@@ -79,6 +75,21 @@ const StreakChain = () => {
 
   const { current_streak, longest_streak, recent_days } = data;
 
+  const shareButtonStyle: CSSProperties = {
+    background: 'none',
+    border: '1px solid var(--border)',
+    borderRadius: '8px',
+    padding: '6px 12px',
+    cursor: current_streak === 0 ? 'not-allowed' : 'pointer',
+    color: 'var(--text-muted)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    fontSize: '0.85rem',
+    opacity: current_streak === 0 ? 0.5 : 1,
+    transition: 'all 0.2s'
+  };
+
   return (
     <div className="streak-chain">
       <div className="streak-chain__header">
@@ -87,20 +98,7 @@ const StreakChain = () => {
           onClick={handleShare}
           disabled={sharing || current_streak === 0}
           className="streak-chain__share-btn"
-          style={{
-            background: 'none',
-            border: '1px solid var(--border)',
-            borderRadius: '8px',
-            padding: '6px 12px',
-            cursor: current_streak === 0 ? 'not-allowed' : 'pointer',
-            color: 'var(--text-muted)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            fontSize: '0.85rem',
-            opacity: current_streak === 0 ? 0.5 : 1,
-            transition: 'all 0.2s'
-          }}
+          style={shareButtonStyle}
           title={current_streak === 0 ? 'Start a streak to share' : 'Share your streak'}
         >
           <Share2 size={14} />

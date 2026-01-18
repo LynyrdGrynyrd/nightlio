@@ -1,35 +1,31 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, CSSProperties } from 'react';
 import { Activity } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, YAxis } from 'recharts';
 import apiService from '../../services/api';
 import { CHART_CONFIG } from '../../constants/appConstants';
 import './MoodStability.css';
 
-// ========== Types ==========
-
-interface StabilityInterpretation {
-  label: string;
-  color: string;
-}
-
-interface TrendDataPoint {
+interface TrendPoint {
   date: string;
   score: number | null;
 }
 
-interface StabilityData {
+interface StabilityScore {
   score: number;
   count: number;
 }
 
-interface ChartDataPoint {
-  date: string;
-  score: number;
+interface StabilityData {
+  score: StabilityScore;
+  trend: TrendPoint[];
 }
 
-// ========== Helper Functions ==========
+interface Interpretation {
+  label: string;
+  color: string;
+}
 
-const getInterpretation = (score: number): StabilityInterpretation => {
+const getInterpretation = (score: number): Interpretation => {
   const C = CHART_CONFIG.STABILITY;
 
   if (score >= C.THRESHOLDS.VERY_STABLE) return { label: C.LABELS.VERY_STABLE, color: C.COLORS.VERY_STABLE };
@@ -38,17 +34,15 @@ const getInterpretation = (score: number): StabilityInterpretation => {
   return { label: C.LABELS.VOLATILE, color: C.COLORS.VOLATILE };
 };
 
-// ========== Component ==========
-
 const MoodStability = () => {
-  const [data, setData] = useState<StabilityData | null>(null);
-  const [trend, setTrend] = useState<TrendDataPoint[]>([]);
+  const [data, setData] = useState<StabilityScore | null>(null);
+  const [trend, setTrend] = useState<TrendPoint[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const result = await apiService.getMoodStability(30);
+        const result: StabilityData = await apiService.getMoodStability(30);
         setData(result.score);
         setTrend(result.trend || []);
       } catch (err) {
@@ -76,10 +70,25 @@ const MoodStability = () => {
   const { label, color } = getInterpretation(score);
 
   // Prepare trend data ensuring valid numbers
-  const chartData: ChartDataPoint[] = trend.map(d => ({
-    date: d.date,
-    score: d.score !== null ? d.score : 0
-  })).filter(d => d.score > 0);
+  const chartData = trend
+    .map(d => ({
+      date: d.date,
+      score: d.score !== null ? d.score : 0
+    }))
+    .filter(d => d.score > 0);
+
+  const scoreStyle: CSSProperties = {
+    '--stability-color': color
+  } as CSSProperties;
+
+  const interpretationStyle: CSSProperties = {
+    color
+  };
+
+  const barStyle: CSSProperties = {
+    width: `${score}%`,
+    backgroundColor: color
+  };
 
   return (
     <div className="mood-stability">
@@ -90,17 +99,11 @@ const MoodStability = () => {
 
       <div className="mood-stability__content">
         <div className="mood-stability__score-container">
-          <div
-            className="mood-stability__score"
-            style={{ '--stability-color': color } as React.CSSProperties}
-          >
+          <div className="mood-stability__score" style={scoreStyle}>
             {score}
           </div>
           <div className="mood-stability__details">
-            <span
-              className="mood-stability__interpretation"
-              style={{ color }}
-            >
+            <span className="mood-stability__interpretation" style={interpretationStyle}>
               {label}
             </span>
             <span className="mood-stability__period">
@@ -133,13 +136,7 @@ const MoodStability = () => {
       </div>
 
       <div className="mood-stability__bar-container">
-        <div
-          className="mood-stability__bar"
-          style={{
-            width: `${score}%`,
-            backgroundColor: color
-          }}
-        />
+        <div className="mood-stability__bar" style={barStyle} />
       </div>
     </div>
   );

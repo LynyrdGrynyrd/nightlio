@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState, memo, KeyboardEvent, ChangeEvent } from 'react';
+import React, { useCallback, useRef, useState, memo, ChangeEvent, KeyboardEvent, CSSProperties } from 'react';
 import {
   BarChart,
   Bar,
@@ -11,6 +11,7 @@ import {
   Line,
   Cell,
 } from 'recharts';
+import { LucideIcon } from 'lucide-react';
 import Skeleton from '../ui/Skeleton';
 import { exportSVGToPNG, exportDataToCSV } from '../../utils/exportUtils';
 import useStatisticsViewData from './useStatisticsViewData';
@@ -32,22 +33,40 @@ import {
   formatTrendTooltip,
 } from './statisticsViewUtils';
 import './StatisticsView.css';
-import { HistoryEntry } from '../../types/entry';
-import { LucideIcon } from 'lucide-react';
-
-// ========== Types ==========
 
 interface OverviewCard {
   key: string;
   value: string | number;
   label: string;
-  tone?: string;
+  tone?: 'danger';
+}
+
+interface MoodLegendItem {
+  value: number;
+  icon: LucideIcon;
+  color: string;
+  label: string;
+}
+
+interface ChartDataPoint {
+  date: string;
+  mood: number;
+  ma?: number;
+  dateLabel?: string;
+}
+
+interface DistributionDataPoint {
+  key: string;
+  mood: string;
+  label: string;
+  count: number;
+  fill: string;
 }
 
 interface CalendarDay {
   key: string;
-  label: number;
-  entry: HistoryEntry | null;
+  label: string;
+  entry: any;
   IconComponent: LucideIcon | null;
   iconColor: string | null;
   isCurrentMonth: boolean;
@@ -57,68 +76,19 @@ interface CalendarDay {
   dateString: string;
 }
 
-interface ChartDataPoint {
-  date: string;
-  mood?: number | null;
-  ma?: number | null;
-  [key: string]: string | number | null | undefined;
-}
-
-interface MoodDistributionPoint {
-  key: number;
-  label: string;
-  mood: string;
-  count: number;
-  fill: string;
-}
-
 interface StatisticsViewProps {
   statistics: any;
-  pastEntries: HistoryEntry[];
+  pastEntries: any[];
   loading: boolean;
-  error: string | null;
-  onDayClick: (dateString: string) => void;
-  onEntryClick: (entry: HistoryEntry) => void;
+  error?: string;
+  onDayClick?: (date: string) => void;
+  onEntryClick?: (entry: any) => void;
 }
-
-interface SectionHeaderProps {
-  title: string;
-  children?: React.ReactNode;
-}
-
-interface RangeSelectorProps {
-  range: number;
-  onChange: (range: number) => void;
-}
-
-interface MoodTrendSectionProps {
-  chartData: ChartDataPoint[];
-  range: number;
-  onChangeRange: (range: number) => void;
-  onExportPNG: () => void;
-  onExportCSV: () => void;
-  containerRef: React.RefObject<HTMLDivElement>;
-}
-
-interface DistributionSectionProps {
-  chartData: MoodDistributionPoint[];
-  onExportPNG: () => void;
-  onExportCSV: () => void;
-  containerRef: React.RefObject<HTMLDivElement>;
-}
-
-interface MoodCalendarSectionProps {
-  days: CalendarDay[];
-  onDayClick?: (dateString: string) => void;
-  onEntryClick?: (entry: HistoryEntry) => void;
-}
-
-// ========== Memoized Sub-Components ==========
 
 // ⚡ Perf: Memoized - static component that never needs to re-render
 const MoodLegend = memo(() => (
   <div className="statistics-view__legend">
-    {MOOD_LEGEND.map(({ value, icon, color, label }) => {
+    {MOOD_LEGEND.map(({ value, icon, color, label }: MoodLegendItem) => {
       const LegendIcon = icon;
       return (
         <div key={value} className="statistics-view__legend-item">
@@ -149,7 +119,7 @@ const StatisticsOverviewGrid = memo(({ cards }: { cards: OverviewCard[] }) => (
 ));
 
 // ⚡ Perf: Memoized - only re-renders when title or children change
-const SectionHeader = memo(({ title, children }: SectionHeaderProps) => (
+const SectionHeader = memo(({ title, children }: { title: string; children: React.ReactNode }) => (
   <div className="statistics-view__section-header">
     <h3 className="statistics-view__section-title">{title}</h3>
     <div className="statistics-view__button-row">{children}</div>
@@ -157,14 +127,14 @@ const SectionHeader = memo(({ title, children }: SectionHeaderProps) => (
 ));
 
 // ⚡ Perf: Memoized - only re-renders when range value changes
-const RangeSelector = memo(({ range, onChange }: RangeSelectorProps) => (
+const RangeSelector = memo(({ range, onChange }: { range: number; onChange: (range: number) => void }) => (
   <div className="statistics-view__range-buttons">
     {RANGE_OPTIONS.map((option) => (
       <button
         key={option}
         type="button"
         onClick={() => onChange(option)}
-        className={`statistics-view__range-button${range === option ? ' is-active' : ''}`}
+        className={`statistics-view__range-button\${range === option ? ' is-active' : ''}`}
       >
         {option}d
       </button>
@@ -172,14 +142,14 @@ const RangeSelector = memo(({ range, onChange }: RangeSelectorProps) => (
   </div>
 ));
 
-const MoodTrendSection = ({
-  chartData,
-  range,
-  onChangeRange,
-  onExportPNG,
-  onExportCSV,
-  containerRef
-}: MoodTrendSectionProps) => (
+const MoodTrendSection = ({ chartData, range, onChangeRange, onExportPNG, onExportCSV, containerRef }: {
+  chartData: ChartDataPoint[];
+  range: number;
+  onChangeRange: (range: number) => void;
+  onExportPNG: () => void;
+  onExportCSV: () => void;
+  containerRef: React.RefObject<HTMLDivElement>;
+}) => (
   <div ref={containerRef} className="statistics-view__card statistics-view__section" id="mood-trend">
     <SectionHeader title="Mood Trend">
       <RangeSelector range={range} onChange={onChangeRange} />
@@ -201,7 +171,7 @@ const MoodTrendSection = ({
           tick={{ fontSize: 12, fill: 'var(--text-muted)' }}
           axisLine={{ stroke: 'var(--border)' }}
           width={20}
-          tickFormatter={(value) => MOOD_SHORTHANDS[value] || ''}
+          tickFormatter={(value) => MOOD_SHORTHANDS[value as number] || ''}
         />
         <Tooltip contentStyle={TOOLTIP_STYLE} formatter={formatTrendTooltip} />
         <Line
@@ -228,7 +198,12 @@ const MoodTrendSection = ({
   </div>
 );
 
-const DistributionSection = ({ chartData, onExportPNG, onExportCSV, containerRef }: DistributionSectionProps) => (
+const DistributionSection = ({ chartData, onExportPNG, onExportCSV, containerRef }: {
+  chartData: DistributionDataPoint[];
+  onExportPNG: () => void;
+  onExportCSV: () => void;
+  containerRef: React.RefObject<HTMLDivElement>;
+}) => (
   <div ref={containerRef} className="statistics-view__card statistics-view__section" id="mood-distribution">
     <SectionHeader title="Mood Distribution">
       <button type="button" className="statistics-view__ghost-button" onClick={onExportPNG}>
@@ -252,7 +227,7 @@ const DistributionSection = ({ chartData, onExportPNG, onExportCSV, containerRef
         />
         <Tooltip
           contentStyle={TOOLTIP_STYLE}
-          formatter={(value, _name, props: any) => [`${value} entries`, props.payload.label]}
+          formatter={(value, _name, props: any) => [`\${value} entries`, props.payload.label]}
         />
         <Bar dataKey="count" radius={[4, 4, 0, 0]} label={{ position: 'top', fontSize: 12, fontWeight: 600, fill: 'var(--text)' }}>
           {chartData.map((entry) => (
@@ -266,8 +241,12 @@ const DistributionSection = ({ chartData, onExportPNG, onExportCSV, containerRef
   </div>
 );
 
-const MoodCalendarSection = ({ days, onDayClick, onEntryClick }: MoodCalendarSectionProps) => {
-  const [moodFilter, setMoodFilter] = useState<string>('all');
+const MoodCalendarSection = ({ days, onDayClick, onEntryClick }: {
+  days: CalendarDay[];
+  onDayClick?: (date: string) => void;
+  onEntryClick?: (entry: any) => void;
+}) => {
+  const [moodFilter, setMoodFilter] = useState('all');
 
   const handleDayClick = (day: CalendarDay) => {
     if (day.isFuture) return; // Prevent future date clicks
@@ -306,22 +285,35 @@ const MoodCalendarSection = ({ days, onDayClick, onEntryClick }: MoodCalendarSec
     { value: '1', label: '😢 Awful' },
   ];
 
+  const headerContainerStyle: CSSProperties = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '0.5rem'
+  };
+
+  const titleStyle: CSSProperties = {
+    margin: 0
+  };
+
+  const selectStyle: CSSProperties = {
+    padding: '6px 12px',
+    borderRadius: '8px',
+    border: '1px solid var(--border)',
+    background: 'var(--surface)',
+    color: 'var(--text)',
+    fontSize: '0.85rem',
+    cursor: 'pointer'
+  };
+
   return (
     <div className="statistics-view__card statistics-view__calendar-card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-        <h3 className="statistics-view__calendar-title" style={{ margin: 0 }}>Mood Calendar</h3>
+      <div style={headerContainerStyle}>
+        <h3 className="statistics-view__calendar-title" style={titleStyle}>Mood Calendar</h3>
         <select
           value={moodFilter}
           onChange={handleMoodFilterChange}
-          style={{
-            padding: '6px 12px',
-            borderRadius: '8px',
-            border: '1px solid var(--border)',
-            background: 'var(--surface)',
-            color: 'var(--text)',
-            fontSize: '0.85rem',
-            cursor: 'pointer'
-          }}
+          style={selectStyle}
           aria-label="Filter by mood"
         >
           {moodOptions.map(opt => (
@@ -340,6 +332,14 @@ const MoodCalendarSection = ({ days, onDayClick, onEntryClick }: MoodCalendarSec
         {filteredDays.map((day) => {
           const { key, label, entry, IconComponent, iconColor, isCurrentMonth, isToday, isFuture, dimmed } = day;
           const isClickable = !isFuture && (onDayClick || onEntryClick);
+
+          const dayStyle: CSSProperties = {
+            background: entry && iconColor ? `color-mix(in oklab, \${iconColor} 18%, transparent)` : undefined,
+            color: entry && iconColor ? iconColor : undefined,
+            opacity: dimmed ? 0.3 : 1,
+            transition: 'opacity 0.2s'
+          };
+
           return (
             <div
               key={key}
@@ -347,14 +347,9 @@ const MoodCalendarSection = ({ days, onDayClick, onEntryClick }: MoodCalendarSec
               tabIndex={isClickable ? 0 : undefined}
               onClick={() => handleDayClick(day)}
               onKeyDown={(e) => handleKeyDown(e, day)}
-              className={`statistics-view__calendar-day${entry ? ' has-entry' : ''}${isCurrentMonth ? '' : ' is-outside'}${isToday ? ' is-today' : ''}${isFuture ? ' is-future' : ''}${isClickable ? ' is-clickable' : ''}`}
-              style={{
-                background: entry && iconColor ? `color-mix(in oklab, ${iconColor} 18%, transparent)` : undefined,
-                color: entry && iconColor ? iconColor : undefined,
-                opacity: dimmed ? 0.3 : 1,
-                transition: 'opacity 0.2s'
-              }}
-              aria-label={entry ? `View entry for ${day.dateString}` : isFuture ? `${day.dateString} (future)` : `Add entry for ${day.dateString}`}
+              className={`statistics-view__calendar-day\${entry ? ' has-entry' : ''}\${isCurrentMonth ? '' : ' is-outside'}\${isToday ? ' is-today' : ''}\${isFuture ? ' is-future' : ''}\${isClickable ? ' is-clickable' : ''}`}
+              style={dayStyle}
+              aria-label={entry ? `View entry for \${day.dateString}` : isFuture ? `\${day.dateString} (future)` : `Add entry for \${day.dateString}`}
             >
               {entry && IconComponent ? (
                 <IconComponent size={16} />
@@ -396,8 +391,6 @@ const EmptyState = () => (
   <div className="statistics-view statistics-view__status">No statistics available</div>
 );
 
-// ========== Main Component ==========
-
 const StatisticsView = ({ statistics, pastEntries, loading, error, onDayClick, onEntryClick }: StatisticsViewProps) => {
   const [range, setRange] = useState(RANGE_OPTIONS[0]);
   const trendRef = useRef<HTMLDivElement>(null);
@@ -417,12 +410,12 @@ const StatisticsView = ({ statistics, pastEntries, loading, error, onDayClick, o
   const handleExportTrendPNG = useCallback(() => {
     const svg = trendRef.current?.querySelector('svg');
     if (svg) {
-      exportSVGToPNG(svg, `mood-trend-${range}d.png`);
+      exportSVGToPNG(svg, `mood-trend-\${range}d.png`);
     }
   }, [range]);
 
   const handleExportTrendCSV = useCallback(() => {
-    exportDataToCSV(weeklyMoodData, ['date', 'mood'], `mood-trend-${range}d.csv`);
+    exportDataToCSV(weeklyMoodData, ['date', 'mood'], `mood-trend-\${range}d.csv`);
   }, [weeklyMoodData, range]);
 
   const handleExportDistributionPNG = useCallback(() => {

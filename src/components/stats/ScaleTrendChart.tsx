@@ -10,25 +10,21 @@ import {
 } from 'recharts';
 import { TOOLTIP_STYLE } from './statisticsViewUtils';
 
-// ========== Types ==========
-
 interface Scale {
   id: number;
   name: string;
   color_hex?: string;
 }
 
-interface TrendDataPoint {
+interface DataPoint {
   dateLabel: string;
-  [key: string]: string | number | null | undefined;
+  [key: string]: string | number;
 }
 
 interface ScaleTrendChartProps {
-  data: TrendDataPoint[];
+  data: DataPoint[];
   scales: Scale[];
 }
-
-// ========== Component ==========
 
 const ScaleTrendChart = ({ data, scales }: ScaleTrendChartProps) => {
   if (!data || data.length === 0) return null;

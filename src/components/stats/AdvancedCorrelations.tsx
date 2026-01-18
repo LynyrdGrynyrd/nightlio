@@ -3,21 +3,15 @@ import { getIconComponent } from '../ui/IconPicker';
 import apiService from '../../services/api';
 import './AdvancedCorrelations.css';
 
-// ========== Types ==========
-
 interface CorrelationItem {
-  option1_id: number;
-  option2_id: number;
   option1_name: string;
-  option2_name: string;
   option1_icon: string;
+  option2_name: string;
   option2_icon: string;
   lift: number;
   confidence_1_to_2: number;
   confidence_2_to_1: number;
 }
-
-// ========== Component ==========
 
 const AdvancedCorrelations = () => {
   const [data, setData] = useState<CorrelationItem[]>([]);

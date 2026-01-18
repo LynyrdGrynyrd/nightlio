@@ -1,16 +1,9 @@
-import { useRef, useState, useMemo, MouseEvent } from 'react';
+import { useRef, useState, useMemo, CSSProperties, MouseEvent } from 'react';
 import html2canvas from 'html2canvas';
-
-// ========== Types ==========
 
 interface Entry {
   date: string;
   mood: number;
-}
-
-interface YearPixelData {
-  mood: number;
-  entry: Entry;
 }
 
 interface YearInPixelsProps {
@@ -18,16 +11,18 @@ interface YearInPixelsProps {
   onDayClick?: (date: string) => void;
 }
 
-// ========== Constants ==========
+interface YearDataPoint {
+  mood: number;
+  entry: Entry;
+}
 
+// Constants
 const MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
 const FULL_MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
-
-// ========== Helper Functions ==========
 
 const getMoodColor = (mood: number): string => {
   switch (Math.round(mood)) {
@@ -39,8 +34,6 @@ const getMoodColor = (mood: number): string => {
     default: return 'var(--bg-card-hover)';
   }
 };
-
-// ========== Component ==========
 
 const YearInPixels = ({ entries, onDayClick }: YearInPixelsProps) => {
   const currentYear = new Date().getFullYear();
@@ -75,11 +68,10 @@ const YearInPixels = ({ entries, onDayClick }: YearInPixelsProps) => {
         data[key] = { moods: [], entry: entry }; // Store latest entry reference
       }
       data[key].moods.push(Number(entry.mood));
-      // Update entry ref if this one is newer (optional, depends on sort)
     });
 
     // Calculate averages
-    const processed: Record<string, YearPixelData> = {};
+    const processed: Record<string, YearDataPoint> = {};
     Object.keys(data).forEach(key => {
       const moods = data[key].moods;
       const avg = moods.reduce((a, b) => a + b, 0) / moods.length;
@@ -110,24 +102,76 @@ const YearInPixels = ({ entries, onDayClick }: YearInPixelsProps) => {
     }
   };
 
-  const handleMouseEnter = (e: MouseEvent<HTMLDivElement>) => {
-    (e.target as HTMLDivElement).style.transform = 'scale(1.2)';
+  const headerStyle: CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '1rem'
   };
 
-  const handleMouseLeave = (e: MouseEvent<HTMLDivElement>) => {
-    (e.target as HTMLDivElement).style.transform = 'scale(1)';
+  const selectStyle: CSSProperties = {
+    border: 'none',
+    background: 'transparent',
+    cursor: 'pointer',
+    fontSize: '1rem',
+    fontWeight: 600
+  };
+
+  const gridContainerStyle: CSSProperties = {
+    padding: '1rem',
+    background: 'var(--bg-card)',
+    borderRadius: '1rem'
+  };
+
+  const gridStyle: CSSProperties = {
+    display: 'grid',
+    gridTemplateColumns: 'auto repeat(31, 1fr)',
+    gap: '2px',
+    fontSize: '0.75rem',
+    overflowX: 'auto',
+    maxWidth: '100%'
+  };
+
+  const headerCellStyle: CSSProperties = {
+    width: '2rem'
+  };
+
+  const dayLabelStyle: CSSProperties = {
+    textAlign: 'center',
+    color: 'var(--text-muted)'
+  };
+
+  const monthLabelStyle: CSSProperties = {
+    color: 'var(--text-muted)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: 600
+  };
+
+  const legendStyle: CSSProperties = {
+    display: 'flex',
+    gap: '1rem',
+    marginTop: '1.5rem',
+    justifyContent: 'center',
+    fontSize: '0.875rem'
+  };
+
+  const legendItemStyle: CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem'
   };
 
   return (
     <div className="statistics-view__card statistics-view__section">
       <div className="statistics-view__section-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={headerStyle}>
           <h3 className="statistics-view__section-title">Year in Pixels</h3>
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(Number(e.target.value))}
             className="statistics-view__range-button"
-            style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '1rem', fontWeight: 600 }}
+            style={selectStyle}
           >
             {availableYears.map(year => (
               <option key={year} value={year}>{year}</option>
@@ -139,19 +183,12 @@ const YearInPixels = ({ entries, onDayClick }: YearInPixelsProps) => {
         </button>
       </div>
 
-      <div ref={gridRef} style={{ padding: '1rem', background: 'var(--bg-card)', borderRadius: '1rem' }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'auto repeat(31, 1fr)',
-          gap: '2px',
-          fontSize: '0.75rem',
-          overflowX: 'auto',
-          maxWidth: '100%'
-        }}>
+      <div ref={gridRef} style={gridContainerStyle}>
+        <div style={gridStyle}>
           {/* Header Row (Days) */}
-          <div style={{ width: '2rem' }}></div>
+          <div style={headerCellStyle}></div>
           {DAYS.map(day => (
-            <div key={day} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+            <div key={day} style={dayLabelStyle}>
               {day % 5 === 0 || day === 1 ? day : ''}
             </div>
           ))}
@@ -159,13 +196,7 @@ const YearInPixels = ({ entries, onDayClick }: YearInPixelsProps) => {
           {/* Months Rows */}
           {MONTHS.map((monthLabel, monthIndex) => (
             <>
-              <div key={`label-${monthIndex}`} style={{
-                color: 'var(--text-muted)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 600
-              }}>
+              <div key={`label-${monthIndex}`} style={monthLabelStyle}>
                 {monthLabel}
               </div>
 
@@ -183,18 +214,28 @@ const YearInPixels = ({ entries, onDayClick }: YearInPixelsProps) => {
                 const color = mood ? getMoodColor(mood) : 'var(--bg-app)';
                 const isClickable = !!onDayClick;
 
+                const pixelStyle: CSSProperties = {
+                  aspectRatio: '1',
+                  backgroundColor: color,
+                  borderRadius: '2px',
+                  cursor: isClickable ? 'pointer' : 'default',
+                  transition: 'transform 0.1s',
+                };
+
+                const handleMouseEnter = (e: MouseEvent<HTMLDivElement>) => {
+                  (e.target as HTMLDivElement).style.transform = 'scale(1.2)';
+                };
+
+                const handleMouseLeave = (e: MouseEvent<HTMLDivElement>) => {
+                  (e.target as HTMLDivElement).style.transform = 'scale(1)';
+                };
+
                 return (
                   <div
                     key={`${monthIndex}-${day}`}
                     onClick={() => isClickable && onDayClick(date.toISOString())}
-                    title={data ? `${FULL_MONTHS[monthIndex]} ${day}: Mood ${mood.toFixed(1)}` : `${FULL_MONTHS[monthIndex]} ${day}`}
-                    style={{
-                      aspectRatio: '1',
-                      backgroundColor: color,
-                      borderRadius: '2px',
-                      cursor: isClickable ? 'pointer' : 'default',
-                      transition: 'transform 0.1s',
-                    }}
+                    title={data ? `${FULL_MONTHS[monthIndex]} ${day}: Mood ${mood!.toFixed(1)}` : `${FULL_MONTHS[monthIndex]} ${day}`}
+                    style={pixelStyle}
                     onMouseEnter={handleMouseEnter}
                     onMouseLeave={handleMouseLeave}
                   />
@@ -205,9 +246,9 @@ const YearInPixels = ({ entries, onDayClick }: YearInPixelsProps) => {
         </div>
 
         {/* Legend included in export area */}
-        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'center', fontSize: '0.875rem' }}>
+        <div style={legendStyle}>
           {[1, 2, 3, 4, 5].map(score => (
-            <div key={score} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div key={score} style={legendItemStyle}>
               <div style={{ width: '12px', height: '12px', borderRadius: '2px', background: getMoodColor(score) }} />
               <span>Level {score}</span>
             </div>

@@ -1,32 +1,27 @@
 import { useState, useEffect, ChangeEvent } from 'react';
-import { ChevronDown } from 'lucide-react';
 import { getIconComponent } from '../ui/IconPicker';
 import apiService from '../../services/api';
 import './FrequentlyTogether.css';
 
-// ========== Types ==========
-
 interface MoodOption {
-  value: number | 'all';
+  value: 'all' | number;
   label: string;
   emoji: string;
 }
 
-interface ActivityPair {
+interface Pair {
   option1_id: number;
-  option2_id: number;
   option1_name: string;
-  option2_name: string;
   option1_icon: string;
+  option2_id: number;
+  option2_name: string;
   option2_icon: string;
   frequency: number;
 }
 
 interface FrequentlyTogetherProps {
-  data: ActivityPair[];
+  data: Pair[] | null;
 }
-
-// ========== Constants ==========
 
 const MOOD_OPTIONS: MoodOption[] = [
   { value: 'all', label: 'All Moods', emoji: '🎯' },
@@ -37,11 +32,9 @@ const MOOD_OPTIONS: MoodOption[] = [
   { value: 1, label: 'Terrible', emoji: '😢' },
 ];
 
-// ========== Component ==========
-
 const FrequentlyTogether = ({ data }: FrequentlyTogetherProps) => {
-  const [selectedMood, setSelectedMood] = useState<number | 'all'>('all');
-  const [filteredData, setFilteredData] = useState<ActivityPair[] | null>(null);
+  const [selectedMood, setSelectedMood] = useState<'all' | number>('all');
+  const [filteredData, setFilteredData] = useState<Pair[] | null>(null);
   const [loading, setLoading] = useState(false);
 
   // Use provided data or filtered data
@@ -95,7 +88,7 @@ const FrequentlyTogether = ({ data }: FrequentlyTogetherProps) => {
               className="frequently-together__mood-select"
             >
               {MOOD_OPTIONS.map(mood => (
-                <option key={mood.value} value={mood.value}>
+                <option key={String(mood.value)} value={mood.value}>
                   {mood.emoji} {mood.label}
                 </option>
               ))}
