@@ -1,9 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, MouseEvent } from 'react';
 import { Plus, X, CalendarPlus, ArrowLeft, Calendar, Target, Star, LucideIcon } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './FAB.css';
-
-// ========== Types ==========
 
 interface FABOption {
   label: string;
@@ -11,7 +9,7 @@ interface FABOption {
   action: () => void;
 }
 
-type ContextType = 'dashboard' | 'stats' | 'goals';
+type FABContext = 'dashboard' | 'stats' | 'goals';
 
 interface SmartFABProps {
   onCreateEntry?: () => void;
@@ -23,15 +21,12 @@ interface FABProps {
   label?: string;
 }
 
-// ========== Smart FAB Component ==========
-
 const SmartFAB = ({ onCreateEntry, onCreateEntryForDate }: SmartFABProps) => {
   const [expanded, setExpanded] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const fabRef = useRef<HTMLDivElement>(null);
 
-  // Close when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (fabRef.current && !fabRef.current.contains(e.target as Node)) {
@@ -39,13 +34,12 @@ const SmartFAB = ({ onCreateEntry, onCreateEntryForDate }: SmartFABProps) => {
       }
     };
     if (expanded) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('mousedown', handleClickOutside as any);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside as any);
   }, [expanded]);
 
-  // Get context based on current path
-  const getContext = (): ContextType => {
+  const getContext = (): FABContext => {
     const path = location.pathname;
     if (path.includes('/stats')) return 'stats';
     if (path.includes('/goals')) return 'goals';
@@ -54,15 +48,13 @@ const SmartFAB = ({ onCreateEntry, onCreateEntryForDate }: SmartFABProps) => {
 
   const context = getContext();
 
-  // Calculate yesterday's date
   const getYesterdayDate = (): string => {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     return yesterday.toISOString().split('T')[0];
   };
 
-  // Context-specific options
-  const options: Record<ContextType, FABOption[]> = {
+  const options: Record<FABContext, FABOption[]> = {
     dashboard: [
       {
         label: 'Yesterday',
@@ -84,7 +76,6 @@ const SmartFAB = ({ onCreateEntry, onCreateEntryForDate }: SmartFABProps) => {
         label: 'Other day',
         icon: CalendarPlus,
         action: () => {
-          // Navigate to stats which has the calendar for date picking
           navigate('/dashboard/stats');
           setExpanded(false);
         }
@@ -132,7 +123,6 @@ const SmartFAB = ({ onCreateEntry, onCreateEntryForDate }: SmartFABProps) => {
 
   const handleMainClick = () => {
     if (currentOptions.length === 1) {
-      // Direct action if only one option
       currentOptions[0].action();
     } else {
       setExpanded(!expanded);
@@ -170,7 +160,7 @@ const SmartFAB = ({ onCreateEntry, onCreateEntryForDate }: SmartFABProps) => {
   );
 };
 
-// ========== Simple FAB Component ==========
+export { SmartFAB };
 
 const FAB = ({ onClick, label = 'New Entry' }: FABProps) => {
   return (
@@ -180,7 +170,4 @@ const FAB = ({ onClick, label = 'New Entry' }: FABProps) => {
   );
 };
 
-// ========== Exports ==========
-
-export { SmartFAB };
 export default FAB;

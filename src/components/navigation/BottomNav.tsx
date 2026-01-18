@@ -2,7 +2,9 @@ import { Home, BarChart3, Trophy, Settings, Target, LucideIcon } from 'lucide-re
 import { useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 
-// ========== Types ==========
+interface BottomNavProps {
+  onLoadStatistics?: () => void;
+}
 
 interface NavItem {
   key: string;
@@ -10,12 +12,6 @@ interface NavItem {
   icon: LucideIcon;
   end?: boolean;
 }
-
-interface BottomNavProps {
-  onLoadStatistics?: () => void;
-}
-
-// ========== Component ==========
 
 const BottomNav = ({ onLoadStatistics }: BottomNavProps) => {
   const items: NavItem[] = [

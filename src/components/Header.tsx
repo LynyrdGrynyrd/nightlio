@@ -10,13 +10,9 @@ import SearchModal from './search/SearchModal';
 
 import './Header.css';
 
-// ========== Types ==========
-
 interface HeaderProps {
   currentStreak: number;
 }
-
-// ========== Helper Functions ==========
 
 const resolveShortcutElement = (target: EventTarget | null): Element | null => {
   if (!target || typeof target !== 'object') {
@@ -47,7 +43,7 @@ const shouldSkipShortcut = (target: EventTarget | null): boolean => {
     return true;
   }
 
-  if ((element as HTMLElement).isContentEditable) {
+  if (element instanceof HTMLElement && element.isContentEditable) {
     return true;
   }
 
@@ -68,8 +64,6 @@ const shouldSkipShortcut = (target: EventTarget | null): boolean => {
 
   return false;
 };
-
-// ========== Component ==========
 
 const Header = ({ currentStreak }: HeaderProps) => {
   const { user, logout, isMockMode } = useAuth();
