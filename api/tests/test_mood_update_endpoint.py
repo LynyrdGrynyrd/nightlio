@@ -3,7 +3,7 @@ import pytest
 
 from api.app import create_app
 
-TEST_DB_PATH = "/tmp/nightlio_test.db"
+TEST_DB_PATH = "/tmp/twilightio_test.db"
 
 
 def _reset_test_db():

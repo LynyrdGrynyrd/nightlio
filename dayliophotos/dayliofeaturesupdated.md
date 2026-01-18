@@ -1,4 +1,4 @@
-Below is the **Comprehensive Feature Specification & UX Analysis** for your Nightlio fork. I have structured this as a **Product Requirements Document (PRD)** so you can directly map these to GitHub Issues.
+Below is the **Comprehensive Feature Specification & UX Analysis** for your Twilightio fork. I have structured this as a **Product Requirements Document (PRD)** so you can directly map these to GitHub Issues.
 
 ---
 
@@ -6,7 +6,7 @@ Below is the **Comprehensive Feature Specification & UX Analysis** for your Nigh
 
 ### **1. Core Journaling Engine (The "Input" Layer)**
 
-*The foundational layer. Nightlio has the basics, but lacks the taxonomy and rich media.*
+*The foundational layer. Twilightio has the basics, but lacks the taxonomy and rich media.*
 
 * **Hierarchical Activity Taxonomy:**
 * **Groups:** Activities must be nested inside Groups (e.g., "Food" contains "Pizza", "Vegan").
@@ -21,7 +21,7 @@ Below is the **Comprehensive Feature Specification & UX Analysis** for your Nigh
 
 * **Structured Metadata:**
 * **Time of Day:** timestamp is critical (not just date).
-* **Notes:** Text area with Markdown support (Nightlio has this, but Daylio adds "Writing Templates" to prompt the user).
+* **Notes:** Text area with Markdown support (Twilightio has this, but Daylio adds "Writing Templates" to prompt the user).
 
 
 
@@ -103,7 +103,7 @@ Below is the **Comprehensive Feature Specification & UX Analysis** for your Nigh
 
 ### **C. Navigation Structure**
 
-Daylio uses a **Bottom Tab Bar** (The standard for mobile apps, but Nightlio might be using a side drawer).
+Daylio uses a **Bottom Tab Bar** (The standard for mobile apps, but Twilightio might be using a side drawer).
 
 1. **Entries (Home):** The timeline stream.
 2. **Stats:** The dashboard of charts.
@@ -115,10 +115,10 @@ Daylio uses a **Bottom Tab Bar** (The standard for mobile apps, but Nightlio mig
 
 # 🏗 Database Schema: The "Forking" Plan
 
-To support these features, you will need to migrate Nightlio's likely simple schema to a relational one. Here is the SQL structure you need to build:
+To support these features, you will need to migrate Twilightio's likely simple schema to a relational one. Here is the SQL structure you need to build:
 
 ```sql
--- 1. The Taxonomy (Missing in Nightlio)
+-- 1. The Taxonomy (Missing in Twilightio)
 CREATE TABLE activity_groups (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,         -- e.g., "Hobbies"
@@ -174,6 +174,6 @@ CREATE TABLE goals (
 
 ### **Where to start?**
 
-If I were you, I would ignore the "Gamification" (Badges/Goals) for now. The **"Activity Groups"** and **"Correlation Stats"** are the features that make Daylio feel "smart." Nightlio feels "dumb" without them.
+If I were you, I would ignore the "Gamification" (Badges/Goals) for now. The **"Activity Groups"** and **"Correlation Stats"** are the features that make Daylio feel "smart." Twilightio feels "dumb" without them.
 
 **Would you like me to write the Python/SQL query for the "Often Together" correlation engine?** That is the trickiest logic to get right.

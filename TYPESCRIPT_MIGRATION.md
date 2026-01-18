@@ -1,6 +1,6 @@
 # TypeScript Migration Guide
 
-This document outlines the strategy for migrating Nightlio from JavaScript to TypeScript.
+This document outlines the strategy for migrating Twilightio from JavaScript to TypeScript.
 
 ## Current Status
 

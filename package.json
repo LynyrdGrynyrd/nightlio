@@ -6,13 +6,13 @@
   "description": "A beautiful, self-hosted daily mood tracker and journal",
   "author": "shirsakm",
   "license": "MIT",
-  "homepage": "https://github.com/shirsakm/nightlio",
+  "homepage": "https://github.com/shirsakm/twilightio",
   "repository": {
     "type": "git",
-    "url": "https://github.com/shirsakm/nightlio.git"
+    "url": "https://github.com/shirsakm/twilightio.git"
   },
   "bugs": {
-    "url": "https://github.com/shirsakm/nightlio/issues"
+    "url": "https://github.com/shirsakm/twilightio/issues"
   },
   "keywords": [
     "mood-tracker",

@@ -22,7 +22,7 @@ from services.user_service import UserService  # noqa: E402
 
 def seed_selfhost_user() -> dict:
     cfg = get_config()
-    db = MoodDatabase()  # uses default sqlite path under data/nightlio.db
+    db = MoodDatabase()  # uses default sqlite path under data/twilightio.db
     user_service = UserService(db)
     user = user_service.ensure_local_user(
         cfg.DEFAULT_SELF_HOST_ID,

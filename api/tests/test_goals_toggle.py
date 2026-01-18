@@ -6,7 +6,7 @@ from api.services.goal_service import GoalService
 
 @pytest.fixture
 def db(tmp_path):
-    db_file = tmp_path / "test_nightlio.db"
+    db_file = tmp_path / "test_twilightio.db"
     return MoodDatabase(str(db_file))
 
 @pytest.fixture

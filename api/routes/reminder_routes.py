@@ -64,7 +64,7 @@ def create_reminder_routes(scheduler_service, push_service):
     def test_push():
         """Send a test notification to self."""
         user_id = get_current_user_id()
-        count = push_service.send_notification(user_id, "This is a test notification from Nightlio!")
+        count = push_service.send_notification(user_id, "This is a test notification from Twilightio!")
         if count > 0:
             return jsonify({"message": f"Sent to {count} devices"})
         return jsonify({"error": "No active subscriptions found"}), 404

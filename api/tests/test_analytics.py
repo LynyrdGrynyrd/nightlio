@@ -6,7 +6,7 @@ from api.services.analytics_service import AnalyticsService
 
 @pytest.fixture
 def db(tmp_path):
-    db_path = tmp_path / "test_nightlio.db"
+    db_path = tmp_path / "test_twilightio.db"
     return MoodDatabase(str(db_path), init=True)
 
 @pytest.fixture

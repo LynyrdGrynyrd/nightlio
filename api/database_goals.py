@@ -1,4 +1,4 @@
-"""Goal management mixin for Nightlio."""
+"""Goal management mixin for Twilightio."""
 
 from __future__ import annotations
 

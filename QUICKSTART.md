@@ -1,10 +1,10 @@
-# 🚀 Quick Start - Get Nightlio Running in 2 Minutes
+# 🚀 Quick Start - Get Twilightio Running in 2 Minutes
 
 ## Option 1: Automated Setup (Recommended)
 
 ```bash
-git clone https://github.com/shirsakm/nightlio.git
-cd nightlio
+git clone https://github.com/shirsakm/twilightio.git
+cd twilightio
 ./setup.sh
 ```
 
@@ -14,8 +14,8 @@ That's it! Open http://localhost:5173 in your browser.
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/shirsakm/nightlio.git
-cd nightlio
+git clone https://github.com/shirsakm/twilightio.git
+cd twilightio
 
 # 2. Create environment file
 cp .env.docker .env
@@ -72,7 +72,7 @@ docker-compose up -d --build
 ### Need help?
 - 📖 [Full Docker Guide](DOCKER.md)
 - 🚀 [Production Guide](DEPLOYMENT.md)
-- 🐛 [Create an Issue](https://github.com/shirsakm/nightlio/issues)
+- 🐛 [Create an Issue](https://github.com/shirsakm/twilightio/issues)
 
 ---
 

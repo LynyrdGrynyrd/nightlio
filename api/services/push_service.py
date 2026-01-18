@@ -11,7 +11,7 @@ class PushService:
         self.db = db
         self.vapid_key_file = vapid_key_file
         # Fixed email claim is required by VAPID
-        self.vapid_claims = {"sub": "mailto:admin@nightlio.app"}
+        self.vapid_claims = {"sub": "mailto:admin@twilightio.app"}
         
         self.private_key = None
         self.public_key = None

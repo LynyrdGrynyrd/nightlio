@@ -1,4 +1,4 @@
-"""Nightlio database facade built from modular mixins."""
+"""Twilightio database facade built from modular mixins."""
 
 from __future__ import annotations
 
@@ -67,7 +67,7 @@ class MoodDatabase(
         data_dir.mkdir(parents=True, exist_ok=True)
 
         resolved_path = (
-            Path(db_path) if db_path is not None else data_dir / "nightlio.db"
+            Path(db_path) if db_path is not None else data_dir / "twilightio.db"
         )
         self.db_path = str(resolved_path)
 

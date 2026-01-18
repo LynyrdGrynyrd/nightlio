@@ -1,13 +1,13 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/shirsakm/nightlio/refs/heads/dev/public/logo.png" height="60px" />
-<h1>Nightlio</h1>
+<img src="https://raw.githubusercontent.com/shirsakm/twilightio/refs/heads/dev/public/logo.png" height="60px" />
+<h1>Twilightio</h1>
 
-[![GitHub license](https://img.shields.io/github/license/shirsakm/nightlio?style=flat-square)](https://github.com/shirsakm/nightlio/blob/main/LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/shirsakm/nightlio?style=flat-square)](https://github.com/shirsakm/nightlio/stargazers)
-[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/shirsakm/nightlio/publish.yml?branch=master&style=flat-square)](https://github.com/shirsakm/nightlio/actions)
-![GitHub last commit](https://img.shields.io/github/last-commit/shirsakm/nightlio)
-![GitHub Tag](https://img.shields.io/github/v/tag/shirsakm/nightlio)
+[![GitHub license](https://img.shields.io/github/license/shirsakm/twilightio?style=flat-square)](https://github.com/shirsakm/twilightio/blob/main/LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/shirsakm/twilightio?style=flat-square)](https://github.com/shirsakm/twilightio/stargazers)
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/shirsakm/twilightio/publish.yml?branch=master&style=flat-square)](https://github.com/shirsakm/twilightio/actions)
+![GitHub last commit](https://img.shields.io/github/last-commit/shirsakm/twilightio)
+![GitHub Tag](https://img.shields.io/github/v/tag/shirsakm/twilightio)
 
 **Privacy-first mood tracker and daily journal, designed for effortless self-hosting.** <br />
 **Your data, your server, your rules.**
@@ -17,11 +17,11 @@
 <!-- <img width="1366" height="645" alt="image" src="https://github.com/user-attachments/assets/dd50ec1f-4c3f-4588-907c-dca6ac1f7f98" /> -->
 ![Preview](https://github.com/user-attachments/assets/77f52abc-b4f8-439d-9bb2-772e3996256c)
 
-## Why Nightlio?
+## Why Twilightio?
 
-Nightlio was inspired by awesome mood-tracking apps like Daylio, but born out of frustration with aggressive subscription models, paywalls, and a lack of cross-platform access. I wanted a beautiful, effective tool to log my mood and journal my thoughts without compromising on privacy or being locked into a single device.
+Twilightio was inspired by awesome mood-tracking apps like Daylio, but born out of frustration with aggressive subscription models, paywalls, and a lack of cross-platform access. I wanted a beautiful, effective tool to log my mood and journal my thoughts without compromising on privacy or being locked into a single device.
 
-Nightlio is the result: a feature-complete, open-source alternative that you can run anywhere. It's fully web-based and responsive for use on both desktop and mobile. No ads, no subscriptions, and absolutely no data mining. Just you and your data.
+Twilightio is the result: a feature-complete, open-source alternative that you can run anywhere. It's fully web-based and responsive for use on both desktop and mobile. No ads, no subscriptions, and absolutely no data mining. Just you and your data.
 
 ### Key Features
 
@@ -39,14 +39,14 @@ Nightlio is the result: a feature-complete, open-source alternative that you can
 ### Docker Quickstart (Recommended)
 
 > [!NOTE]
-> By default, Nightlio runs in **single-user mode**. Enable Google OAuth for multi-user support.
+> By default, Twilightio runs in **single-user mode**. Enable Google OAuth for multi-user support.
 
-Get your own Nightlio instance running in under 5 minutes.
+Get your own Twilightio instance running in under 5 minutes.
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/shirsakm/nightlio.git
-cd nightlio
+git clone https://github.com/shirsakm/twilightio.git
+cd twilightio
 
 # 2. Create your configuration file
 cp .env.docker .env
@@ -63,23 +63,23 @@ docker compose up -d
 Alternatively, give it a try without cloning!
 
 ```bash
-docker network create nightlio-test || true
-docker run -d --name nightlio-api \
-    --network nightlio-test --network-alias api \
+docker network create twilightio-test || true
+docker run -d --name twilightio-api \
+    --network twilightio-test --network-alias api \
     -e SECRET_KEY=$(openssl rand -hex 32) \
     -e JWT_SECRET=$(openssl rand -hex 32) \
     -e CORS_ORIGINS=http://localhost:5173 \
     -e ENABLE_GOOGLE_OAUTH=0 \
     -e DEFAULT_SELF_HOST_ID=selfhost_default_user \
-    -e DATABASE_PATH=/app/data/nightlio.db \
+    -e DATABASE_PATH=/app/data/twilightio.db \
     -e PORT=5000 \
-    -v nightlio_data:/app/data \
-    ghcr.io/shirsakm/nightlio-api:latest
+    -v twilightio_data:/app/data \
+    ghcr.io/shirsakm/twilightio-api:latest
 
-docker run -d --name nightlio-frontend \
-    --network nightlio-test \
+docker run -d --name twilightio-frontend \
+    --network twilightio-test \
     -p 5173:80 \
-    ghcr.io/shirsakm/nightlio-frontend:latest
+    ghcr.io/shirsakm/twilightio-frontend:latest
 ```
 
 Your instance is now live at http://localhost:5173/.
@@ -93,8 +93,8 @@ Here are two easy paths for self-hosting using the published GHCR images.
 1) Clone and configure
 
 ```bash
-git clone https://github.com/shirsakm/nightlio.git
-cd nightlio
+git clone https://github.com/shirsakm/twilightio.git
+cd twilightio
 cp .env.docker .env
 # Edit .env: set strong SECRET_KEY and JWT_SECRET, and set CORS_ORIGINS to your domain
 ```
@@ -102,8 +102,8 @@ cp .env.docker .env
 2) Pin images (recommended) and mount data for backups
 
 ```bash
-export API_IMAGE=ghcr.io/shirsakm/nightlio-api:latest
-export WEB_IMAGE=ghcr.io/shirsakm/nightlio-frontend:latest
+export API_IMAGE=ghcr.io/shirsakm/twilightio-api:latest
+export WEB_IMAGE=ghcr.io/shirsakm/twilightio-frontend:latest
 mkdir -p data
 # Add a bind mount for your DB by editing docker-compose.prod.yml (api service):
 #   volumes:
@@ -132,7 +132,7 @@ Create docker-compose.yml in an empty folder with:
 ```yaml
 services:
   api:
-    image: ghcr.io/shirsakm/nightlio-api:latest
+    image: ghcr.io/shirsakm/twilightio-api:latest
     restart: unless-stopped
     environment:
       - SECRET_KEY=change-me
@@ -140,22 +140,22 @@ services:
       - CORS_ORIGINS=https://your.domain
       - ENABLE_GOOGLE_OAUTH=0
       - DEFAULT_SELF_HOST_ID=selfhost_default_user
-      - DATABASE_PATH=/app/data/nightlio.db
+      - DATABASE_PATH=/app/data/twilightio.db
       - PORT=5000
     volumes:
       - ./data:/app/data
     expose:
       - "5000"
-    networks: { nightlio: { aliases: [api] } }
+    networks: { twilightio: { aliases: [api] } }
   web:
-    image: ghcr.io/shirsakm/nightlio-frontend:latest
+    image: ghcr.io/shirsakm/twilightio-frontend:latest
     restart: unless-stopped
     depends_on: [api]
       ports:
         - "80:80"  # or put behind your own reverse proxy with TLS
-    networks: [nightlio]
+    networks: [twilightio]
 
-networks: { nightlio: {} }
+networks: { twilightio: {} }
 ```
 
 Run it:
@@ -165,14 +165,14 @@ docker compose up -d
 ```
 
 > [!NOTE]
-> 1. Persistent data lives in `./data/nightlio.db` — include it in backups.
+> 1. Persistent data lives in `./data/twilightio.db` — include it in backups.
 > 2. Pin to a version for predictable upgrades; switch to newer tags when ready.
 
 <div align="center">🌙</div>
 
 ### 🔧 Configuration (`.env`)
 
-You can customize your Nightlio instance using environment variables in the `.env` file.
+You can customize your Twilightio instance using environment variables in the `.env` file.
 
 #### Server (API)
 ```
@@ -180,7 +180,7 @@ You can customize your Nightlio instance using environment variables in the `.en
 FLASK_ENV=production
 SECRET_KEY=change-this-to-a-long-random-string
 JWT_SECRET=change-this-too
-DATABASE_PATH=/app/data/nightlio.db
+DATABASE_PATH=/app/data/twilightio.db
 
 # Feature flags (1 to enable, 0 to disable)
 ENABLE_GOOGLE_OAUTH=0
@@ -309,7 +309,7 @@ All protected endpoints require an `Authorization: Bearer <jwt>` header unless o
 
 ## Roadmap
 
-Nightlio is actively developed. Here are some of the features planned for the future:
+Twilightio is actively developed. Here are some of the features planned for the future:
 - [ ] **Responsive Design:** Full support for usage on mobile devices.
 - [ ] **Multi-User Support:** Full support for multiple user accounts on a single instance.
 - [ ] **Data Import/Export:** Tools to import data from other services (like Daylio) and export your data to standard formats (JSON, CSV).

@@ -1,6 +1,6 @@
 # 🛡️ Sentinel Security Journal
 
-This journal documents **critical security learnings** specific to the nightlio codebase.
+This journal documents **critical security learnings** specific to the twilightio codebase.
 
 ---
 
