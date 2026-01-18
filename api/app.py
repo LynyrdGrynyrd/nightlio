@@ -88,6 +88,13 @@ def create_app(config_name="default"):
     user_service = UserService(db)
     achievement_service = AchievementService(db)
 
+    # Initialize login attempt tracking service
+    try:
+        from api.services.login_attempt_service import LoginAttemptService
+    except ImportError:
+        from services.login_attempt_service import LoginAttemptService
+    login_attempt_service = LoginAttemptService(app.config.get("DATABASE_PATH"))
+
     # Ensure default admin user exists
     try:
         from api.utils.password_utils import hash_password
@@ -130,7 +137,7 @@ def create_app(config_name="default"):
         app.logger.warning(f"Could not create default admin user: {e}")
 
     # Register blueprints with services
-    app.register_blueprint(create_auth_routes(user_service), url_prefix="/api")
+    app.register_blueprint(create_auth_routes(user_service, login_attempt_service), url_prefix="/api")
     
     # Media Services needs to be created before some routes if we want to pass it
     upload_folder = os.path.join(app.root_path, "..", "data", "media")

@@ -6,6 +6,7 @@ import requests
 from jose import jwt, JWTError
 from datetime import datetime, timedelta, timezone
 from api.services.user_service import UserService
+from api.services.login_attempt_service import LoginAttemptService
 from api.utils.rate_limiter import rate_limit
 from api.config import get_config
 from api.utils.auth_middleware import require_auth, get_current_user_id
@@ -13,7 +14,7 @@ from api.utils.password_utils import hash_password, verify_password
 from api.utils.password_validation import validate_password_strength, validate_username
 
 
-def create_auth_routes(user_service: UserService):
+def create_auth_routes(user_service: UserService, login_attempt_service: LoginAttemptService = None):
     auth_bp = Blueprint("auth", __name__)
 
     @auth_bp.route("/auth/google", methods=["POST"])
@@ -169,17 +170,41 @@ def create_auth_routes(user_service: UserService):
             if not username or not password:
                 return jsonify({"error": "Username and password are required"}), 400
 
+            # Check if account is locked (if login_attempt_service is available)
+            if login_attempt_service:
+                lock_status = login_attempt_service.is_account_locked(username)
+                if lock_status["locked"]:
+                    minutes_left = lock_status["remaining_lockout_seconds"] // 60
+                    seconds_left = lock_status["remaining_lockout_seconds"] % 60
+                    return jsonify({
+                        "error": f"Account temporarily locked due to too many failed login attempts. Try again in {minutes_left}m {seconds_left}s."
+                    }), 429
+
+            # Get IP address and user agent for logging
+            ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+            user_agent = request.headers.get('User-Agent', '')
+
             # Get user by username
             user = user_service.get_user_by_username(username)
             if not user:
+                if login_attempt_service:
+                    login_attempt_service.record_login_attempt(username, False, ip_address, user_agent)
                 return jsonify({"error": "Invalid username or password"}), 401
 
             # Verify password
             if not user.get("password_hash"):
+                if login_attempt_service:
+                    login_attempt_service.record_login_attempt(username, False, ip_address, user_agent)
                 return jsonify({"error": "Invalid username or password"}), 401
 
             if not verify_password(password, user["password_hash"]):
+                if login_attempt_service:
+                    login_attempt_service.record_login_attempt(username, False, ip_address, user_agent)
                 return jsonify({"error": "Invalid username or password"}), 401
+
+            # Successful login - record it
+            if login_attempt_service:
+                login_attempt_service.record_login_attempt(username, True, ip_address, user_agent)
 
             # Generate JWT token
             jwt_token = generate_jwt_token(user["id"])

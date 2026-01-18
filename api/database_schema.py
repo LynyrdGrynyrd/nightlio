@@ -48,6 +48,9 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
                 # Important days / countdowns
                 self._create_important_days_table(conn)
 
+                # Failed login attempts tracking
+                self._create_failed_login_attempts_table(conn)
+
                 # App Lock / Settings
                 if hasattr(self, "_create_settings_table"):
                     self._create_settings_table(conn)
@@ -549,6 +552,31 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
             logger.info("Important days table ready")
         except sqlite3.Error as exc:
             logger.warning("Important days table creation failed: %s", exc)
+
+    def _create_failed_login_attempts_table(self, conn: sqlite3.Connection) -> None:
+        """Create table for tracking failed login attempts."""
+        try:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS failed_login_attempts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT NOT NULL,
+                    ip_address TEXT,
+                    user_agent TEXT,
+                    attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    success BOOLEAN DEFAULT 0
+                )
+                """
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_failed_login_username ON failed_login_attempts(username, attempted_at)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_failed_login_timestamp ON failed_login_attempts(attempted_at)"
+            )
+            logger.info("Failed login attempts table ready")
+        except sqlite3.Error as exc:
+            logger.warning("Failed login attempts table creation failed: %s", exc)
 
 
 __all__ = ["DatabaseSchemaMixin"]
