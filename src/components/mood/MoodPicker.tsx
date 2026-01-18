@@ -2,14 +2,10 @@ import { MOODS } from '../../utils/moodUtils';
 import { motion } from 'framer-motion';
 import './MoodPicker.css';
 
-// ========== Types ==========
-
 interface MoodPickerProps {
   onMoodSelect: (mood: number) => void;
   selectedMood: number | null;
 }
-
-// ========== Component ==========
 
 const MoodPicker = ({ onMoodSelect, selectedMood }: MoodPickerProps) => {
   return (
