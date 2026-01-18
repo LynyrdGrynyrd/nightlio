@@ -88,8 +88,56 @@ def create_app(config_name="default"):
     user_service = UserService(db)
     achievement_service = AchievementService(db)
 
+    # Initialize login attempt tracking service
+    try:
+        from api.services.login_attempt_service import LoginAttemptService
+    except ImportError:
+        from services.login_attempt_service import LoginAttemptService
+    login_attempt_service = LoginAttemptService(app.config.get("DATABASE_PATH"))
+
+    # Ensure default admin user exists
+    try:
+        from api.utils.password_utils import hash_password
+    except ImportError:
+        from utils.password_utils import hash_password
+
+    try:
+        existing_admin = user_service.get_user_by_username("admin")
+        if not existing_admin:
+            # Get admin password from environment or generate secure random password
+            admin_password = os.getenv("ADMIN_PASSWORD")
+
+            if not admin_password:
+                # Generate a secure random password
+                import secrets
+                import string
+                alphabet = string.ascii_letters + string.digits + string.punctuation
+                admin_password = ''.join(secrets.choice(alphabet) for _ in range(16))
+
+                # Log the generated password (only visible in logs)
+                app.logger.warning("=" * 70)
+                app.logger.warning("⚠️  DEFAULT ADMIN ACCOUNT CREATED")
+                app.logger.warning(f"⚠️  Username: admin")
+                app.logger.warning(f"⚠️  Password: {admin_password}")
+                app.logger.warning("⚠️  SAVE THIS PASSWORD - IT WON'T BE SHOWN AGAIN!")
+                app.logger.warning("⚠️  Set ADMIN_PASSWORD environment variable to avoid auto-generation")
+                app.logger.warning("=" * 70)
+            else:
+                app.logger.info("Creating admin user with password from ADMIN_PASSWORD env var")
+
+            admin_password_hash = hash_password(admin_password)
+            user_service.create_user_with_password(
+                username="admin",
+                password_hash=admin_password_hash,
+                email="admin@localhost",
+                name="Administrator"
+            )
+            app.logger.info("Default admin user created successfully")
+    except Exception as e:
+        app.logger.warning(f"Could not create default admin user: {e}")
+
     # Register blueprints with services
-    app.register_blueprint(create_auth_routes(user_service), url_prefix="/api")
+    app.register_blueprint(create_auth_routes(user_service, login_attempt_service), url_prefix="/api")
     
     # Media Services needs to be created before some routes if we want to pass it
     upload_folder = os.path.join(app.root_path, "..", "data", "media")

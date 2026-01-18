@@ -6,12 +6,15 @@ import requests
 from jose import jwt, JWTError
 from datetime import datetime, timedelta, timezone
 from api.services.user_service import UserService
+from api.services.login_attempt_service import LoginAttemptService
 from api.utils.rate_limiter import rate_limit
 from api.config import get_config
 from api.utils.auth_middleware import require_auth, get_current_user_id
+from api.utils.password_utils import hash_password, verify_password
+from api.utils.password_validation import validate_password_strength, validate_username
 
 
-def create_auth_routes(user_service: UserService):
+def create_auth_routes(user_service: UserService, login_attempt_service: LoginAttemptService = None):
     auth_bp = Blueprint("auth", __name__)
 
     @auth_bp.route("/auth/google", methods=["POST"])
@@ -155,6 +158,142 @@ def create_auth_routes(user_service: UserService):
             current_app.logger.error(f"Local login error: {e}")
             return jsonify({"error": "Authentication failed"}), 500
 
+    @auth_bp.route("/auth/login", methods=["POST"])
+    @rate_limit(max_requests=30, window_minutes=1)
+    def username_password_login():
+        """Login with username and password."""
+        try:
+            data = request.json
+            username = data.get("username", "").lower().strip()  # Normalize username
+            password = data.get("password")
+
+            if not username or not password:
+                return jsonify({"error": "Username and password are required"}), 400
+
+            # Check if account is locked (if login_attempt_service is available)
+            if login_attempt_service:
+                lock_status = login_attempt_service.is_account_locked(username)
+                if lock_status["locked"]:
+                    minutes_left = lock_status["remaining_lockout_seconds"] // 60
+                    seconds_left = lock_status["remaining_lockout_seconds"] % 60
+                    return jsonify({
+                        "error": f"Account temporarily locked due to too many failed login attempts. Try again in {minutes_left}m {seconds_left}s."
+                    }), 429
+
+            # Get IP address and user agent for logging
+            ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+            user_agent = request.headers.get('User-Agent', '')
+
+            # Get user by username
+            user = user_service.get_user_by_username(username)
+            if not user:
+                if login_attempt_service:
+                    login_attempt_service.record_login_attempt(username, False, ip_address, user_agent)
+                return jsonify({"error": "Invalid username or password"}), 401
+
+            # Verify password
+            if not user.get("password_hash"):
+                if login_attempt_service:
+                    login_attempt_service.record_login_attempt(username, False, ip_address, user_agent)
+                return jsonify({"error": "Invalid username or password"}), 401
+
+            if not verify_password(password, user["password_hash"]):
+                if login_attempt_service:
+                    login_attempt_service.record_login_attempt(username, False, ip_address, user_agent)
+                return jsonify({"error": "Invalid username or password"}), 401
+
+            # Successful login - record it
+            if login_attempt_service:
+                login_attempt_service.record_login_attempt(username, True, ip_address, user_agent)
+
+            # Generate JWT token
+            jwt_token = generate_jwt_token(user["id"])
+
+            return jsonify(
+                {
+                    "token": jwt_token,
+                    "user": {
+                        "id": user["id"],
+                        "name": user["name"],
+                        "email": user["email"],
+                        "avatar_url": user.get("avatar_url"),
+                    },
+                }
+            )
+
+        except Exception as e:
+            current_app.logger.error(f"Username/password login error: {str(e)}")
+            return jsonify({"error": "Authentication failed"}), 500
+
+    @auth_bp.route("/auth/register", methods=["POST"])
+    @rate_limit(max_requests=10, window_minutes=1)
+    def register():
+        """Register a new user with username and password."""
+        try:
+            cfg = get_config()
+            if not cfg.ENABLE_REGISTRATION:
+                return jsonify({"error": "Registration is disabled"}), 403
+
+            data = request.json
+            username = data.get("username", "").lower().strip()  # Normalize username
+            password = data.get("password", "")
+            email = data.get("email", "")
+            name = data.get("name", username)
+
+            if not username or not password:
+                return jsonify({"error": "Username and password are required"}), 400
+
+            # Validate username
+            username_validation = validate_username(username)
+            if not username_validation["valid"]:
+                return jsonify({"error": username_validation["errors"][0]}), 400
+
+            # Validate password strength
+            password_validation = validate_password_strength(password)
+            if not password_validation["valid"]:
+                return jsonify({
+                    "error": "Password does not meet requirements",
+                    "details": password_validation["errors"]
+                }), 400
+
+            # Check if username already exists
+            existing_user = user_service.get_user_by_username(username)
+            if existing_user:
+                return jsonify({"error": "Username already exists"}), 409
+
+            # Hash password
+            password_hash = hash_password(password)
+
+            # Create user
+            user = user_service.create_user_with_password(
+                username=username,
+                password_hash=password_hash,
+                email=email,
+                name=name,
+            )
+
+            # Generate JWT token
+            jwt_token = generate_jwt_token(user["id"])
+
+            return (
+                jsonify(
+                    {
+                        "token": jwt_token,
+                        "user": {
+                            "id": user["id"],
+                            "name": user["name"],
+                            "email": user["email"],
+                            "avatar_url": user.get("avatar_url"),
+                        },
+                    }
+                ),
+                201,
+            )
+
+        except Exception as e:
+            current_app.logger.error(f"Registration error: {str(e)}")
+            return jsonify({"error": "Registration failed"}), 500
+
     @auth_bp.route("/auth/user", methods=["DELETE"])
     @require_auth
     def delete_account():
@@ -166,6 +305,59 @@ def create_auth_routes(user_service: UserService):
         except Exception as e:
             current_app.logger.error(f"Account deletion failed: {e}")
             return jsonify({"error": "Deletion failed"}), 500
+
+    @auth_bp.route("/auth/change-password", methods=["POST"])
+    @require_auth
+    @rate_limit(max_requests=10, window_minutes=1)
+    def change_password():
+        """Change user password (requires current password)."""
+        try:
+            user_id = get_current_user_id()
+            data = request.json
+            current_password = data.get("current_password")
+            new_password = data.get("new_password")
+
+            if not current_password or not new_password:
+                return jsonify({"error": "Current and new passwords are required"}), 400
+
+            # Get user
+            user = user_service.get_user_by_id(user_id)
+            if not user:
+                return jsonify({"error": "User not found"}), 404
+
+            # Check if user has a password (OAuth users don't)
+            if not user.get("password_hash"):
+                return jsonify({
+                    "error": "Cannot change password for OAuth accounts"
+                }), 400
+
+            # Verify current password
+            if not verify_password(current_password, user["password_hash"]):
+                return jsonify({"error": "Current password is incorrect"}), 401
+
+            # Validate new password strength
+            password_validation = validate_password_strength(new_password)
+            if not password_validation["valid"]:
+                return jsonify({
+                    "error": "New password does not meet requirements",
+                    "details": password_validation["errors"]
+                }), 400
+
+            # Check that new password is different from current
+            if verify_password(new_password, user["password_hash"]):
+                return jsonify({
+                    "error": "New password must be different from current password"
+                }), 400
+
+            # Update password
+            new_password_hash = hash_password(new_password)
+            user_service.update_password(user_id, new_password_hash)
+
+            return jsonify({"message": "Password changed successfully"}), 200
+
+        except Exception as e:
+            current_app.logger.error(f"Password change failed: {e}")
+            return jsonify({"error": "Password change failed"}), 500
 
     def verify_google_token(token: str) -> dict:
         """Verify Google OAuth token and return user info"""

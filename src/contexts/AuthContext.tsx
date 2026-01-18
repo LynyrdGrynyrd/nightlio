@@ -10,10 +10,18 @@ interface LoginResult {
   error?: string;
 }
 
+interface UsernamePasswordCredentials {
+  username: string;
+  password: string;
+  email?: string;
+  name?: string;
+  isRegistration?: boolean;
+}
+
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
-  login: (googleToken: string) => Promise<LoginResult>;
+  login: (googleToken?: string, credentials?: UsernamePasswordCredentials) => Promise<LoginResult>;
   logout: () => void;
   isAuthenticated: boolean;
   isMockMode: boolean;
@@ -118,10 +126,30 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   }, [token, configLoading, config.enable_google_oauth, verifyToken, localLogin]);
 
-  const login = async (googleToken: string): Promise<LoginResult> => {
+  const login = async (googleToken?: string, credentials?: UsernamePasswordCredentials): Promise<LoginResult> => {
     try {
       setLoading(true);
-      const response = await apiService.googleAuth(googleToken);
+      let response;
+
+      if (credentials) {
+        // Username/password authentication
+        if (credentials.isRegistration) {
+          response = await apiService.register(
+            credentials.username,
+            credentials.password,
+            credentials.email,
+            credentials.name
+          );
+        } else {
+          response = await apiService.usernamePasswordAuth(credentials.username, credentials.password);
+        }
+      } else if (googleToken) {
+        // Google OAuth authentication
+        response = await apiService.googleAuth(googleToken);
+      } else {
+        return { success: false, error: 'No credentials provided' };
+      }
+
       const { token: jwtToken, user: userData } = response;
       localStorage.setItem('twilightio_token', jwtToken);
       setToken(jwtToken);

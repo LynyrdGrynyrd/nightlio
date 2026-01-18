@@ -48,6 +48,9 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
                 # Important days / countdowns
                 self._create_important_days_table(conn)
 
+                # Failed login attempts tracking
+                self._create_failed_login_attempts_table(conn)
+
                 # App Lock / Settings
                 if hasattr(self, "_create_settings_table"):
                     self._create_settings_table(conn)
@@ -69,16 +72,35 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
             """
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                google_id TEXT UNIQUE NOT NULL,
+                google_id TEXT UNIQUE,
                 email TEXT NOT NULL,
                 name TEXT NOT NULL,
                 avatar_url TEXT,
+                username TEXT UNIQUE,
+                password_hash TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
             """
         )
+        self._migrate_users_table_schema(conn)
         logger.info("Users table ready")
+
+    def _migrate_users_table_schema(self, conn: sqlite3.Connection) -> None:
+        """Add username and password_hash columns if they don't exist."""
+        try:
+            cur = conn.execute("PRAGMA table_info(users)")
+            cols: Iterable[str] = {row[1] for row in cur.fetchall()}
+
+            if "username" not in cols:
+                conn.execute("ALTER TABLE users ADD COLUMN username TEXT UNIQUE")
+                logger.info("Users table migrated to include username")
+
+            if "password_hash" not in cols:
+                conn.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
+                logger.info("Users table migrated to include password_hash")
+        except sqlite3.Error as exc:
+            logger.warning("Users table migration failed (non-critical): %s", exc)
 
     def _create_mood_entries_table(self, conn: sqlite3.Connection) -> None:
         conn.execute(
@@ -268,7 +290,10 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_mood_entries_date ON mood_entries(date)"
             )
-            logger.info("Mood entries index ready")
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)"
+            )
+            logger.info("Database indexes ready")
         except sqlite3.Error as exc:
             logger.warning("Index creation failed (non-critical): %s", exc)
 
@@ -527,6 +552,31 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
             logger.info("Important days table ready")
         except sqlite3.Error as exc:
             logger.warning("Important days table creation failed: %s", exc)
+
+    def _create_failed_login_attempts_table(self, conn: sqlite3.Connection) -> None:
+        """Create table for tracking failed login attempts."""
+        try:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS failed_login_attempts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT NOT NULL,
+                    ip_address TEXT,
+                    user_agent TEXT,
+                    attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    success BOOLEAN DEFAULT 0
+                )
+                """
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_failed_login_username ON failed_login_attempts(username, attempted_at)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_failed_login_timestamp ON failed_login_attempts(attempted_at)"
+            )
+            logger.info("Failed login attempts table ready")
+        except sqlite3.Error as exc:
+            logger.warning("Failed login attempts table creation failed: %s", exc)
 
 
 __all__ = ["DatabaseSchemaMixin"]

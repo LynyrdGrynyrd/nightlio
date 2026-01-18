@@ -89,3 +89,18 @@ class UserService:
         Permanently delete ONE user's data.
         """
         self.db.delete_user_data(user_id)
+
+    def get_user_by_username(self, username: str) -> Optional[Dict]:
+        """Get user by username"""
+        return self.db.get_user_by_username(username)
+
+    def create_user_with_password(
+        self, username: str, password_hash: str, email: str, name: str
+    ) -> Dict:
+        """Create a new user with username and password"""
+        user_id = self.db.create_user_with_password(username, password_hash, email, name)
+        return self.db.get_user_by_id(user_id)
+
+    def update_password(self, user_id: int, password_hash: str) -> None:
+        """Update user password"""
+        self.db.update_password(user_id, password_hash)
