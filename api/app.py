@@ -88,6 +88,27 @@ def create_app(config_name="default"):
     user_service = UserService(db)
     achievement_service = AchievementService(db)
 
+    # Ensure default admin user exists
+    try:
+        from api.utils.password_utils import hash_password
+    except ImportError:
+        from utils.password_utils import hash_password
+
+    try:
+        existing_admin = user_service.get_user_by_username("admin")
+        if not existing_admin:
+            app.logger.info("Creating default admin user...")
+            admin_password_hash = hash_password("admin")
+            user_service.create_user_with_password(
+                username="admin",
+                password_hash=admin_password_hash,
+                email="admin@localhost",
+                name="Administrator"
+            )
+            app.logger.info("Default admin user created successfully")
+    except Exception as e:
+        app.logger.warning(f"Could not create default admin user: {e}")
+
     # Register blueprints with services
     app.register_blueprint(create_auth_routes(user_service), url_prefix="/api")
     

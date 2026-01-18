@@ -15,6 +15,8 @@ export interface User {
 
 export interface PublicConfig {
   google_client_id?: string;
+  enable_google_oauth?: boolean;
+  enable_registration?: boolean;
   features?: string[];
 }
 
@@ -421,6 +423,20 @@ class ApiService {
   async localLogin(): Promise<AuthResponse> {
     return this.request<AuthResponse>('/api/auth/local/login', {
       method: 'POST',
+    });
+  }
+
+  async usernamePasswordAuth(username: string, password: string): Promise<AuthResponse> {
+    return this.request<AuthResponse>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    });
+  }
+
+  async register(username: string, password: string, email?: string, name?: string): Promise<AuthResponse> {
+    return this.request<AuthResponse>('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ username, password, email, name }),
     });
   }
 

@@ -9,6 +9,7 @@ from api.services.user_service import UserService
 from api.utils.rate_limiter import rate_limit
 from api.config import get_config
 from api.utils.auth_middleware import require_auth, get_current_user_id
+from api.utils.password_utils import hash_password, verify_password
 
 
 def create_auth_routes(user_service: UserService):
@@ -154,6 +155,115 @@ def create_auth_routes(user_service: UserService):
         except Exception as e:
             current_app.logger.error(f"Local login error: {e}")
             return jsonify({"error": "Authentication failed"}), 500
+
+    @auth_bp.route("/auth/login", methods=["POST"])
+    @rate_limit(max_requests=30, window_minutes=1)
+    def username_password_login():
+        """Login with username and password."""
+        try:
+            data = request.json
+            username = data.get("username")
+            password = data.get("password")
+
+            if not username or not password:
+                return jsonify({"error": "Username and password are required"}), 400
+
+            # Get user by username
+            user = user_service.get_user_by_username(username)
+            if not user:
+                return jsonify({"error": "Invalid username or password"}), 401
+
+            # Verify password
+            if not user.get("password_hash"):
+                return jsonify({"error": "Invalid username or password"}), 401
+
+            if not verify_password(password, user["password_hash"]):
+                return jsonify({"error": "Invalid username or password"}), 401
+
+            # Generate JWT token
+            jwt_token = generate_jwt_token(user["id"])
+
+            return jsonify(
+                {
+                    "token": jwt_token,
+                    "user": {
+                        "id": user["id"],
+                        "name": user["name"],
+                        "email": user["email"],
+                        "avatar_url": user.get("avatar_url"),
+                    },
+                }
+            )
+
+        except Exception as e:
+            current_app.logger.error(f"Username/password login error: {str(e)}")
+            return jsonify({"error": "Authentication failed"}), 500
+
+    @auth_bp.route("/auth/register", methods=["POST"])
+    @rate_limit(max_requests=10, window_minutes=1)
+    def register():
+        """Register a new user with username and password."""
+        try:
+            cfg = get_config()
+            if not cfg.ENABLE_REGISTRATION:
+                return jsonify({"error": "Registration is disabled"}), 403
+
+            data = request.json
+            username = data.get("username")
+            password = data.get("password")
+            email = data.get("email", "")
+            name = data.get("name", username)
+
+            if not username or not password:
+                return jsonify({"error": "Username and password are required"}), 400
+
+            # Validate username (alphanumeric and underscores only)
+            if not username.replace("_", "").isalnum():
+                return jsonify(
+                    {"error": "Username can only contain letters, numbers, and underscores"}
+                ), 400
+
+            # Validate password length
+            if len(password) < 4:
+                return jsonify({"error": "Password must be at least 4 characters"}), 400
+
+            # Check if username already exists
+            existing_user = user_service.get_user_by_username(username)
+            if existing_user:
+                return jsonify({"error": "Username already exists"}), 409
+
+            # Hash password
+            password_hash = hash_password(password)
+
+            # Create user
+            user = user_service.create_user_with_password(
+                username=username,
+                password_hash=password_hash,
+                email=email,
+                name=name,
+            )
+
+            # Generate JWT token
+            jwt_token = generate_jwt_token(user["id"])
+
+            return (
+                jsonify(
+                    {
+                        "token": jwt_token,
+                        "user": {
+                            "id": user["id"],
+                            "name": user["name"],
+                            "email": user["email"],
+                            "avatar_url": user.get("avatar_url"),
+                        },
+                    }
+                ),
+                201,
+            )
+
+        except Exception as e:
+            current_app.logger.error(f"Registration error: {str(e)}")
+            return jsonify({"error": "Registration failed"}), 500
 
     @auth_bp.route("/auth/user", methods=["DELETE"])
     @require_auth

@@ -55,6 +55,12 @@ const LoginPage = () => {
   const { config } = useConfig();
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPasswordLogin, setShowPasswordLogin] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
 
   const googleClientId = useMemo(
     () => config.google_client_id || FALLBACK_GOOGLE_CLIENT_ID,
@@ -230,6 +236,56 @@ const LoginPage = () => {
     window.location.reload();
   }, []);
 
+  const handleUsernamePasswordLogin = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!username || !password) {
+      setMessage('Username and password are required');
+      return;
+    }
+
+    setIsLoading(true);
+    setMessage('');
+
+    try {
+      const result = await login(undefined, { username, password });
+      if (!result.success) {
+        setMessage(result.error || 'Login failed. Please try again.');
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
+    } catch (error) {
+      console.error('Login with username/password failed.', error);
+      setMessage('Login failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [username, password, login, navigate]);
+
+  const handleRegistration = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!username || !password) {
+      setMessage('Username and password are required');
+      return;
+    }
+
+    setIsLoading(true);
+    setMessage('');
+
+    try {
+      const result = await login(undefined, { username, password, email, name: name || username, isRegistration: true });
+      if (!result.success) {
+        setMessage(result.error || 'Registration failed. Please try again.');
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
+    } catch (error) {
+      console.error('Registration failed.', error);
+      setMessage('Registration failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [username, password, email, name, login, navigate]);
+
   const handleGoogleButtonMouseEnter = (e: MouseEvent<HTMLButtonElement>) => {
     if (!isLoading) {
       e.currentTarget.style.backgroundColor = '#f8f9fa';
@@ -311,20 +367,193 @@ const LoginPage = () => {
               {isLoading ? 'Loading…' : 'Continue'}
             </button>
           ) : (
-            <button
-              type="button"
-              className="login-page__button login-page__button--google"
-              onClick={handleGoogleLogin}
-              disabled={isLoading}
-              style={googleButtonStyle}
-              onMouseEnter={handleGoogleButtonMouseEnter}
-              onMouseLeave={handleGoogleButtonMouseLeave}
-            >
-              <span aria-hidden="true" style={{ display: 'flex', alignItems: 'center' }}>
-                {isLoading ? <LoadingSpinner /> : <GoogleIcon />}
-              </span>
-              <span>{isLoading ? 'Signing in…' : 'Sign in with Google'}</span>
-            </button>
+            <>
+              {!showPasswordLogin ? (
+                <>
+                  <button
+                    type="button"
+                    className="login-page__button login-page__button--google"
+                    onClick={handleGoogleLogin}
+                    disabled={isLoading}
+                    style={googleButtonStyle}
+                    onMouseEnter={handleGoogleButtonMouseEnter}
+                    onMouseLeave={handleGoogleButtonMouseLeave}
+                  >
+                    <span aria-hidden="true" style={{ display: 'flex', alignItems: 'center' }}>
+                      {isLoading ? <LoadingSpinner /> : <GoogleIcon />}
+                    </span>
+                    <span>{isLoading ? 'Signing in…' : 'Sign in with Google'}</span>
+                  </button>
+                  <div style={{ margin: '1rem 0', textAlign: 'center', fontSize: '0.875rem', opacity: 0.6 }}>or</div>
+                  <button
+                    type="button"
+                    className="login-page__button"
+                    onClick={() => setShowPasswordLogin(true)}
+                    style={{ background: '#f8f9fa', color: '#3c4043', border: '1px solid #dadce0' }}
+                  >
+                    Sign in with Username & Password
+                  </button>
+                </>
+              ) : (
+                <>
+                  {!isRegistering ? (
+                    <form onSubmit={handleUsernamePasswordLogin} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <input
+                        type="text"
+                        placeholder="Username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        disabled={isLoading}
+                        style={{
+                          padding: '0.75rem',
+                          fontSize: '0.925rem',
+                          border: '1px solid #dadce0',
+                          borderRadius: '4px',
+                        }}
+                      />
+                      <input
+                        type="password"
+                        placeholder="Password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        disabled={isLoading}
+                        style={{
+                          padding: '0.75rem',
+                          fontSize: '0.925rem',
+                          border: '1px solid #dadce0',
+                          borderRadius: '4px',
+                        }}
+                      />
+                      <button
+                        type="submit"
+                        className="login-page__button"
+                        disabled={isLoading}
+                        style={{ marginTop: '0.5rem' }}
+                      >
+                        {isLoading ? 'Signing in…' : 'Sign In'}
+                      </button>
+                      {config.enable_registration && (
+                        <button
+                          type="button"
+                          onClick={() => setIsRegistering(true)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#1a73e8',
+                            fontSize: '0.875rem',
+                            cursor: 'pointer',
+                            padding: '0.5rem',
+                          }}
+                        >
+                          Create an account
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowPasswordLogin(false);
+                          setUsername('');
+                          setPassword('');
+                        }}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#5f6368',
+                          fontSize: '0.875rem',
+                          cursor: 'pointer',
+                          padding: '0.5rem',
+                        }}
+                      >
+                        Back to Google Sign-In
+                      </button>
+                    </form>
+                  ) : (
+                    <form onSubmit={handleRegistration} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <input
+                        type="text"
+                        placeholder="Username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        disabled={isLoading}
+                        style={{
+                          padding: '0.75rem',
+                          fontSize: '0.925rem',
+                          border: '1px solid #dadce0',
+                          borderRadius: '4px',
+                        }}
+                      />
+                      <input
+                        type="password"
+                        placeholder="Password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        disabled={isLoading}
+                        style={{
+                          padding: '0.75rem',
+                          fontSize: '0.925rem',
+                          border: '1px solid #dadce0',
+                          borderRadius: '4px',
+                        }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Name (optional)"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        disabled={isLoading}
+                        style={{
+                          padding: '0.75rem',
+                          fontSize: '0.925rem',
+                          border: '1px solid #dadce0',
+                          borderRadius: '4px',
+                        }}
+                      />
+                      <input
+                        type="email"
+                        placeholder="Email (optional)"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        disabled={isLoading}
+                        style={{
+                          padding: '0.75rem',
+                          fontSize: '0.925rem',
+                          border: '1px solid #dadce0',
+                          borderRadius: '4px',
+                        }}
+                      />
+                      <button
+                        type="submit"
+                        className="login-page__button"
+                        disabled={isLoading}
+                        style={{ marginTop: '0.5rem' }}
+                      >
+                        {isLoading ? 'Creating account…' : 'Create Account'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsRegistering(false);
+                          setUsername('');
+                          setPassword('');
+                          setEmail('');
+                          setName('');
+                        }}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#5f6368',
+                          fontSize: '0.875rem',
+                          cursor: 'pointer',
+                          padding: '0.5rem',
+                        }}
+                      >
+                        Back to Sign In
+                      </button>
+                    </form>
+                  )}
+                </>
+              )}
+            </>
           )}
 
           <div className="login-page__footer" style={footerStyle}>
@@ -332,7 +561,7 @@ const LoginPage = () => {
             <span>
               {isSelfHost
                 ? 'No external authentication required.'
-                : 'We only use your Google account for authentication.'}
+                : 'Your data is secure and private.'}
             </span>
           </div>
         </div>

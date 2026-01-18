@@ -69,16 +69,35 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
             """
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                google_id TEXT UNIQUE NOT NULL,
+                google_id TEXT UNIQUE,
                 email TEXT NOT NULL,
                 name TEXT NOT NULL,
                 avatar_url TEXT,
+                username TEXT UNIQUE,
+                password_hash TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
             """
         )
+        self._migrate_users_table_schema(conn)
         logger.info("Users table ready")
+
+    def _migrate_users_table_schema(self, conn: sqlite3.Connection) -> None:
+        """Add username and password_hash columns if they don't exist."""
+        try:
+            cur = conn.execute("PRAGMA table_info(users)")
+            cols: Iterable[str] = {row[1] for row in cur.fetchall()}
+
+            if "username" not in cols:
+                conn.execute("ALTER TABLE users ADD COLUMN username TEXT UNIQUE")
+                logger.info("Users table migrated to include username")
+
+            if "password_hash" not in cols:
+                conn.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
+                logger.info("Users table migrated to include password_hash")
+        except sqlite3.Error as exc:
+            logger.warning("Users table migration failed (non-critical): %s", exc)
 
     def _create_mood_entries_table(self, conn: sqlite3.Connection) -> None:
         conn.execute(
