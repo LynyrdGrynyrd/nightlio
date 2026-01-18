@@ -15,11 +15,11 @@ interface NavItem {
 
 const BottomNav = ({ onLoadStatistics }: BottomNavProps) => {
   const items: NavItem[] = [
-    { key: '/dashboard', label: 'Home', icon: Home, end: true },
-    { key: '/dashboard/goals', label: 'Goals', icon: Target },
-    { key: '/dashboard/stats', label: 'Stats', icon: BarChart3 },
-    { key: '/dashboard/achievements', label: 'Awards', icon: Trophy },
-    { key: '/dashboard/settings', label: 'Settings', icon: Settings },
+    { key: '.', label: 'Home', icon: Home, end: true },
+    { key: 'goals', label: 'Goals', icon: Target },
+    { key: 'stats', label: 'Stats', icon: BarChart3 },
+    { key: 'achievements', label: 'Awards', icon: Trophy },
+    { key: 'settings', label: 'Settings', icon: Settings },
   ];
 
   const location = useLocation();
