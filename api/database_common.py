@@ -30,7 +30,8 @@ class SQLQueries:
     )
 
     GET_USER_BY_ID = (
-        "SELECT id, google_id, email, name, avatar_url, created_at, last_login "
+        "SELECT id, google_id, username, email, name, avatar_url, password_hash, "
+        "created_at, last_login "
         "FROM users WHERE id = ?"
     )
 

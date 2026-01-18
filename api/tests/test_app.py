@@ -2,13 +2,18 @@
 """
 Simple test script to verify the refactored API works
 """
+import os
 import requests
 import sys
+import pytest
 
 BASE_URL = "http://localhost:5000/api"
 
 
 def test_api():
+    if not os.getenv("RUN_API_INTEGRATION"):
+        pytest.skip("Integration test requires RUN_API_INTEGRATION=1 and API running.")
+
     print("Testing refactored API...")
     
     # 1. Authenticate
