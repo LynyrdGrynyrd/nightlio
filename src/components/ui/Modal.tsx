@@ -1,7 +1,5 @@
 import { useEffect, ReactNode } from 'react';
 
-// ========== Types ==========
-
 interface ModalProps {
   open: boolean;
   title: string;
@@ -9,8 +7,6 @@ interface ModalProps {
   onClose: () => void;
   maxWidth?: number;
 }
-
-// ========== Component ==========
 
 const Modal = ({ open, title, children, onClose, maxWidth = 520 }: ModalProps) => {
   useEffect(() => {
@@ -26,7 +22,6 @@ const Modal = ({ open, title, children, onClose, maxWidth = 520 }: ModalProps) =
   }, [open, onClose]);
 
   if (!open) return null;
-
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1000 }} aria-modal="true" role="dialog">
       <div

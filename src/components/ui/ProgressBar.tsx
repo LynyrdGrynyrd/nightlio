@@ -1,12 +1,8 @@
-// ========== Types ==========
-
 interface ProgressBarProps {
   value?: number;
   max?: number;
   label?: string;
 }
-
-// ========== Component ==========
 
 const ProgressBar = ({ value = 0, max = 100, label }: ProgressBarProps) => {
   const pct = Math.min(100, Math.max(0, (value / max) * 100));

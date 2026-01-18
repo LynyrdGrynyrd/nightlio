@@ -1,15 +1,11 @@
 import { CSSProperties } from 'react';
 
-// ========== Types ==========
-
 interface SkeletonProps {
   height?: number | string;
   width?: number | string;
   radius?: number;
   style?: CSSProperties;
 }
-
-// ========== Component ==========
 
 const Skeleton = ({ height = 16, width = '100%', radius = 8, style = {} }: SkeletonProps) => (
   <div
