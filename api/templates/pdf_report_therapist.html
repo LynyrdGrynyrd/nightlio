@@ -189,6 +189,16 @@
             <td>Reporting Period</td>
             <td>{{ start_date }} to {{ end_date }}</td>
         </tr>
+        <tr>
+            <td>Mood Stability</td>
+            <td>
+                {% if mood_stability.stability_score is not none %}
+                    {{ mood_stability.stability_score }} / 100 ({{ mood_stability.interpretation }})
+                {% else %}
+                    Not enough data
+                {% endif %}
+            </td>
+        </tr>
     </table>
 
     <div class="mood-scale">

@@ -1130,7 +1130,7 @@ interface OftenTogetherProps {
 - [x] **Calculate mood stability score (0-100)**
 - [x] **Create Mood Stability card component**
 - [x] **Add trend line visualization**
-- [ ] **Include in weekly/monthly reports**
+- [x] **Include in weekly/monthly reports**
 
 **Effort:** Low | **Files:** `api/services/analytics_service.py`, `src/components/stats/MoodStability.jsx`
 
@@ -1845,7 +1845,7 @@ pillow>=10.0            # Image processing (thumbnails)
 | | Important Days (Countdowns) | ✅ | ❌ | 🎯 HIGH |
 | | Global Photo Gallery | ✅ | ❌ | MEDIUM |
 | | Home Screen Widgets | ✅ | ❌ | LOW (PWA limitation) |
-| | Mood Stability Metric | ✅ | ❌ | MEDIUM |
+| | Mood Stability Metric | ✅ | ✅ | MEDIUM |
 | **UX ENHANCEMENTS** | | | | |
 | | Smart FAB (context-aware) | ✅ | ❌ | MEDIUM |
 | | Enhanced Streak Visualizer | ✅ | ⚠️ | MEDIUM |
