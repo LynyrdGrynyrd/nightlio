@@ -1,60 +1,24 @@
-import { useCallback, useEffect, useMemo, useState, MouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, CSSProperties, MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useConfig } from '../../contexts/ConfigContext';
 import './LoginPage.css';
 
-// ========== Google Types ==========
-// Extend window with Google Identity Services API
 declare global {
   interface Window {
     google?: {
-      accounts?: {
-        id?: {
-          initialize: (config: GoogleIdConfiguration) => void;
-          prompt: (callback?: (notification: PromptMomentNotification) => void) => void;
-          renderButton: (parent: HTMLElement, options: GsiButtonConfiguration) => void;
+      accounts: {
+        id: {
+          initialize: (config: { client_id: string; callback: (response: any) => void }) => void;
+          prompt: (callback?: (notification: any) => void) => void;
+          renderButton: (parent: HTMLElement, options: any) => void;
         };
       };
     };
   }
 }
 
-interface GoogleIdConfiguration {
-  client_id: string;
-  callback: (response: CredentialResponse) => void;
-}
-
-interface CredentialResponse {
-  credential?: string;
-}
-
-interface PromptMomentNotification {
-  isNotDisplayed: () => boolean;
-  isSkippedMoment: () => boolean;
-}
-
-interface GsiButtonConfiguration {
-  theme?: 'outline' | 'filled_blue' | 'filled_black';
-  size?: 'large' | 'medium' | 'small';
-}
-
-// ========== Component Types ==========
-
-interface PreviousStyles {
-  background: string;
-  padding: string;
-  margin: string;
-  boxShadow: string;
-  border: string;
-  borderRadius: string;
-}
-
-// ========== Subcomponents ==========
-
-// Prefer runtime config-provided client ID to avoid build-time mismatch.
-// Falls back to Vite env only if present; otherwise null to block incorrect init.
 const FALLBACK_GOOGLE_CLIENT_ID =
   (import.meta.env && import.meta.env.VITE_GOOGLE_CLIENT_ID) || null;
 
@@ -85,8 +49,6 @@ const GoogleIcon = () => (
   </svg>
 );
 
-// ========== Main Component ==========
-
 const LoginPage = () => {
   const navigate = useNavigate();
   const { login, isAuthenticated } = useAuth();
@@ -105,7 +67,7 @@ const LoginPage = () => {
     const rootElement = document.getElementById('root');
     if (!rootElement) return undefined;
 
-    const previousStyles: PreviousStyles = {
+    const previousStyles = {
       background: rootElement.style.background,
       padding: rootElement.style.padding,
       margin: rootElement.style.margin,
@@ -129,7 +91,7 @@ const LoginPage = () => {
   }, []);
 
   const handleGoogleResponse = useCallback(
-    async (response: CredentialResponse) => {
+    async (response: any) => {
       if (!response?.credential) {
         setMessage('Google response was empty. Please try again.');
         return;
@@ -236,22 +198,22 @@ const LoginPage = () => {
     }
 
     try {
-      window.google.accounts.id.prompt((notification) => {
+      window.google.accounts.id.prompt((notification: any) => {
         if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
           const tempDiv = document.createElement('div');
           tempDiv.style.position = 'absolute';
           tempDiv.style.left = '-9999px';
           document.body.appendChild(tempDiv);
 
-          window.google.accounts.id.renderButton(tempDiv, {
+          window.google!.accounts.id.renderButton(tempDiv, {
             theme: 'outline',
             size: 'large',
           });
 
           setTimeout(() => {
-            const googleBtn = tempDiv.querySelector('div[role="button"]');
+            const googleBtn = tempDiv.querySelector('div[role="button"]') as HTMLElement;
             if (googleBtn) {
-              (googleBtn as HTMLElement).click();
+              googleBtn.click();
             }
             document.body.removeChild(tempDiv);
           }, 100);
@@ -268,41 +230,63 @@ const LoginPage = () => {
     window.location.reload();
   }, []);
 
-  const handleMouseEnter = (e: MouseEvent<HTMLButtonElement>) => {
+  const handleGoogleButtonMouseEnter = (e: MouseEvent<HTMLButtonElement>) => {
     if (!isLoading) {
       e.currentTarget.style.backgroundColor = '#f8f9fa';
       e.currentTarget.style.boxShadow = '0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15)';
     }
   };
 
-  const handleMouseLeave = (e: MouseEvent<HTMLButtonElement>) => {
+  const handleGoogleButtonMouseLeave = (e: MouseEvent<HTMLButtonElement>) => {
     e.currentTarget.style.backgroundColor = 'white';
     e.currentTarget.style.boxShadow = 'none';
   };
 
   const isSelfHost = !config.enable_google_oauth;
 
+  const cardStyle: CSSProperties = { maxWidth: '420px', padding: '3rem 2rem' };
+  const brandStyle: CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '0.5rem',
+    marginBottom: '0.75rem'
+  };
+  const logoStyle: CSSProperties = {
+    width: '1em',
+    height: '1em',
+    objectFit: 'contain',
+    display: 'block'
+  };
+  const googleButtonStyle: CSSProperties = {
+    background: 'white',
+    color: '#3c4043',
+    border: '1px solid #dadce0',
+    fontWeight: '500',
+    fontSize: '14px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '12px',
+    padding: '10px 24px',
+    transition: 'background-color 0.2s, box-shadow 0.2s',
+  };
+  const footerStyle: CSSProperties = {
+    marginTop: '1.75rem',
+    fontSize: '0.8rem',
+    opacity: 0.6,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '0.5rem'
+  };
+
   return (
     <div className="login-page">
-      <div className="login-page__card" style={{ maxWidth: '420px', padding: '3rem 2rem' }}>
+      <div className="login-page__card" style={cardStyle}>
         <div style={{ marginBottom: '0.5rem' }}>
-          <h1 className="login-page__brand-title" style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.5rem',
-            marginBottom: '0.75rem'
-          }}>
-            <img
-              src="/logo.png"
-              alt="Twilightio logo"
-              style={{
-                width: '1em',
-                height: '1em',
-                objectFit: 'contain',
-                display: 'block'
-              }}
-            />
+          <h1 className="login-page__brand-title" style={brandStyle}>
+            <img src="/logo.png" alt="Twilightio logo" style={logoStyle} />
             Twilightio
           </h1>
           <p className="login-page__brand-subtitle" style={{ marginBottom: 0 }}>Your daily mood companion.</p>
@@ -332,21 +316,9 @@ const LoginPage = () => {
               className="login-page__button login-page__button--google"
               onClick={handleGoogleLogin}
               disabled={isLoading}
-              style={{
-                background: 'white',
-                color: '#3c4043',
-                border: '1px solid #dadce0',
-                fontWeight: '500',
-                fontSize: '14px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '12px',
-                padding: '10px 24px',
-                transition: 'background-color 0.2s, box-shadow 0.2s',
-              }}
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
+              style={googleButtonStyle}
+              onMouseEnter={handleGoogleButtonMouseEnter}
+              onMouseLeave={handleGoogleButtonMouseLeave}
             >
               <span aria-hidden="true" style={{ display: 'flex', alignItems: 'center' }}>
                 {isLoading ? <LoadingSpinner /> : <GoogleIcon />}
@@ -355,15 +327,7 @@ const LoginPage = () => {
             </button>
           )}
 
-          <div className="login-page__footer" style={{
-            marginTop: '1.75rem',
-            fontSize: '0.8rem',
-            opacity: 0.6,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.5rem'
-          }}>
+          <div className="login-page__footer" style={footerStyle}>
             <Lock size={12} aria-hidden="true" style={{ flexShrink: 0 }} />
             <span>
               {isSelfHost
