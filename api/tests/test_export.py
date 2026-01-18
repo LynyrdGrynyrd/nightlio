@@ -5,7 +5,7 @@ import json
 from api.app import create_app
 import os
 
-TEST_DB_PATH = "/tmp/nightlio_test_export.db"
+TEST_DB_PATH = "/tmp/twilightio_test_export.db"
 
 def _reset_test_db():
     if os.path.exists(TEST_DB_PATH):
@@ -15,10 +15,10 @@ def _reset_test_db():
 def client():
     _reset_test_db()
     # Ensure config uses this db path. 
-    # Current TestingConfig uses /tmp/nightlio_test.db
+    # Current TestingConfig uses /tmp/twilightio_test.db
     # We'll just patch env or rely on patching app factory if needed,
-    # but simplest is to reuse standard test db path or just let it use default /tmp/nightlio_test.db
-    # Let's try relying on standard create_app("testing") which uses /tmp/nightlio_test.db
+    # but simplest is to reuse standard test db path or just let it use default /tmp/twilightio_test.db
+    # Let's try relying on standard create_app("testing") which uses /tmp/twilightio_test.db
     app = create_app("testing")
     with app.test_client() as test_client:
         yield test_client
@@ -86,5 +86,5 @@ def test_export_json(client):
     # Generally client fixture yields fresh app but DB file might persist if not cleaned?
     # verify_test_db resets it? 
     # Current fixture creates app("testing"). 
-    # Looking at test_mood_update_endpoint.py, it uses `_reset_test_db` which deletes /tmp/nightlio_test.db
+    # Looking at test_mood_update_endpoint.py, it uses `_reset_test_db` which deletes /tmp/twilightio_test.db
     # So we should be good.

@@ -1,4 +1,4 @@
-name: Publish Nightlio images to GHCR
+name: Publish Twilightio images to GHCR
 
 on:
   push:

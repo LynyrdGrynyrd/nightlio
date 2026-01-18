@@ -9,7 +9,7 @@ def create_misc_routes():
     def health_check():
         return {
             "status": "healthy",
-            "message": "Nightlio API is running",
+            "message": "Twilightio API is running",
             "timestamp": time.time(),
         }
 

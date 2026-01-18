@@ -26,12 +26,12 @@ class Config:
 
     # Database configuration
     DATABASE_PATH = os.environ.get("DATABASE_PATH") or os.path.join(
-        Path(__file__).parent.parent, "data", "nightlio.db"
+        Path(__file__).parent.parent, "data", "twilightio.db"
     )
 
     # CORS configuration
     CORS_ORIGINS = os.environ.get(
-        "CORS_ORIGINS", "http://localhost:5173,https://nightlio.vercel.app"
+        "CORS_ORIGINS", "http://localhost:5173,https://twilightio.vercel.app"
     ).split(",")
 
     # Google OAuth configuration
@@ -57,7 +57,7 @@ class ProductionConfig(Config):
     TESTING = False
 
     # Use Railway's writable directory for database
-    DATABASE_PATH = os.environ.get("DATABASE_PATH") or "/tmp/nightlio.db"
+    DATABASE_PATH = os.environ.get("DATABASE_PATH") or "/tmp/twilightio.db"
 
 
 class TestingConfig(Config):
@@ -66,7 +66,7 @@ class TestingConfig(Config):
     DEBUG = True
     TESTING = True
     # Use a file-backed SQLite DB so multiple connections see the same data
-    DATABASE_PATH = "/tmp/nightlio_test.db"
+    DATABASE_PATH = "/tmp/twilightio_test.db"
 
 
 # Configuration mapping (legacy app factory still uses this).

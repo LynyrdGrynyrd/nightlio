@@ -3,7 +3,7 @@ from api.database import MoodDatabase
 
 @pytest.fixture
 def db(tmp_path):
-    db_file = tmp_path / "test_nightlio.db"
+    db_file = tmp_path / "test_twilightio.db"
     return MoodDatabase(str(db_file))
 
 def test_create_group_option_with_icon(db: MoodDatabase):

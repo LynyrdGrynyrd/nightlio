@@ -11,7 +11,7 @@ class AnalyticsTestDB(MoodDatabase, AnalyticsMixin):
 
 @pytest.fixture
 def db(tmp_path):
-    db_path = tmp_path / "test_nightlio_analytics.db"
+    db_path = tmp_path / "test_twilightio_analytics.db"
     return AnalyticsTestDB(str(db_path), init=True)
 
 def test_get_advanced_correlations_date_filter(db):

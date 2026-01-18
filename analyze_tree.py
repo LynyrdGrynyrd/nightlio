@@ -3,15 +3,15 @@ import os
 import re
 import json
 
-SRC_DIR = "/home/john/nightlio/src"
+SRC_DIR = "/home/john/twilightio/src"
 ENTRY_POINTS = [
-    "/home/john/nightlio/src/main.jsx", 
-    "/home/john/nightlio/src/index.jsx",
-    "/home/john/nightlio/src/index.js",
-    "/home/john/nightlio/src/main.js",
-    "/home/john/nightlio/src/App.jsx", 
-    "/home/john/nightlio/src/index.css",
-    "/home/john/nightlio/src/App.css"
+    "/home/john/twilightio/src/main.jsx", 
+    "/home/john/twilightio/src/index.jsx",
+    "/home/john/twilightio/src/index.js",
+    "/home/john/twilightio/src/main.js",
+    "/home/john/twilightio/src/App.jsx", 
+    "/home/john/twilightio/src/index.css",
+    "/home/john/twilightio/src/App.css"
 ]
 
 files_map = {} # path -> { exports: [], imports: [], raw_content: "" }

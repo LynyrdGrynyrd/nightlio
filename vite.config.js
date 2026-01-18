@@ -13,8 +13,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['logo.png'],
       manifest: {
-        name: 'Nightlio',
-        short_name: 'Nightlio',
+        name: 'Twilightio',
+        short_name: 'Twilightio',
         description: 'A beautiful, self-hosted daily mood tracker and journal',
         theme_color: '#0f172a',
         background_color: '#0f172a',

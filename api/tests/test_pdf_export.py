@@ -2,7 +2,7 @@ import pytest
 from api.app import create_app
 import os
 
-TEST_DB_PATH = "/tmp/nightlio_test_pdf.db"
+TEST_DB_PATH = "/tmp/twilightio_test_pdf.db"
 
 def _reset_test_db():
     if os.path.exists(TEST_DB_PATH):

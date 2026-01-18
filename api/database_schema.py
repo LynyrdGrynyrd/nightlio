@@ -1,4 +1,4 @@
-"""Database schema helpers for Nightlio."""
+"""Database schema helpers for Twilightio."""
 
 from __future__ import annotations
 

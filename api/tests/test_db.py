@@ -12,10 +12,10 @@ def test_database_creation():
 
     # Test different database paths
     test_paths = [
-        "/tmp/nightlio.db",
-        "./nightlio.db",
-        "/app/nightlio.db",
-        os.path.join(os.getcwd(), "nightlio.db"),
+        "/tmp/twilightio.db",
+        "./twilightio.db",
+        "/app/twilightio.db",
+        os.path.join(os.getcwd(), "twilightio.db"),
     ]
 
     for db_path in test_paths:

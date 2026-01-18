@@ -36,7 +36,7 @@ def test_goals_reset_on_new_week_list_endpoint(tmp_path):
     assert goal_id
 
     # Mutate DB to simulate last week's state with partial completion (3/7) and period_start last week
-    db_path = app.config.get("DATABASE_PATH") or "/tmp/nightlio_test.db"
+    db_path = app.config.get("DATABASE_PATH") or "/tmp/twilightio_test.db"
     last_week_monday = _week_start_iso(datetime.now().date() - timedelta(days=7))
     with sqlite3.connect(db_path) as conn:
         conn.execute(
