@@ -1,26 +1,63 @@
+import { CSSProperties } from 'react';
 import HistoryEntry from './HistoryEntry';
 import AddEntryCard from './AddEntryCard';
 import Skeleton from '../ui/Skeleton';
 import EmptyState from '../ui/EmptyState';
-import { HistoryEntry as HistoryEntryType } from '../../types/entry';
 
-// ========== Types ==========
-
-interface HistoryListProps {
-  entries: HistoryEntryType[];
-  loading: boolean;
-  error: string | null;
-  onDelete: (id: number) => void;
-  onEdit: (entry: HistoryEntryType) => void;
+interface Selection {
+  id: number;
+  name: string;
+  icon: string;
 }
 
-// ========== Component ==========
+interface Media {
+  id: number;
+  file_path: string;
+}
+
+interface Entry {
+  id: number;
+  date: string;
+  created_at?: string;
+  content?: string;
+  mood: number;
+  selections?: Selection[];
+  media?: Media[];
+}
+
+interface HistoryListProps {
+  entries: Entry[];
+  loading: boolean;
+  error?: string;
+  onDelete: (id: number) => void;
+  onEdit?: (entry: Entry) => void;
+}
 
 const HistoryList = ({ entries, loading, error, onDelete, onEdit }: HistoryListProps) => {
+  const containerStyle: CSSProperties = {
+    textAlign: 'left',
+    padding: '1rem 0'
+  };
+
+  const skeletonHeaderStyle: CSSProperties = {
+    marginBottom: 12
+  };
+
+  const errorStyle: CSSProperties = {
+    textAlign: 'center',
+    color: 'var(--accent-600)',
+    padding: '2rem'
+  };
+
+  const emptyContainerStyle: CSSProperties = {
+    textAlign: 'left',
+    marginTop: 0
+  };
+
   if (loading) {
     return (
-      <div style={{ textAlign: 'left', padding: '1rem 0' }}>
-        <Skeleton height={28} width={220} style={{ marginBottom: 12 }} />
+      <div style={containerStyle}>
+        <Skeleton height={28} width={220} style={skeletonHeaderStyle} />
         <div className="card-grid">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i}>
@@ -34,7 +71,7 @@ const HistoryList = ({ entries, loading, error, onDelete, onEdit }: HistoryListP
 
   if (error) {
     return (
-      <div style={{ textAlign: 'center', color: 'var(--accent-600)', padding: '2rem' }}>
+      <div style={errorStyle}>
         {error}
       </div>
     );
@@ -42,7 +79,7 @@ const HistoryList = ({ entries, loading, error, onDelete, onEdit }: HistoryListP
 
   if (entries.length === 0) {
     return (
-      <div style={{ textAlign: 'left', marginTop: 0 }}>
+      <div style={emptyContainerStyle}>
         <div className="card-grid">
           <AddEntryCard />
           <div className="col-span-full">
@@ -58,7 +95,7 @@ const HistoryList = ({ entries, loading, error, onDelete, onEdit }: HistoryListP
   }
 
   return (
-    <div style={{ textAlign: 'left', marginTop: 0 }}>
+    <div style={emptyContainerStyle}>
       <div className="card-grid">
         <AddEntryCard />
         {entries.map(entry => (

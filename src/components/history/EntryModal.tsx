@@ -1,22 +1,38 @@
-import { useEffect, MouseEvent } from 'react';
+import { useEffect, CSSProperties, MouseEvent } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { getIconComponent } from '../ui/IconPicker';
-import { HistoryEntry } from '../../types/entry';
 
-// ========== Types ==========
+interface Selection {
+  id: number;
+  name: string;
+  icon: string;
+}
+
+interface Media {
+  id: number;
+  file_path: string;
+}
+
+interface Entry {
+  id: number;
+  date: string;
+  created_at?: string;
+  content?: string;
+  mood: number;
+  selections?: Selection[];
+  media?: Media[];
+}
 
 interface EntryModalProps {
   isOpen: boolean;
-  entry: HistoryEntry | null;
+  entry: Entry | null;
   onClose: () => void;
   onDelete?: () => void;
   isDeleting?: boolean;
   onEdit?: () => void;
 }
 
-// ========== Styles ==========
-
-const backdropStyle: React.CSSProperties = {
+const backdropStyle: CSSProperties = {
   position: 'fixed',
   inset: 0,
   background: 'rgba(0,0,0,0.5)',
@@ -26,7 +42,7 @@ const backdropStyle: React.CSSProperties = {
   zIndex: 100,
 };
 
-const panelStyle: React.CSSProperties = {
+const panelStyle: CSSProperties = {
   width: 'min(820px, 92vw)',
   maxHeight: '85vh',
   overflow: 'auto',
@@ -37,9 +53,7 @@ const panelStyle: React.CSSProperties = {
   padding: '20px',
 };
 
-// ========== Helper Functions ==========
-
-const deriveTitleBody = (content: string = ''): { title: string; body: string } => {
+const deriveTitleBody = (content = '') => {
   const text = (content || '').replace(/\r\n/g, '\n').trim();
   if (!text) return { title: '', body: '' };
   const lines = text.split('\n');
@@ -62,8 +76,6 @@ const deriveTitleBody = (content: string = ''): { title: string; body: string } 
   return { title: first, body: '' };
 };
 
-// ========== Component ==========
-
 const EntryModal = ({ isOpen, entry, onClose, onDelete, isDeleting, onEdit }: EntryModalProps) => {
   useEffect(() => {
     if (!isOpen) return;
@@ -85,32 +97,110 @@ const EntryModal = ({ isOpen, entry, onClose, onDelete, isDeleting, onEdit }: En
 
   const { title, body } = deriveTitleBody(entry.content);
 
+  const headerStyle: CSSProperties = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 12
+  };
+
+  const dateContainerStyle: CSSProperties = {
+    minWidth: 0
+  };
+
+  const dateStyle: CSSProperties = {
+    fontWeight: 600,
+    color: 'var(--text)'
+  };
+
+  const timeStyle: CSSProperties = {
+    fontSize: '0.85rem',
+    color: 'color-mix(in oklab, var(--text), transparent 30%)'
+  };
+
+  const buttonsStyle: CSSProperties = {
+    display: 'flex',
+    gap: 8
+  };
+
+  const editButtonStyle: CSSProperties = {
+    background: 'var(--accent-bg)',
+    color: '#fff',
+    border: '1px solid var(--accent-bg)',
+    borderRadius: 10,
+    padding: '8px 12px',
+    fontWeight: 600,
+    boxShadow: 'var(--shadow-sm)'
+  };
+
+  const deleteButtonStyle: CSSProperties = {
+    background: 'var(--danger)',
+    color: '#fff',
+    border: '1px solid var(--danger)',
+    borderRadius: 10,
+    padding: '8px 12px',
+    fontWeight: 600,
+    boxShadow: 'var(--shadow-sm)'
+  };
+
+  const titleContainerStyle: CSSProperties = {
+    marginBottom: 8
+  };
+
+  const titleHeadingStyle: CSSProperties = {
+    margin: 0
+  };
+
+  const tagsContainerStyle: CSSProperties = {
+    marginBottom: 12
+  };
+
+  const tagStyle: CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px'
+  };
+
+  const mediaGridStyle: CSSProperties = {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+    gap: '12px',
+    marginBottom: '20px'
+  };
+
+  const mediaLinkStyle: CSSProperties = {
+    borderRadius: '12px',
+    overflow: 'hidden',
+    border: '1px solid var(--border)',
+    display: 'block'
+  };
+
+  const mediaImageStyle: CSSProperties = {
+    width: '100%',
+    aspectRatio: '1/1',
+    objectFit: 'cover',
+    display: 'block'
+  };
+
   return (
     <div style={backdropStyle} onClick={onBackdrop} role="dialog" aria-modal="true">
       <div style={panelStyle}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 12 }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 600, color: 'var(--text)' }}>{entry.date}</div>
+        <div style={headerStyle}>
+          <div style={dateContainerStyle}>
+            <div style={dateStyle}>{entry.date}</div>
             {entry.created_at && (
-              <div style={{ fontSize: '0.85rem', color: 'color-mix(in oklab, var(--text), transparent 30%)' }}>
+              <div style={timeStyle}>
                 {new Date(entry.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </div>
             )}
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={buttonsStyle}>
             {onEdit && (
               <button
                 onClick={(e) => { e.stopPropagation(); onEdit(); }}
                 disabled={isDeleting}
-                style={{
-                  background: 'var(--accent-bg)',
-                  color: '#fff',
-                  border: '1px solid var(--accent-bg)',
-                  borderRadius: 10,
-                  padding: '8px 12px',
-                  fontWeight: 600,
-                  boxShadow: 'var(--shadow-sm)'
-                }}
+                style={editButtonStyle}
                 aria-label="Edit entry"
               >
                 Edit
@@ -120,15 +210,7 @@ const EntryModal = ({ isOpen, entry, onClose, onDelete, isDeleting, onEdit }: En
               <button
                 onClick={(e) => { e.stopPropagation(); onDelete(); }}
                 disabled={isDeleting}
-                style={{
-                  background: 'var(--danger)',
-                  color: '#fff',
-                  border: '1px solid var(--danger)',
-                  borderRadius: 10,
-                  padding: '8px 12px',
-                  fontWeight: 600,
-                  boxShadow: 'var(--shadow-sm)'
-                }}
+                style={deleteButtonStyle}
                 aria-label="Delete entry"
               >
                 {isDeleting ? 'Deleting…' : 'Delete'}
@@ -137,16 +219,16 @@ const EntryModal = ({ isOpen, entry, onClose, onDelete, isDeleting, onEdit }: En
           </div>
         </div>
         {title && (
-          <div className="history-markdown" style={{ marginBottom: 8 }}>
-            <h1 style={{ margin: 0 }}>{title}</h1>
+          <div className="history-markdown" style={titleContainerStyle}>
+            <h1 style={titleHeadingStyle}>{title}</h1>
           </div>
         )}
         {entry.selections && entry.selections.length > 0 && (
-          <div className="tag-list" style={{ marginBottom: 12 }}>
+          <div className="tag-list" style={tagsContainerStyle}>
             {entry.selections.map((s) => {
               const Icon = getIconComponent(s.icon);
               return (
-                <span key={s.id} className="tag" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span key={s.id} className="tag" style={tagStyle}>
                   {Icon && <Icon size={12} />}
                   {s.name}
                 </span>
@@ -156,24 +238,19 @@ const EntryModal = ({ isOpen, entry, onClose, onDelete, isDeleting, onEdit }: En
         )}
 
         {entry.media && entry.media.length > 0 && (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-            gap: '12px',
-            marginBottom: '20px'
-          }}>
+          <div style={mediaGridStyle}>
             {entry.media.map(media => (
               <a
                 key={media.id}
                 href={`/api/media/${media.file_path}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)', display: 'block' }}
+                style={mediaLinkStyle}
               >
                 <img
                   src={`/api/media/${media.file_path}`}
                   alt="Attachment"
-                  style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', display: 'block' }}
+                  style={mediaImageStyle}
                 />
               </a>
             ))}

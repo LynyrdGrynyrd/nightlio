@@ -1,7 +1,5 @@
 import { Plus } from 'lucide-react';
-import { KeyboardEvent } from 'react';
-
-// ========== Component ==========
+import { KeyboardEvent, CSSProperties } from 'react';
 
 const AddEntryCard = () => {
   const handleAdd = () => {
@@ -15,6 +13,40 @@ const AddEntryCard = () => {
     }
   };
 
+  const cardStyle: CSSProperties = {
+    display: 'grid',
+    placeItems: 'center',
+    minHeight: 200,
+    background: 'var(--accent-bg-softer)',
+    borderStyle: 'dashed',
+    borderColor: 'color-mix(in oklab, var(--accent-600), transparent 40%)',
+    cursor: 'pointer',
+    transition: 'background 0.2s, border-color 0.2s'
+  };
+
+  const contentStyle: CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 8,
+    color: 'var(--accent-600)'
+  };
+
+  const iconContainerStyle: CSSProperties = {
+    width: 56,
+    height: 56,
+    borderRadius: '50%',
+    display: 'grid',
+    placeItems: 'center',
+    background: 'var(--accent-bg)',
+    color: '#fff',
+    boxShadow: 'var(--shadow-sm)'
+  };
+
+  const labelStyle: CSSProperties = {
+    fontWeight: 600
+  };
+
   return (
     <div
       className="entry-card"
@@ -22,33 +54,15 @@ const AddEntryCard = () => {
       tabIndex={0}
       onClick={handleAdd}
       onKeyDown={handleKeyDown}
-      style={{
-        display: 'grid',
-        placeItems: 'center',
-        minHeight: 200,
-        background: 'var(--accent-bg-softer)',
-        borderStyle: 'dashed',
-        borderColor: 'color-mix(in oklab, var(--accent-600), transparent 40%)',
-        cursor: 'pointer',
-        transition: 'background 0.2s, border-color 0.2s'
-      }}
+      style={cardStyle}
       aria-label="Add Entry"
       title="Add Entry"
     >
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, color: 'var(--accent-600)' }}>
-        <div style={{
-          width: 56,
-          height: 56,
-          borderRadius: '50%',
-          display: 'grid',
-          placeItems: 'center',
-          background: 'var(--accent-bg)',
-          color: '#fff',
-          boxShadow: 'var(--shadow-sm)'
-        }}>
+      <div style={contentStyle}>
+        <div style={iconContainerStyle}>
           <Plus size={24} />
         </div>
-        <div style={{ fontWeight: 600 }}>Add Entry</div>
+        <div style={labelStyle}>Add Entry</div>
       </div>
     </div>
   );
