@@ -82,6 +82,7 @@ export interface GroupOption {
   id: number;
   group_id: number;
   name: string;
+  icon?: string;
   emoji?: string;
   color?: string;
   order_index: number;
@@ -102,6 +103,7 @@ export interface CreateGroupData {
 
 export interface CreateGroupOptionData {
   name: string;
+  icon?: string;
   emoji?: string;
   color?: string;
 }
