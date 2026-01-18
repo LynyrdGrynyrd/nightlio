@@ -2,12 +2,9 @@ import { useOfflineSync } from '../../hooks/useOfflineSync';
 import { WifiOff, RefreshCw, Cloud } from 'lucide-react';
 import './OfflineIndicator.css';
 
-// ========== Component ==========
-
 const OfflineIndicator = () => {
   const { isOnline, isSyncing, pendingCount } = useOfflineSync();
 
-  // Syncing state (amber, animated)
   if (isSyncing) {
     return (
       <div className="offline-indicator offline-indicator--syncing">
@@ -17,7 +14,6 @@ const OfflineIndicator = () => {
     );
   }
 
-  // Offline state (red)
   if (!isOnline) {
     return (
       <div className="offline-indicator offline-indicator--offline">
@@ -27,7 +23,6 @@ const OfflineIndicator = () => {
     );
   }
 
-  // Online with pending items (blue badge)
   if (pendingCount > 0) {
     return (
       <div className="offline-indicator offline-indicator--pending">
@@ -37,7 +32,6 @@ const OfflineIndicator = () => {
     );
   }
 
-  // Fully synced, online - show nothing
   return null;
 };
 

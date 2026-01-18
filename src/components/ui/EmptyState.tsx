@@ -1,18 +1,9 @@
-import { PlusCircle, Sparkles, FolderOpen, List, Camera, Target, Calendar, Heart, LucideIcon } from 'lucide-react';
+import { LucideIcon, PlusCircle, Sparkles, FolderOpen, List, Camera, Target, Calendar, Heart } from 'lucide-react';
 
-// ========== Types ==========
+type IconName = 'sparkles' | 'folder' | 'list' | 'plus' | 'camera' | 'target' | 'calendar' | 'heart';
+type EmptyStateVariant = 'default' | 'firstEntry' | 'noEntriesThisWeek' | 'noPhotos' | 'noGoals' | 'noHistory' | 'noStats' | 'emptyFolder';
 
-type EmptyStateVariant =
-  | 'default'
-  | 'firstEntry'
-  | 'noEntriesThisWeek'
-  | 'noPhotos'
-  | 'noGoals'
-  | 'noHistory'
-  | 'noStats'
-  | 'emptyFolder';
-
-interface VariantConfig {
+interface EmptyStateVariantConfig {
   title: string;
   message: string;
   icon: LucideIcon;
@@ -23,13 +14,11 @@ interface EmptyStateProps {
   message?: string;
   actionLabel?: string;
   onAction?: () => void;
-  icon?: string | LucideIcon;
+  icon?: IconName | LucideIcon;
   variant?: EmptyStateVariant;
 }
 
-// ========== Constants ==========
-
-const EMPTY_STATE_VARIANTS: Record<EmptyStateVariant, VariantConfig> = {
+const EMPTY_STATE_VARIANTS: Record<EmptyStateVariant, EmptyStateVariantConfig> = {
   default: {
     title: "Nothing here yet",
     message: "Time to start something new! ✨",
@@ -72,8 +61,6 @@ const EMPTY_STATE_VARIANTS: Record<EmptyStateVariant, VariantConfig> = {
   }
 };
 
-// ========== Component ==========
-
 const EmptyState = ({
   title,
   message,
@@ -82,14 +69,12 @@ const EmptyState = ({
   icon = "sparkles",
   variant = "default"
 }: EmptyStateProps) => {
-  // Get variant config or use custom props
   const variantConfig = EMPTY_STATE_VARIANTS[variant] || EMPTY_STATE_VARIANTS.default;
   const finalTitle = title || variantConfig.title;
   const finalMessage = message || variantConfig.message;
 
-  // Map string names to icons if needed, or pass component directly
   const getIcon = (): LucideIcon => {
-    if (typeof icon !== 'string') return icon; // It's a component
+    if (typeof icon !== 'string') return icon;
     switch (icon) {
       case 'sparkles': return variantConfig.icon || Sparkles;
       case 'folder': return FolderOpen;
