@@ -1,16 +1,9 @@
+import { ChangeEvent, MouseEvent } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Palette } from 'lucide-react';
-import { ChangeEvent } from 'react';
-
-// ========== Component ==========
 
 const ThemeSelector = () => {
   const { theme, setTheme, themes, customColor, setCustomColor } = useTheme();
-
-  const handleColorChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setCustomColor(e.target.value);
-    setTheme('custom');
-  };
 
   return (
     <div className="space-y-4">
@@ -40,7 +33,6 @@ const ThemeSelector = () => {
           </button>
         ))}
 
-        {/* Custom Theme Option */}
         <div
           className={`
             relative flex items-center gap-2 px-4 py-3 rounded-lg border text-left transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800
@@ -54,14 +46,14 @@ const ThemeSelector = () => {
           <span className="text-xl">🎨</span>
           <span className="font-medium flex-1">Custom</span>
 
-          <div
-            className="relative w-6 h-6 rounded-full overflow-hidden border border-gray-300 dark:border-gray-500"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="relative w-6 h-6 rounded-full overflow-hidden border border-gray-300 dark:border-gray-500" onClick={(e: MouseEvent) => e.stopPropagation()}>
             <input
               type="color"
               value={customColor}
-              onChange={handleColorChange}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                setCustomColor(e.target.value);
+                setTheme('custom');
+              }}
               className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] p-0 border-0 cursor-pointer"
               title="Pick custom color"
             />

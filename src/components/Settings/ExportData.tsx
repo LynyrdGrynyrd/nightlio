@@ -1,8 +1,5 @@
-import React from 'react';
 import { Download, FileJson, FileText } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-
-// ========== Component ==========
 
 const ExportData = () => {
   const { token } = useAuth();
@@ -22,7 +19,6 @@ const ExportData = () => {
       const a = document.createElement('a');
       a.href = url;
 
-      // Parse filename from Content-Disposition header or use default
       const contentDisposition = response.headers.get('Content-Disposition');
       let filename = `twilightio_export.${format}`;
       if (contentDisposition) {
@@ -42,30 +38,6 @@ const ExportData = () => {
       console.error("Export error:", error);
       alert("Failed to export data. Please try again.");
     }
-  };
-
-  const handlePdfExport = (therapistReport = false) => {
-    const startInput = document.getElementById('startDate') as HTMLInputElement;
-    const endInput = document.getElementById('endDate') as HTMLInputElement;
-    const start = startInput?.value;
-    const end = endInput?.value;
-
-    let url = 'pdf';
-    const params: string[] = [];
-
-    if (therapistReport) {
-      params.push('format=therapist');
-    }
-
-    if (start && end) {
-      params.push(`start_date=${start}`, `end_date=${end}`);
-    }
-
-    if (params.length > 0) {
-      url += `?${params.join('&')}`;
-    }
-
-    handleExport(url);
   };
 
   return (
@@ -100,14 +72,32 @@ const ExportData = () => {
         </div>
         <div className="flex flex-wrap gap-3">
           <button
-            onClick={() => handlePdfExport(false)}
+            onClick={() => {
+              const start = (document.getElementById('startDate') as HTMLInputElement).value;
+              const end = (document.getElementById('endDate') as HTMLInputElement).value;
+              let url = 'pdf';
+              const params: string[] = [];
+              if (start && end) {
+                params.push(`start_date=${start}`, `end_date=${end}`);
+              }
+              if (params.length > 0) url += `?${params.join('&')}`;
+              handleExport(url);
+            }}
             className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-750 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
             <FileText className="w-4 h-4 text-red-500" />
             Standard PDF
           </button>
           <button
-            onClick={() => handlePdfExport(true)}
+            onClick={() => {
+              const start = (document.getElementById('startDate') as HTMLInputElement).value;
+              const end = (document.getElementById('endDate') as HTMLInputElement).value;
+              let url = 'pdf?format=therapist';
+              if (start && end) {
+                url += `&start_date=${start}&end_date=${end}`;
+              }
+              handleExport(url);
+            }}
             className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-750 border border-blue-300 dark:border-blue-600 rounded-lg text-sm font-medium hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors"
           >
             <FileText className="w-4 h-4 text-blue-600" />

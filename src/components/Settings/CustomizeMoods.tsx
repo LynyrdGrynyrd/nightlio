@@ -1,14 +1,9 @@
 import { useState, useEffect, ChangeEvent, FocusEvent } from 'react';
-import { Palette, Check, RefreshCw } from 'lucide-react';
-import apiService, { MoodDefinition } from '../../services/api';
-import { useMoodDefinitions } from '../../contexts/MoodDefinitionsContext';
+import { Palette, RefreshCw } from 'lucide-react';
+import apiService from '../../services/api';
+import { useMoodDefinitions, MoodDefinition } from '../../contexts/MoodDefinitionsContext';
 
-// ========== Constants ==========
-
-// Common emojis for mood selection
 const EMOJI_OPTIONS = ['😢', '😕', '😐', '🙂', '😄', '😊', '🥺', '😩', '😤', '😌', '🤗', '😎', '🥳', '💪', '😴'];
-
-// ========== Component ==========
 
 const CustomizeMoods = () => {
   const { definitions, loading, refreshDefinitions } = useMoodDefinitions();
@@ -24,9 +19,7 @@ const CustomizeMoods = () => {
     setSaving(score);
     try {
       const updated = await apiService.updateMoodDefinition(score, updates);
-      // Optimistic update locally
       setMoods(prev => prev.map(m => m.score === score ? updated : m));
-      // Refresh context to update global styles
       await refreshDefinitions();
       setEditingMood(null);
     } catch (error) {
@@ -34,31 +27,6 @@ const CustomizeMoods = () => {
     } finally {
       setSaving(null);
     }
-  };
-
-  const handleLabelChange = (score: number, value: string) => {
-    setMoods(prev => prev.map(m =>
-      m.score === score ? { ...m, label: value } : m
-    ));
-  };
-
-  const handleLabelBlur = (e: FocusEvent<HTMLInputElement>, score: number) => {
-    const currentMood = definitions.find(m => m.score === score);
-    if (currentMood && e.target.value !== currentMood.label) {
-      handleSave(score, { label: e.target.value });
-    }
-  };
-
-  const handleColorChange = (score: number, colorHex: string) => {
-    handleSave(score, { color_hex: colorHex });
-  };
-
-  const handleEmojiSelect = (score: number, emoji: string) => {
-    handleSave(score, { icon: emoji });
-  };
-
-  const toggleEmojiPicker = (score: number) => {
-    setEditingMood(editingMood === score ? null : score);
   };
 
   if (loading) {
@@ -91,10 +59,9 @@ const CustomizeMoods = () => {
             }}
           >
             <div className="flex items-center gap-4">
-              {/* Emoji */}
               <div className="relative">
                 <button
-                  onClick={() => toggleEmojiPicker(mood.score)}
+                  onClick={() => setEditingMood(editingMood === mood.score ? null : mood.score)}
                   className="text-4xl hover:scale-110 transition-transform cursor-pointer"
                   title="Click to change"
                 >
@@ -102,24 +69,28 @@ const CustomizeMoods = () => {
                 </button>
               </div>
 
-              {/* Label and Score */}
               <div className="flex-1">
                 <input
                   type="text"
                   value={mood.label}
-                  onChange={(e) => handleLabelChange(mood.score, e.target.value)}
-                  onBlur={(e) => handleLabelBlur(e, mood.score)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setMoods(prev => prev.map(m =>
+                    m.score === mood.score ? { ...m, label: e.target.value } : m
+                  ))}
+                  onBlur={(e: FocusEvent<HTMLInputElement>) => {
+                    if (e.target.value !== moods.find(m => m.score === mood.score)?.label) {
+                      handleSave(mood.score, { label: e.target.value });
+                    }
+                  }}
                   className="font-semibold text-lg bg-transparent border-b border-transparent hover:border-gray-300 focus:border-gray-400 outline-none w-full"
                   style={{ color: mood.color_hex }}
                 />
                 <p className="text-sm text-gray-500">Mood score: {mood.score}/5</p>
               </div>
 
-              {/* Color picker */}
               <input
                 type="color"
                 value={mood.color_hex}
-                onChange={(e) => handleColorChange(mood.score, e.target.value)}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => handleSave(mood.score, { color_hex: e.target.value })}
                 className="w-10 h-10 rounded-lg cursor-pointer border-2 border-white shadow"
                 title="Change color"
               />
@@ -129,7 +100,6 @@ const CustomizeMoods = () => {
               )}
             </div>
 
-            {/* Emoji picker dropdown */}
             {editingMood === mood.score && (
               <div className="mt-4 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg border">
                 <p className="text-sm text-gray-500 mb-2">Select an emoji:</p>
@@ -137,10 +107,8 @@ const CustomizeMoods = () => {
                   {EMOJI_OPTIONS.map((emoji) => (
                     <button
                       key={emoji}
-                      onClick={() => handleEmojiSelect(mood.score, emoji)}
-                      className={`text-2xl p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                        mood.icon === emoji ? 'bg-gray-200 dark:bg-gray-600 ring-2 ring-blue-500' : ''
-                      }`}
+                      onClick={() => handleSave(mood.score, { icon: emoji })}
+                      className={`text-2xl p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${mood.icon === emoji ? 'bg-gray-200 dark:bg-gray-600 ring-2 ring-blue-500' : ''}`}
                     >
                       {emoji}
                     </button>
