@@ -1,24 +1,27 @@
 
+import os
 import pytest
+import tempfile
+
 from api.services.export_service import ExportService
 from api.database import MoodDatabase
-import os
 
 @pytest.fixture
 def db():
-    # Use in-memory DB or temp file
-    db = MoodDatabase(":memory:")
-    db.init_db()
-    # Create dummy user
-    db.create_user("google_123", "test@test.com", "Tester", None)
-    return db
+    db_fd, db_path = tempfile.mkstemp()
+    db = MoodDatabase(db_path)
+    db.init_database()
+    user_id = db.create_user("google_123", "test@test.com", "Tester", None)
+    yield db, user_id
+    os.close(db_fd)
+    os.unlink(db_path)
 
 def test_import_json(db):
-    service = ExportService(db)
-    user_id = 1
+    db_instance, user_id = db
+    service = ExportService(db_instance)
     
     # Create some data
-    db.create_mood_entry(user_id, 5, "2023-01-01", "12:00", "Old content", [])
+    db_instance.add_mood_entry(user_id, "2023-01-01", 5, "Old content", "12:00", [])
     
     # Mock Export
     data = service.generate_json(user_id)

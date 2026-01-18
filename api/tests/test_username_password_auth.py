@@ -1,18 +1,24 @@
 """Tests for username/password authentication."""
 
-import pytest
-from api.app import create_app
-from api.database import MoodDatabase
 import os
 import tempfile
+
+import pytest
+
+from api.app import create_app
+from api.database import MoodDatabase
 
 
 @pytest.fixture
 def app():
     """Create and configure a test instance of the app."""
     db_fd, db_path = tempfile.mkstemp()
+    os.environ["ENABLE_REGISTRATION"] = "true"
+    from api import config as config_module
+    original_db_path = config_module.TestingConfig.DATABASE_PATH
+    config_module.TestingConfig.DATABASE_PATH = db_path
+    config_module._CONFIG_SINGLETON = None
     app = create_app("testing")
-    app.config["DATABASE_PATH"] = db_path
     app.config["TESTING"] = True
 
     # Initialize database
@@ -25,6 +31,9 @@ def app():
     # Cleanup
     os.close(db_fd)
     os.unlink(db_path)
+    os.environ.pop("ENABLE_REGISTRATION", None)
+    config_module.TestingConfig.DATABASE_PATH = original_db_path
+    config_module._CONFIG_SINGLETON = None
 
 
 @pytest.fixture
