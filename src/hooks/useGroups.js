@@ -33,9 +33,9 @@ export const useGroups = () => {
     }
   };
 
-  const createGroupOption = async (groupId, name) => {
+  const createGroupOption = async (groupId, name, icon) => {
     try {
-      await apiService.createGroupOption(groupId, name);
+      await apiService.createGroupOption(groupId, { name, icon });
       await loadGroups(); // Refresh the list
       return true;
     } catch (error) {
