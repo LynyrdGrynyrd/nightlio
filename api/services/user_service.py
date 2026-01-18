@@ -100,3 +100,7 @@ class UserService:
         """Create a new user with username and password"""
         user_id = self.db.create_user_with_password(username, password_hash, email, name)
         return self.db.get_user_by_id(user_id)
+
+    def update_password(self, user_id: int, password_hash: str) -> None:
+        """Update user password"""
+        self.db.update_password(user_id, password_hash)

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, CSSProperties, MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock } from 'lucide-react';
+import { Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useConfig } from '../../contexts/ConfigContext';
+import { validatePasswordStrength, validateUsername, getStrengthColor } from '../../utils/passwordValidation';
 import './LoginPage.css';
 
 declare global {
@@ -61,6 +62,9 @@ const LoginPage = () => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [usernameError, setUsernameError] = useState('');
+  const [passwordStrength, setPasswordStrength] = useState({ score: 0, strength: '', errors: [] as string[] });
 
   const googleClientId = useMemo(
     () => config.google_client_id || FALLBACK_GOOGLE_CLIENT_ID,
@@ -286,6 +290,30 @@ const LoginPage = () => {
     }
   }, [username, password, email, name, login, navigate]);
 
+  const handleUsernameChange = useCallback((value: string) => {
+    setUsername(value);
+    if (isRegistering && value) {
+      const validation = validateUsername(value);
+      setUsernameError(validation.valid ? '' : validation.errors[0]);
+    } else {
+      setUsernameError('');
+    }
+  }, [isRegistering]);
+
+  const handlePasswordChange = useCallback((value: string) => {
+    setPassword(value);
+    if (isRegistering && value) {
+      const validation = validatePasswordStrength(value);
+      setPasswordStrength({
+        score: validation.score,
+        strength: validation.strength,
+        errors: validation.errors,
+      });
+    } else {
+      setPasswordStrength({ score: 0, strength: '', errors: [] });
+    }
+  }, [isRegistering]);
+
   const handleGoogleButtonMouseEnter = (e: MouseEvent<HTMLButtonElement>) => {
     if (!isLoading) {
       e.currentTarget.style.backgroundColor = '#f8f9fa';
@@ -404,6 +432,7 @@ const LoginPage = () => {
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         disabled={isLoading}
+                        autoComplete="username"
                         style={{
                           padding: '0.75rem',
                           fontSize: '0.925rem',
@@ -411,19 +440,42 @@ const LoginPage = () => {
                           borderRadius: '4px',
                         }}
                       />
-                      <input
-                        type="password"
-                        placeholder="Password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        disabled={isLoading}
-                        style={{
-                          padding: '0.75rem',
-                          fontSize: '0.925rem',
-                          border: '1px solid #dadce0',
-                          borderRadius: '4px',
-                        }}
-                      />
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          placeholder="Password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          disabled={isLoading}
+                          autoComplete="current-password"
+                          style={{
+                            padding: '0.75rem',
+                            paddingRight: '2.5rem',
+                            fontSize: '0.925rem',
+                            border: '1px solid #dadce0',
+                            borderRadius: '4px',
+                            width: '100%',
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          style={{
+                            position: 'absolute',
+                            right: '0.5rem',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: '0.25rem',
+                            color: '#5f6368',
+                          }}
+                          aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                        </button>
+                      </div>
                       <button
                         type="submit"
                         className="login-page__button"
@@ -469,32 +521,98 @@ const LoginPage = () => {
                     </form>
                   ) : (
                     <form onSubmit={handleRegistration} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      <input
-                        type="text"
-                        placeholder="Username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        disabled={isLoading}
-                        style={{
-                          padding: '0.75rem',
-                          fontSize: '0.925rem',
-                          border: '1px solid #dadce0',
-                          borderRadius: '4px',
-                        }}
-                      />
-                      <input
-                        type="password"
-                        placeholder="Password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        disabled={isLoading}
-                        style={{
-                          padding: '0.75rem',
-                          fontSize: '0.925rem',
-                          border: '1px solid #dadce0',
-                          borderRadius: '4px',
-                        }}
-                      />
+                      <div>
+                        <input
+                          type="text"
+                          placeholder="Username"
+                          value={username}
+                          onChange={(e) => handleUsernameChange(e.target.value)}
+                          disabled={isLoading}
+                          autoComplete="username"
+                          style={{
+                            padding: '0.75rem',
+                            fontSize: '0.925rem',
+                            border: `1px solid ${usernameError ? '#d32f2f' : '#dadce0'}`,
+                            borderRadius: '4px',
+                            width: '100%',
+                          }}
+                        />
+                        {usernameError && (
+                          <div style={{ fontSize: '0.75rem', color: '#d32f2f', marginTop: '0.25rem' }}>
+                            {usernameError}
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <div style={{ position: 'relative' }}>
+                          <input
+                            type={showPassword ? 'text' : 'password'}
+                            placeholder="Password"
+                            value={password}
+                            onChange={(e) => handlePasswordChange(e.target.value)}
+                            disabled={isLoading}
+                            autoComplete="new-password"
+                            style={{
+                              padding: '0.75rem',
+                              paddingRight: '2.5rem',
+                              fontSize: '0.925rem',
+                              border: `1px solid ${passwordStrength.errors.length > 0 ? '#d32f2f' : '#dadce0'}`,
+                              borderRadius: '4px',
+                              width: '100%',
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            style={{
+                              position: 'absolute',
+                              right: '0.5rem',
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              padding: '0.25rem',
+                              color: '#5f6368',
+                            }}
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                          >
+                            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                          </button>
+                        </div>
+                        {password && passwordStrength.strength && (
+                          <div style={{ marginTop: '0.5rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                              <div style={{
+                                flex: 1,
+                                height: '4px',
+                                backgroundColor: '#e0e0e0',
+                                borderRadius: '2px',
+                                overflow: 'hidden',
+                              }}>
+                                <div style={{
+                                  height: '100%',
+                                  width: `${(passwordStrength.score / 5) * 100}%`,
+                                  backgroundColor: getStrengthColor(passwordStrength.score),
+                                  transition: 'all 0.3s ease',
+                                }} />
+                              </div>
+                              <span style={{
+                                fontSize: '0.75rem',
+                                color: getStrengthColor(passwordStrength.score),
+                                fontWeight: 500,
+                              }}>
+                                {passwordStrength.strength}
+                              </span>
+                            </div>
+                            {passwordStrength.errors.length > 0 && (
+                              <div style={{ fontSize: '0.75rem', color: '#d32f2f' }}>
+                                {passwordStrength.errors[0]}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                       <input
                         type="text"
                         placeholder="Name (optional)"

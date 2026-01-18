@@ -10,6 +10,7 @@ from api.utils.rate_limiter import rate_limit
 from api.config import get_config
 from api.utils.auth_middleware import require_auth, get_current_user_id
 from api.utils.password_utils import hash_password, verify_password
+from api.utils.password_validation import validate_password_strength, validate_username
 
 
 def create_auth_routes(user_service: UserService):
@@ -162,7 +163,7 @@ def create_auth_routes(user_service: UserService):
         """Login with username and password."""
         try:
             data = request.json
-            username = data.get("username")
+            username = data.get("username", "").lower().strip()  # Normalize username
             password = data.get("password")
 
             if not username or not password:
@@ -209,23 +210,26 @@ def create_auth_routes(user_service: UserService):
                 return jsonify({"error": "Registration is disabled"}), 403
 
             data = request.json
-            username = data.get("username")
-            password = data.get("password")
+            username = data.get("username", "").lower().strip()  # Normalize username
+            password = data.get("password", "")
             email = data.get("email", "")
             name = data.get("name", username)
 
             if not username or not password:
                 return jsonify({"error": "Username and password are required"}), 400
 
-            # Validate username (alphanumeric and underscores only)
-            if not username.replace("_", "").isalnum():
-                return jsonify(
-                    {"error": "Username can only contain letters, numbers, and underscores"}
-                ), 400
+            # Validate username
+            username_validation = validate_username(username)
+            if not username_validation["valid"]:
+                return jsonify({"error": username_validation["errors"][0]}), 400
 
-            # Validate password length
-            if len(password) < 4:
-                return jsonify({"error": "Password must be at least 4 characters"}), 400
+            # Validate password strength
+            password_validation = validate_password_strength(password)
+            if not password_validation["valid"]:
+                return jsonify({
+                    "error": "Password does not meet requirements",
+                    "details": password_validation["errors"]
+                }), 400
 
             # Check if username already exists
             existing_user = user_service.get_user_by_username(username)
@@ -276,6 +280,59 @@ def create_auth_routes(user_service: UserService):
         except Exception as e:
             current_app.logger.error(f"Account deletion failed: {e}")
             return jsonify({"error": "Deletion failed"}), 500
+
+    @auth_bp.route("/auth/change-password", methods=["POST"])
+    @require_auth
+    @rate_limit(max_requests=10, window_minutes=1)
+    def change_password():
+        """Change user password (requires current password)."""
+        try:
+            user_id = get_current_user_id()
+            data = request.json
+            current_password = data.get("current_password")
+            new_password = data.get("new_password")
+
+            if not current_password or not new_password:
+                return jsonify({"error": "Current and new passwords are required"}), 400
+
+            # Get user
+            user = user_service.get_user_by_id(user_id)
+            if not user:
+                return jsonify({"error": "User not found"}), 404
+
+            # Check if user has a password (OAuth users don't)
+            if not user.get("password_hash"):
+                return jsonify({
+                    "error": "Cannot change password for OAuth accounts"
+                }), 400
+
+            # Verify current password
+            if not verify_password(current_password, user["password_hash"]):
+                return jsonify({"error": "Current password is incorrect"}), 401
+
+            # Validate new password strength
+            password_validation = validate_password_strength(new_password)
+            if not password_validation["valid"]:
+                return jsonify({
+                    "error": "New password does not meet requirements",
+                    "details": password_validation["errors"]
+                }), 400
+
+            # Check that new password is different from current
+            if verify_password(new_password, user["password_hash"]):
+                return jsonify({
+                    "error": "New password must be different from current password"
+                }), 400
+
+            # Update password
+            new_password_hash = hash_password(new_password)
+            user_service.update_password(user_id, new_password_hash)
+
+            return jsonify({"message": "Password changed successfully"}), 200
+
+        except Exception as e:
+            current_app.logger.error(f"Password change failed: {e}")
+            return jsonify({"error": "Password change failed"}), 500
 
     def verify_google_token(token: str) -> dict:
         """Verify Google OAuth token and return user info"""

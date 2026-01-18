@@ -97,8 +97,28 @@ def create_app(config_name="default"):
     try:
         existing_admin = user_service.get_user_by_username("admin")
         if not existing_admin:
-            app.logger.info("Creating default admin user...")
-            admin_password_hash = hash_password("admin")
+            # Get admin password from environment or generate secure random password
+            admin_password = os.getenv("ADMIN_PASSWORD")
+
+            if not admin_password:
+                # Generate a secure random password
+                import secrets
+                import string
+                alphabet = string.ascii_letters + string.digits + string.punctuation
+                admin_password = ''.join(secrets.choice(alphabet) for _ in range(16))
+
+                # Log the generated password (only visible in logs)
+                app.logger.warning("=" * 70)
+                app.logger.warning("⚠️  DEFAULT ADMIN ACCOUNT CREATED")
+                app.logger.warning(f"⚠️  Username: admin")
+                app.logger.warning(f"⚠️  Password: {admin_password}")
+                app.logger.warning("⚠️  SAVE THIS PASSWORD - IT WON'T BE SHOWN AGAIN!")
+                app.logger.warning("⚠️  Set ADMIN_PASSWORD environment variable to avoid auto-generation")
+                app.logger.warning("=" * 70)
+            else:
+                app.logger.info("Creating admin user with password from ADMIN_PASSWORD env var")
+
+            admin_password_hash = hash_password(admin_password)
             user_service.create_user_with_password(
                 username="admin",
                 password_hash=admin_password_hash,

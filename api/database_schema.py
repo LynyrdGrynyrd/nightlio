@@ -287,7 +287,10 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_mood_entries_date ON mood_entries(date)"
             )
-            logger.info("Mood entries index ready")
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)"
+            )
+            logger.info("Database indexes ready")
         except sqlite3.Error as exc:
             logger.warning("Index creation failed (non-critical): %s", exc)
 

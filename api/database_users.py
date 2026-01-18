@@ -146,5 +146,18 @@ class UsersMixin(DatabaseConnectionMixin):
             conn.commit()
             return int(cursor.lastrowid or 0)
 
+    def update_password(self, user_id: int, password_hash: str) -> None:
+        """Update user password."""
+        with self._connect() as conn:
+            conn.execute(
+                """
+                UPDATE users
+                SET password_hash = ?
+                WHERE id = ?
+                """,
+                (password_hash, user_id),
+            )
+            conn.commit()
+
 
 __all__ = ["UsersMixin"]
