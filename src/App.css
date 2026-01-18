@@ -216,6 +216,7 @@
   backdrop-filter: blur(12px);
   border-top: 1px solid var(--border);
   z-index: 50;
+  min-height: 64px;
 }
 
 .bottom-nav__item {
@@ -226,6 +227,8 @@
   background: transparent;
   border: none;
   color: var(--text);
+  min-width: 0;
+  padding: 4px 6px;
 }
 
 .bottom-nav__item.is-active {
@@ -234,6 +237,11 @@
 
 .bottom-nav__label {
   font-size: 11px;
+  max-width: 80px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Floating action button */
@@ -377,6 +385,7 @@
 
   .app-layout {
     display: block;
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
   }
 
   .app-shell {
@@ -408,7 +417,7 @@
   /* Tighter spacing for mobile portrait */
   .app-main {
     padding: 16px;
-    padding-bottom: 16px;
+    padding-bottom: calc(16px + 72px + env(safe-area-inset-bottom));
     /* Reset to standard padding */
     margin: 0;
     /* Remove margin */
@@ -430,6 +439,19 @@
   .entry-card {
     padding: 16px;
     border-radius: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .mood-grid {
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .mood-button {
+    width: 52px;
+    height: 52px;
+    font-size: 1.9rem;
   }
 }
 
