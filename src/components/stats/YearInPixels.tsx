@@ -38,6 +38,7 @@ const getMoodColor = (mood: number): string => {
 const YearInPixels = ({ entries, onDayClick }: YearInPixelsProps) => {
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [moodFilter, setMoodFilter] = useState<number | 'all'>('all');
   const gridRef = useRef<HTMLDivElement>(null);
 
   // Get available years from entries
@@ -162,6 +163,26 @@ const YearInPixels = ({ entries, onDayClick }: YearInPixelsProps) => {
     gap: '0.5rem'
   };
 
+  const moodFilterStyle: CSSProperties = {
+    padding: '6px 12px',
+    borderRadius: '8px',
+    border: '1px solid var(--border)',
+    background: 'var(--surface)',
+    color: 'var(--text)',
+    fontSize: '0.85rem',
+    cursor: 'pointer',
+    marginLeft: '1rem'
+  };
+
+  const moodOptions = [
+    { value: 'all', label: 'All Moods' },
+    { value: 5, label: '😊 Rad' },
+    { value: 4, label: '🙂 Good' },
+    { value: 3, label: '😐 Meh' },
+    { value: 2, label: '😔 Bad' },
+    { value: 1, label: '😢 Awful' },
+  ];
+
   return (
     <div className="statistics-view__card statistics-view__section">
       <div className="statistics-view__section-header">
@@ -175,6 +196,16 @@ const YearInPixels = ({ entries, onDayClick }: YearInPixelsProps) => {
           >
             {availableYears.map(year => (
               <option key={year} value={year}>{year}</option>
+            ))}
+          </select>
+          <select
+            value={moodFilter}
+            onChange={(e) => setMoodFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+            style={moodFilterStyle}
+            aria-label="Filter by mood"
+          >
+            {moodOptions.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
         </div>
@@ -211,34 +242,69 @@ const YearInPixels = ({ entries, onDayClick }: YearInPixelsProps) => {
 
                 const data = yearData[`${monthIndex}-${day}`];
                 const mood = data ? data.mood : null;
+                const roundedMood = mood ? Math.round(mood) : null;
+
+                // Apply mood filter - dim cells that don't match
+                const shouldDim = moodFilter !== 'all' && mood !== null && roundedMood !== moodFilter;
+
                 const color = mood ? getMoodColor(mood) : 'var(--bg-app)';
                 const isClickable = !!onDayClick;
+                const isEmpty = !mood;
 
                 const pixelStyle: CSSProperties = {
                   aspectRatio: '1',
                   backgroundColor: color,
                   borderRadius: '2px',
                   cursor: isClickable ? 'pointer' : 'default',
-                  transition: 'transform 0.1s',
+                  transition: 'transform 0.1s, opacity 0.2s',
+                  opacity: shouldDim ? 0.3 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.6rem',
+                  color: 'var(--text-muted)',
+                  position: 'relative'
+                };
+
+                const plusStyle: CSSProperties = {
+                  opacity: 0,
+                  transition: 'opacity 0.2s',
+                  fontSize: '0.8rem',
+                  fontWeight: 300,
+                  pointerEvents: 'none'
                 };
 
                 const handleMouseEnter = (e: MouseEvent<HTMLDivElement>) => {
-                  (e.target as HTMLDivElement).style.transform = 'scale(1.2)';
+                  const target = e.currentTarget as HTMLDivElement;
+                  target.style.transform = 'scale(1.2)';
+                  const plusIcon = target.querySelector('.pixel-plus') as HTMLElement;
+                  if (plusIcon && isEmpty) {
+                    plusIcon.style.opacity = '0.5';
+                  }
                 };
 
                 const handleMouseLeave = (e: MouseEvent<HTMLDivElement>) => {
-                  (e.target as HTMLDivElement).style.transform = 'scale(1)';
+                  const target = e.currentTarget as HTMLDivElement;
+                  target.style.transform = 'scale(1)';
+                  const plusIcon = target.querySelector('.pixel-plus') as HTMLElement;
+                  if (plusIcon) {
+                    plusIcon.style.opacity = '0';
+                  }
                 };
 
                 return (
                   <div
                     key={`${monthIndex}-${day}`}
                     onClick={() => isClickable && onDayClick(date.toISOString())}
-                    title={data ? `${FULL_MONTHS[monthIndex]} ${day}: Mood ${mood!.toFixed(1)}` : `${FULL_MONTHS[monthIndex]} ${day}`}
+                    title={data ? `${FULL_MONTHS[monthIndex]} ${day}: Mood ${mood!.toFixed(1)}` : `${FULL_MONTHS[monthIndex]} ${day} - Click to add entry`}
                     style={pixelStyle}
                     onMouseEnter={handleMouseEnter}
                     onMouseLeave={handleMouseLeave}
-                  />
+                  >
+                    {isEmpty && isClickable && (
+                      <span className="pixel-plus" style={plusStyle}>+</span>
+                    )}
+                  </div>
                 );
               })}
             </>
