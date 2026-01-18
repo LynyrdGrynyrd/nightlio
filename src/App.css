@@ -406,6 +406,7 @@
 
   .smart-fab {
     display: flex;
+    bottom: calc(96px + env(safe-area-inset-bottom));
   }
 
   .mood-button {
