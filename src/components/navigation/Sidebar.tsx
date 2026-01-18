@@ -15,10 +15,10 @@ interface NavItem {
 
 const Sidebar = ({ onLoadStatistics }: SidebarProps) => {
   const items: NavItem[] = [
-    { key: '/dashboard', label: 'Home', icon: Home, end: true },
-    { key: '/dashboard/goals', label: 'Goals', icon: Target },
-    { key: '/dashboard/stats', label: 'Statistics', icon: BarChart3 },
-    { key: '/dashboard/achievements', label: 'Achievements', icon: Trophy },
+    { key: '.', label: 'Home', icon: Home, end: true },
+    { key: 'goals', label: 'Goals', icon: Target },
+    { key: 'stats', label: 'Statistics', icon: BarChart3 },
+    { key: 'achievements', label: 'Achievements', icon: Trophy },
   ];
 
   const location = useLocation();
@@ -113,7 +113,7 @@ const Sidebar = ({ onLoadStatistics }: SidebarProps) => {
 
         <div className="sidebar__footer">
           <NavLink
-            to="/dashboard/settings"
+            to="settings"
             className={({ isActive }) => `sidebar__item ${isActive ? 'is-active' : ''}`}
             title="Settings"
           >
