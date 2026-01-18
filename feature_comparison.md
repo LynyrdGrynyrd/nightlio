@@ -2,7 +2,7 @@
 
 **Purpose:** This document serves as the primary implementation checklist for developing a feature-complete Twilightio fork. It is optimized for AI-assisted development with technical specifications, schema definitions, and acceptance criteria.
 
-*Last updated: 2026-01-10 (Merged Daylio photo notes - added Important Days, Photo Gallery, Mood Stability, Streak Visualizer, Visual Polish/UX section)*
+*Last updated: 2026-01-11 (Global Photo Gallery date range filtering enabled)*
 
 ---
 
@@ -743,7 +743,7 @@ GET /api/media/gallery?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD&limit=50&offset
 - [x] Grid displays all photos sorted by date (newest first)
 - [x] Thumbnails load lazily for performance
 - [x] Clicking photo opens the associated entry in a modal
-- [ ] Date range filter works correctly
+- [x] Date range filter works correctly
 - [x] Empty state shows encouraging message
 - [x] Accessible from navigation menu
 </details>
@@ -1843,7 +1843,7 @@ pillow>=10.0            # Image processing (thumbnails)
 | | Achievement categories | ✅ | ❌ | LOW |
 | **NEW FEATURES** | | | | |
 | | Important Days (Countdowns) | ✅ | ❌ | 🎯 HIGH |
-| | Global Photo Gallery | ✅ | ❌ | MEDIUM |
+| | Global Photo Gallery | ✅ | ✅ | MEDIUM |
 | | Home Screen Widgets | ✅ | ❌ | LOW (PWA limitation) |
 | | Mood Stability Metric | ✅ | ✅ | MEDIUM |
 | **UX ENHANCEMENTS** | | | | |
