@@ -145,6 +145,14 @@
         <h3>Summary</h3>
         <p><strong>Total Entries:</strong> {{ total_entries }}</p>
         <p><strong>Average Mood:</strong> {{ average_mood }}</p>
+        <p>
+            <strong>Mood Stability:</strong>
+            {% if mood_stability.stability_score is not none %}
+                {{ mood_stability.stability_score }} / 100 ({{ mood_stability.interpretation }})
+            {% else %}
+                Not enough data
+            {% endif %}
+        </p>
     </div>
 
     {% if chart_image %}

@@ -3,7 +3,7 @@ import io
 import json
 import base64
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 import matplotlib
 matplotlib.use('Agg') # Non-interactive backend
@@ -54,6 +54,8 @@ class ExportService:
         if total_entries > 0:
             avg_mood = round(avg_mood / total_entries, 1)
 
+        mood_stability = self._calculate_mood_stability([entry["mood"] for entry in entries])
+
         # Group entries by month for page breaks
         month_groups = {}
         for entry in enriched_entries:
@@ -85,7 +87,8 @@ class ExportService:
             generated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
             total_entries=total_entries,
             average_mood=avg_mood,
-            chart_image=chart_base64
+            chart_image=chart_base64,
+            mood_stability=mood_stability,
         )
 
         # HTML to PDF
@@ -123,6 +126,36 @@ class ExportService:
     def _get_mood_label(self, mood: int) -> str:
         labels = {1: 'Awful', 2: 'Bad', 3: 'Meh', 4: 'Good', 5: 'Rad'}
         return labels.get(mood, str(mood))
+
+    def _calculate_mood_stability(self, moods: List[int]) -> Dict[str, Any]:
+        if len(moods) < 3:
+            return {
+                "stability_score": None,
+                "interpretation": "Not enough data",
+                "sample_size": len(moods),
+            }
+
+        avg = sum(moods) / len(moods)
+        variance = sum((x - avg) ** 2 for x in moods) / len(moods)
+        std_dev = variance ** 0.5
+
+        max_std_dev = 2.0
+        stability_score = max(0, min(100, (1 - std_dev / max_std_dev) * 100))
+
+        if stability_score >= 85:
+            interpretation = "Very Stable"
+        elif stability_score >= 70:
+            interpretation = "Stable"
+        elif stability_score >= 50:
+            interpretation = "Variable"
+        else:
+            interpretation = "Volatile"
+
+        return {
+            "stability_score": round(stability_score, 1),
+            "interpretation": interpretation,
+            "sample_size": len(moods),
+        }
 
 
     def generate_csv(self, user_id: int) -> str:
