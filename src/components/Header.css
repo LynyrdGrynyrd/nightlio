@@ -156,3 +156,39 @@
     order: 1;
   }
 }
+
+@media (max-width: 480px) {
+  .header {
+    padding: var(--space-2);
+  }
+
+  .header__inner {
+    gap: 0.5rem;
+  }
+
+  .header__left {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .header__right {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .header__button {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.75rem;
+  }
+
+  .header__streakBadge,
+  .header__mockBadge {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.75rem;
+  }
+
+  .header__profileName {
+    display: none;
+  }
+}
