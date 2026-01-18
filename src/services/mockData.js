@@ -643,9 +643,66 @@ export const mockApiService = {
     },
 
     // Gallery
-    async getGalleryPhotos() {
+    async getGalleryPhotos({ limit = 50, offset = 0, startDate, endDate } = {}) {
         await delay(200);
-        return [];
+        const entries = getStoredData(STORAGE_KEYS.ENTRIES, defaultMockEntries);
+
+        const normalizeDate = (dateValue) => {
+            if (!dateValue) {
+                return '';
+            }
+            if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+                return dateValue;
+            }
+            const parsed = new Date(dateValue);
+            if (Number.isNaN(parsed.getTime())) {
+                return '';
+            }
+            return parsed.toISOString().slice(0, 10);
+        };
+
+        const photos = entries.flatMap((entry) => {
+            const entryDate = normalizeDate(entry.date || entry.created_at);
+            const mediaItems = Array.isArray(entry.media) ? entry.media : [];
+            return mediaItems.map((media, index) => ({
+                id: media.id ?? `mock-media-${entry.id}-${index}`,
+                entry_id: entry.id,
+                file_path: media.file_path ?? '',
+                file_type: media.file_type ?? 'image/jpeg',
+                thumbnail_path: media.thumbnail_path,
+                created_at: media.created_at ?? entry.created_at ?? new Date().toISOString(),
+                entry_date: entryDate,
+                entry_mood: entry.mood ?? 3,
+            }));
+        });
+
+        const filtered = photos.filter((photo) => {
+            if ((startDate || endDate) && !photo.entry_date) {
+                return false;
+            }
+            if (startDate && photo.entry_date < startDate) {
+                return false;
+            }
+            if (endDate && photo.entry_date > endDate) {
+                return false;
+            }
+            return true;
+        });
+
+        const sorted = filtered.sort((a, b) => {
+            if (a.entry_date !== b.entry_date) {
+                return a.entry_date < b.entry_date ? 1 : -1;
+            }
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+
+        const paginated = sorted.slice(offset, offset + limit);
+
+        return {
+            photos: paginated,
+            total: sorted.length,
+            has_more: offset + paginated.length < sorted.length,
+        };
     },
 };
 

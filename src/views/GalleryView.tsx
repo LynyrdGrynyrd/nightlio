@@ -1,25 +1,11 @@
 import { useState, useEffect, useCallback, ChangeEvent } from 'react';
 import { Image, Calendar } from 'lucide-react';
-import apiService from '../services/api';
+import apiService, { GalleryPhoto, GalleryResponse } from '../services/api';
 import PhotoGrid from '../components/gallery/PhotoGrid';
 import EmptyState from '../components/ui/EmptyState';
 import './GalleryView.css';
 
 // ========== Types ==========
-
-interface Photo {
-  id: number;
-  entry_id: number;
-  file_path: string;
-  file_type: string;
-  created_at: string;
-}
-
-interface GalleryResponse {
-  photos: Photo[];
-  has_more: boolean;
-  total: number;
-}
 
 interface DateRange {
   start: string;
@@ -33,7 +19,7 @@ interface GalleryViewProps {
 // ========== Component ==========
 
 const GalleryView = ({ onEntryClick }: GalleryViewProps) => {
-  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
@@ -76,7 +62,7 @@ const GalleryView = ({ onEntryClick }: GalleryViewProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange.start, dateRange.end]);
 
-  const handlePhotoClick = (photo: Photo) => {
+  const handlePhotoClick = (photo: GalleryPhoto) => {
     if (onEntryClick) {
       onEntryClick({ id: photo.entry_id });
     }

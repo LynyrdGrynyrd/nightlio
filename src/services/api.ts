@@ -171,14 +171,20 @@ export interface Media {
   id: number;
   entry_id: number;
   file_path: string;
-  media_type: 'photo' | 'video' | 'audio';
+  file_type: string;
   created_at: string;
   thumbnail_path?: string;
 }
 
 export interface GalleryPhoto extends Media {
-  entry_score?: number;
-  entry_timestamp?: string;
+  entry_date: string;
+  entry_mood: number;
+}
+
+export interface GalleryResponse {
+  photos: GalleryPhoto[];
+  total: number;
+  has_more: boolean;
 }
 
 export interface GalleryQueryParams {
@@ -775,13 +781,13 @@ class ApiService {
   }
 
   // ========== Photo Gallery ==========
-  async getGalleryPhotos({ limit = 50, offset = 0, startDate, endDate }: GalleryQueryParams = {}): Promise<GalleryPhoto[]> {
+  async getGalleryPhotos({ limit = 50, offset = 0, startDate, endDate }: GalleryQueryParams = {}): Promise<GalleryResponse> {
     const params = new URLSearchParams();
     params.append('limit', String(limit));
     params.append('offset', String(offset));
     if (startDate) params.append('start_date', startDate);
     if (endDate) params.append('end_date', endDate);
-    return this.request<GalleryPhoto[]>(`/api/media/gallery?${params.toString()}`);
+    return this.request<GalleryResponse>(`/api/media/gallery?${params.toString()}`);
   }
 }
 
