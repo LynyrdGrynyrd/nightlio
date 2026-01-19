@@ -60,14 +60,17 @@ If you want to enable Google OAuth:
 2. Create a new project or select existing one
 3. Enable Google+ API
 4. Create OAuth 2.0 credentials
-5. Set authorized redirect URI to: `http://localhost:3000/auth/callback`
+5. Set authorized redirect URI to: `http://localhost:5173/auth/callback`
 6. Update your `.env` file:
    ```bash
    ENABLE_GOOGLE_OAUTH=1
    GOOGLE_CLIENT_ID=your-client-id
    GOOGLE_CLIENT_SECRET=your-client-secret
-   GOOGLE_CALLBACK_URL=http://localhost:3000/auth/callback
+   GOOGLE_CALLBACK_URL=http://localhost:5173/auth/callback
    ```
+   For production deployments, set `GOOGLE_CALLBACK_URL` to your public domain
+   (e.g., `https://yourdomain.com/auth/callback`) and make sure `CORS_ORIGINS`
+   includes the same domain.
 
 ## Docker Commands
 
