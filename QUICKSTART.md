@@ -76,4 +76,4 @@ docker-compose up -d --build
 
 ---
 
-**Tip**: Bookmark http://localhost:3000 and start building your mood tracking habit! 🌙
+**Tip**: Bookmark http://localhost:5173 and start building your mood tracking habit! 🌙
