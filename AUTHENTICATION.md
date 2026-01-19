@@ -424,6 +424,11 @@ On first startup, if no `admin` user exists:
 **Cause**: Token older than 1 hour
 **Solution**: Login again to get a new token
 
+### "Google OAuth is enabled but GOOGLE_CLIENT_ID is not configured"
+
+**Cause**: `ENABLE_GOOGLE_OAUTH=1` but `GOOGLE_CLIENT_ID` (and usually `GOOGLE_CLIENT_SECRET`) is not set in the runtime environment.
+**Solution**: Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in your deployment `.env` or hosting provider config, then restart the API.
+
 ---
 
 ## Future Enhancements

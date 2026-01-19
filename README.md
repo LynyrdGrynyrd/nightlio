@@ -189,6 +189,11 @@ ENABLE_GOOGLE_OAUTH=0
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 
+# ⚠️ If ENABLE_GOOGLE_OAUTH=1, both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET
+# must be set in the runtime environment (not checked into git). If they're
+# missing, the login screen will warn that Google OAuth is enabled but not
+# configured.
+
 # CORS - Add your frontend's domain if deploying publicly
 CORS_ORIGINS=http://localhost:5173,[https://your.domain.com](https://your.domain.com)
 ```
