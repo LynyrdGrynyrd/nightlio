@@ -326,7 +326,7 @@ Please ensure you run the tests before opening a PR:
 npm test
 ```
 
-This command runs the backend tests using `pytest`. Please ensure you add tests for any new API functionality.
+This command runs the backend tests using `pytest`. If `api/venv/bin/pytest` exists it will be used; otherwise it falls back to `python -m pytest` from your active environment. If you want a dedicated virtualenv, create it at `api/venv`. Please ensure you add tests for any new API functionality.
 
 ## License
 
