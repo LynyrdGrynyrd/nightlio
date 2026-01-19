@@ -78,6 +78,9 @@ def create_app(config_name="default"):
     # Add security headers
     add_security_headers(app)
 
+    def should_start_scheduler():
+        return os.getenv("ENABLE_SCHEDULER", "0").lower() in {"1", "true", "yes", "on"}
+
     # Initialize database
     db = MoodDatabase(app.config.get("DATABASE_PATH"))
 
@@ -184,7 +187,10 @@ def create_app(config_name="default"):
 
         push_service = PushService(db)
         scheduler_service = SchedulerService(db, push_service)
-        scheduler_service.start()
+        if should_start_scheduler():
+            scheduler_service.start()
+        else:
+            app.logger.info("Scheduler disabled; set ENABLE_SCHEDULER=1 to enable.")
         
         app.register_blueprint(create_reminder_routes(scheduler_service, push_service), url_prefix="/api")
     except ImportError: # Fallback for local run
@@ -194,7 +200,10 @@ def create_app(config_name="default"):
         
         push_service = PushService(db)
         scheduler_service = SchedulerService(db, push_service)
-        scheduler_service.start()
+        if should_start_scheduler():
+            scheduler_service.start()
+        else:
+            app.logger.info("Scheduler disabled; set ENABLE_SCHEDULER=1 to enable.")
         
         app.register_blueprint(create_reminder_routes(scheduler_service, push_service), url_prefix="/api")
 
