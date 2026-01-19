@@ -3,15 +3,20 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies (including WeasyPrint requirements)
-RUN apt-get update && apt-get install -y \
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
+    libcairo2 \
+    libffi-dev \
+    libgdk-pixbuf2.0-0 \
+    libharfbuzz0b \
+    libjpeg62-turbo \
+    libopenjp2-7 \
     libpango-1.0-0 \
     libpangocairo-1.0-0 \
-    libgdk-pixbuf2.0-0 \
-    libffi-dev \
-    libcairo2 \
-    libgobject-2.0-0 \
+    libpangoft2-1.0-0 \
+    libtiff6 \
+    libwebp7 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
