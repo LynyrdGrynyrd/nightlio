@@ -326,7 +326,9 @@ const LoginPage = () => {
     e.currentTarget.style.boxShadow = 'none';
   };
 
-  const isSelfHost = !config.enable_google_oauth;
+  const isSelfHost = !config.enable_google_oauth && !config.enable_registration;
+  const showGoogleLogin = config.enable_google_oauth;
+  const showPasswordLoginForm = showPasswordLogin || !config.enable_google_oauth;
 
   const cardStyle: CSSProperties = { maxWidth: '420px', padding: '3rem 2rem' };
   const brandStyle: CSSProperties = {
@@ -380,7 +382,9 @@ const LoginPage = () => {
           <p className="login-page__description" style={{ marginBottom: '1.5rem', fontSize: '0.925rem' }}>
             {isSelfHost
               ? 'Click continue to start using Twilightio locally.'
-              : 'Sign in to continue tracking your mood journey.'}
+              : showGoogleLogin
+                ? 'Sign in to continue tracking your mood journey.'
+                : 'Sign in with your username and password to continue.'}
           </p>
 
           {message && <p className="login-page__message" style={{ marginBottom: '1rem' }}>{message}</p>}
@@ -396,31 +400,35 @@ const LoginPage = () => {
             </button>
           ) : (
             <>
-              {!showPasswordLogin ? (
+              {!showPasswordLoginForm ? (
                 <>
-                  <button
-                    type="button"
-                    className="login-page__button login-page__button--google"
-                    onClick={handleGoogleLogin}
-                    disabled={isLoading}
-                    style={googleButtonStyle}
-                    onMouseEnter={handleGoogleButtonMouseEnter}
-                    onMouseLeave={handleGoogleButtonMouseLeave}
-                  >
-                    <span aria-hidden="true" style={{ display: 'flex', alignItems: 'center' }}>
-                      {isLoading ? <LoadingSpinner /> : <GoogleIcon />}
-                    </span>
-                    <span>{isLoading ? 'Signing in…' : 'Sign in with Google'}</span>
-                  </button>
-                  <div style={{ margin: '1rem 0', textAlign: 'center', fontSize: '0.875rem', opacity: 0.6 }}>or</div>
-                  <button
-                    type="button"
-                    className="login-page__button"
-                    onClick={() => setShowPasswordLogin(true)}
-                    style={{ background: '#f8f9fa', color: '#3c4043', border: '1px solid #dadce0' }}
-                  >
-                    Sign in with Username & Password
-                  </button>
+                  {showGoogleLogin && (
+                    <>
+                      <button
+                        type="button"
+                        className="login-page__button login-page__button--google"
+                        onClick={handleGoogleLogin}
+                        disabled={isLoading}
+                        style={googleButtonStyle}
+                        onMouseEnter={handleGoogleButtonMouseEnter}
+                        onMouseLeave={handleGoogleButtonMouseLeave}
+                      >
+                        <span aria-hidden="true" style={{ display: 'flex', alignItems: 'center' }}>
+                          {isLoading ? <LoadingSpinner /> : <GoogleIcon />}
+                        </span>
+                        <span>{isLoading ? 'Signing in…' : 'Sign in with Google'}</span>
+                      </button>
+                      <div style={{ margin: '1rem 0', textAlign: 'center', fontSize: '0.875rem', opacity: 0.6 }}>or</div>
+                      <button
+                        type="button"
+                        className="login-page__button"
+                        onClick={() => setShowPasswordLogin(true)}
+                        style={{ background: '#f8f9fa', color: '#3c4043', border: '1px solid #dadce0' }}
+                      >
+                        Sign in with Username & Password
+                      </button>
+                    </>
+                  )}
                 </>
               ) : (
                 <>
@@ -500,24 +508,26 @@ const LoginPage = () => {
                           Create an account
                         </button>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowPasswordLogin(false);
-                          setUsername('');
-                          setPassword('');
-                        }}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: '#5f6368',
-                          fontSize: '0.875rem',
-                          cursor: 'pointer',
-                          padding: '0.5rem',
-                        }}
-                      >
-                        Back to Google Sign-In
-                      </button>
+                      {showGoogleLogin && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowPasswordLogin(false);
+                            setUsername('');
+                            setPassword('');
+                          }}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#5f6368',
+                            fontSize: '0.875rem',
+                            cursor: 'pointer',
+                            padding: '0.5rem',
+                          }}
+                        >
+                          Back to Google Sign-In
+                        </button>
+                      )}
                     </form>
                   ) : (
                     <form onSubmit={handleRegistration} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
