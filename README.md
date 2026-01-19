@@ -264,7 +264,7 @@ All protected endpoints require an `Authorization: Bearer <jwt>` header unless o
 * `POST /api/auth/verify` → 200 { user }
 
 **Config & Misc**
-* `GET /api/config` → { enable_google_oauth }
+* `GET /api/config` → { enable_google_oauth, enable_registration, google_client_id }
 * `GET /api/` → health payload
 * `GET /api/time` → { time }
 

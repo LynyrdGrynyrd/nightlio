@@ -91,6 +91,12 @@ GOOGLE_CLIENT_ID=your-client-id
 GOOGLE_CLIENT_SECRET=your-client-secret
 ```
 
+**Deployment checklist**
+1. Set `ENABLE_GOOGLE_OAUTH=1` in your deployment environment or `.env`.
+2. Provide `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+3. Redeploy/restart the API so `/api/config` returns `google_client_id`.
+4. If you run the Vite dev server directly (not via Docker), set `VITE_GOOGLE_CLIENT_ID` in the frontend environment as a fallback.
+
 #### 3. Both Methods (Maximum flexibility)
 ```bash
 ENABLE_GOOGLE_OAUTH=1
