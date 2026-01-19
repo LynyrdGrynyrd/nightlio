@@ -4,8 +4,19 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
+    libcairo2 \
+    libffi-dev \
+    libgdk-pixbuf2.0-0 \
+    libharfbuzz0b \
+    libjpeg62-turbo \
+    libopenjp2-7 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libpangoft2-1.0-0 \
+    libtiff6 \
+    libwebp7 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
