@@ -253,6 +253,7 @@ function App() {
                 <Routes>
                   <Route path="/" element={<LandingPage />} />
                   <Route path="/about" element={<AboutPage />} />
+                  <Route path="/ui-demo" element={<UiDemo />} />
                   <Route path="/login" element={<LoginPage />} />
                   <Route
                     path="/dashboard/*"
