@@ -191,6 +191,7 @@ const AppContent = () => {
                   <Route path="goals" element={<PageTransition><GoalsView /></PageTransition>} />
                   <Route path="gallery" element={<PageTransition><GalleryView onEntryClick={handleStartEdit} /></PageTransition>} />
                   <Route path="settings" element={<PageTransition><SettingsView /></PageTransition>} />
+                  <Route path="ui-demo" element={<PageTransition><UiDemo /></PageTransition>} />
                 </Routes>
               </AnimatePresence>
             </main>
