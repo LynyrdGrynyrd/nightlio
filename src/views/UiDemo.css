@@ -75,3 +75,29 @@
   display: grid;
   gap: var(--space-1);
 }
+
+.ui-demo__empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-1);
+  border: 1px dashed var(--border);
+  background: var(--bg);
+}
+
+.ui-demo__empty-title {
+  margin: 0 0 var(--space-1);
+  font-weight: 600;
+  color: var(--fg-strong);
+}
+
+.ui-demo__empty-text {
+  margin: 0;
+  color: var(--fg-muted);
+}
+
+.ui-demo__stack {
+  display: grid;
+  gap: var(--space-1);
+}

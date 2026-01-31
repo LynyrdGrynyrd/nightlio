@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import {
   Button as MuiButton,
+  Card,
+  CardContent,
   Dialog as MuiDialog,
   DialogActions,
   DialogContent as MuiDialogContent,
@@ -9,6 +11,7 @@ import {
   Skeleton as MuiSkeleton,
   Snackbar,
   Stack,
+  Typography,
 } from '@mui/material';
 import { ThemeProvider } from '@mui/material/styles';
 import { Button } from '@/components/ui/button';
@@ -26,6 +29,7 @@ import { Skeleton as ShadcnSkeleton } from '@/components/ui/skeleton';
 import { Toaster } from '@/components/ui/toaster';
 import { toast as shadcnToast } from '@/components/ui/use-toast';
 import Modal from '../components/ui/Modal';
+import EmptyState from '../components/ui/EmptyState';
 import ProgressBar from '../components/ui/ProgressBar';
 import Skeleton from '../components/ui/Skeleton';
 import { useToast } from '../components/ui/ToastProvider';
@@ -114,6 +118,16 @@ const UiDemo = () => {
             <h3>Progress</h3>
             <ProgressBar value={62} max={100} label="Syncing entries" />
           </div>
+
+          <div className="ui-demo__section">
+            <h3>Empty state</h3>
+            <EmptyState
+              title="No entries yet"
+              message="Start journaling to see insights here."
+              actionLabel="Create entry"
+              onAction={() => show('Create entry clicked', 'info')}
+            />
+          </div>
         </section>
 
         <ThemeProvider theme={muiTheme}>
@@ -173,6 +187,23 @@ const UiDemo = () => {
             <div className="ui-demo__section">
               <h3>Progress</h3>
               <LinearProgress variant="determinate" value={62} />
+            </div>
+
+            <div className="ui-demo__section">
+              <h3>Empty state</h3>
+              <Card variant="outlined">
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    No entries yet
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Start journaling to see insights here.
+                  </Typography>
+                  <MuiButton variant="contained" size="small">
+                    Create entry
+                  </MuiButton>
+                </CardContent>
+              </Card>
             </div>
           </section>
         </ThemeProvider>
@@ -237,6 +268,17 @@ const UiDemo = () => {
           <div className="ui-demo__section">
             <h3>Progress</h3>
             <Progress value={68} />
+          </div>
+
+          <div className="ui-demo__section">
+            <h3>Empty state</h3>
+            <div className="ui-demo__empty">
+              <div>
+                <p className="ui-demo__empty-title">No entries yet</p>
+                <p className="ui-demo__empty-text">Start journaling to see insights here.</p>
+              </div>
+              <Button size="sm">Create entry</Button>
+            </div>
           </div>
         </section>
       </div>
