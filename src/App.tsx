@@ -22,6 +22,7 @@ import AchievementsView from "./views/AchievementsView";
 import LandingPage from "./views/LandingPage";
 import AboutPage from "./views/AboutPage";
 import GalleryView from "./views/GalleryView";
+import UiDemo from "./views/UiDemo";
 import { useMoodData } from "./hooks/useMoodData";
 import { useGroups } from "./hooks/useGroups";
 import { useStatistics } from "./hooks/useStatistics";
@@ -251,6 +252,7 @@ function App() {
                 <Routes>
                   <Route path="/" element={<LandingPage />} />
                   <Route path="/about" element={<AboutPage />} />
+                  <Route path="/ui-demo" element={<UiDemo />} />
                   <Route path="/login" element={<LoginPage />} />
                   <Route
                     path="/dashboard/*"
