@@ -22,6 +22,7 @@ import AchievementsView from "./views/AchievementsView";
 import LandingPage from "./views/LandingPage";
 import AboutPage from "./views/AboutPage";
 import GalleryView from "./views/GalleryView";
+import UiDemo from "./views/UiDemo";
 import { useMoodData } from "./hooks/useMoodData";
 import { useGroups } from "./hooks/useGroups";
 import { useStatistics } from "./hooks/useStatistics";
@@ -190,6 +191,7 @@ const AppContent = () => {
                   <Route path="goals" element={<PageTransition><GoalsView /></PageTransition>} />
                   <Route path="gallery" element={<PageTransition><GalleryView onEntryClick={handleStartEdit} /></PageTransition>} />
                   <Route path="settings" element={<PageTransition><SettingsView /></PageTransition>} />
+                  <Route path="ui-demo" element={<PageTransition><UiDemo /></PageTransition>} />
                 </Routes>
               </AnimatePresence>
             </main>

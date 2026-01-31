@@ -4,29 +4,31 @@ const muiTheme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: 'var(--accent-600)',
+      main: '#2F7E89',
     },
     secondary: {
-      main: 'var(--accent-700)',
+      main: '#22626B',
     },
     background: {
-      default: 'var(--bg)',
-      paper: 'var(--surface)',
+      default: '#F7F8FB',
+      paper: '#FFFFFF',
     },
     text: {
-      primary: 'var(--text)',
-      secondary: 'var(--text-muted)',
+      primary: '#1F2937',
+      secondary: '#667085',
     },
-    divider: 'var(--border)',
+    divider: '#E6E8EC',
     success: {
-      main: 'var(--success)',
+      main: '#16A34A',
     },
     error: {
-      main: 'var(--danger)',
+      main: '#EF4444',
     },
   },
   typography: {
-    fontFamily: 'var(--font-family)',
+    fontFamily:
+      '"Inter", system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"',
+    fontSize: 16,
     h1: {
       fontWeight: 700,
     },
@@ -37,8 +39,7 @@ const muiTheme = createTheme({
       fontWeight: 600,
     },
     body1: {
-      fontSize: 'var(--font-size-base)',
-      lineHeight: 'var(--line-height-base)',
+      lineHeight: 1.5,
     },
     button: {
       textTransform: 'none',
