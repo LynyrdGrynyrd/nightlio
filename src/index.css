@@ -1,4 +1,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /*
   Global design system — calming, modern palette and 8px spacing grid.
@@ -116,6 +119,26 @@
   --fg-strong: var(--text);
   --brand: var(--accent-600);
   --brand-2: var(--accent-700);
+
+  /* shadcn/ui tokens mapped to existing theme values */
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+  --primary: var(--accent-600);
+  --primary-foreground: #ffffff;
+  --secondary: var(--accent-bg-soft);
+  --secondary-foreground: var(--text);
+  --muted: var(--border-soft);
+  --muted-foreground: var(--text-muted);
+  --accent: var(--accent-bg-soft);
+  --accent-foreground: var(--text);
+  --destructive: var(--danger);
+  --destructive-foreground: #ffffff;
+  --input: var(--border);
+  --ring-color: var(--accent-600);
 
   /* Shared background gradient */
   --gradient-background: radial-gradient(circle at top, rgba(80, 94, 255, 0.18), transparent 55%),
