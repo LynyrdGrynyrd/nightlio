@@ -96,3 +96,8 @@
   margin: 0;
   color: var(--fg-muted);
 }
+
+.ui-demo__stack {
+  display: grid;
+  gap: var(--space-1);
+}
