@@ -1,6 +1,7 @@
 import json
 import os
 import logging
+import sqlite3
 from pywebpush import webpush, WebPushException
 from typing import Dict, Optional
 
@@ -8,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class PushService:
     def __init__(self, db, vapid_key_file: str = "vapid_keys.json"):
-        self.db = db
+        self._db = db
         self.vapid_key_file = vapid_key_file
         # Fixed email claim is required by VAPID
         self.vapid_claims = {"sub": "mailto:admin@twilightio.app"}
@@ -49,25 +50,42 @@ class PushService:
             v = Vapid()
             v.generate_keys()
             
-            # Format keys for saving/using
-            # raw strings often work with pywebpush if they are base64url encoded?
-            # actually pywebpush expects PEM or specific formats. 
-            # easier: rely on the library to give us what we need or just use the ec objects?
-            # pywebpush accepts path to PEM file OR string.
+            # Get the private key in PEM format and save it
+            # The newer py_vapid API uses save_key() instead of save_pem()
+            try:
+                # Try newer API first
+                v.save_key('private_key.pem')
+            except AttributeError:
+                # Fall back to even newer API - just write the private key directly
+                try:
+                    # Get the private key bytes and write to file
+                    from cryptography.hazmat.primitives import serialization
+                    private_bytes = v.private_key.private_bytes(
+                        encoding=serialization.Encoding.PEM,
+                        format=serialization.PrivateFormat.PKCS8,
+                        encryption_algorithm=serialization.NoEncryption()
+                    )
+                    with open('private_key.pem', 'wb') as f:
+                        f.write(private_bytes)
+                except Exception as inner_e:
+                    logger.warning(f"Could not save private key via cryptography: {inner_e}")
+                    # Last resort: try to access the raw key attribute 
+                    raise
             
-            # Helper to get base64 keys which are easier to store in JSON/Frontend
-            # But pywebpush likes PEM for private key usually.
-            
-            # Let's save as PEM files for simplicity if we can? 
-            # Or just store the raw values.
-            
-            # Actually, `v.save_pem()` creates a file.
-            v.save_pem('private_key.pem')
             self.private_key = 'private_key.pem' 
             
             # We need the public key string for the frontend (base64url)
-            # v.public_key_and_der() returns (b64url_string, der_bytes)
-            self.public_key = v.public_key_and_der()[0].decode('utf-8')
+            # Try different methods to get the public key
+            try:
+                # Newer API
+                pub_key_data = v.public_key
+                if hasattr(pub_key_data, 'decode'):
+                    self.public_key = pub_key_data.decode('utf-8')
+                else:
+                    self.public_key = str(pub_key_data)
+            except Exception:
+                # Fallback to older API
+                self.public_key = v.public_key_and_der()[0].decode('utf-8')
             
             # Save public key for reference
             with open(self.vapid_key_file, "w") as f:
@@ -94,7 +112,7 @@ class PushService:
                 logger.warning("Invalid subscription data received")
                 return False
 
-            with self.db._connect() as conn:
+            with self._db._connect() as conn:
                 conn.execute(
                     """
                     INSERT OR REPLACE INTO push_subscriptions 
@@ -112,7 +130,7 @@ class PushService:
     def send_notification(self, user_id: int, message: str) -> int:
         """Send a notification to all of a user's subscriptions. Returns success count."""
         try:
-            with self.db._connect() as conn:
+            with self._db._connect() as conn:
                 conn.row_factory = sqlite3.Row if hasattr(self.db, 'sqlite3') else None
                 # Manual row factory if needed
                 cursor = conn.execute(
@@ -172,8 +190,8 @@ class PushService:
 
     def _delete_subscription(self, endpoint: str):
         try:
-            with self.db._connect() as conn:
+            with self._db._connect() as conn:
                 conn.execute("DELETE FROM push_subscriptions WHERE endpoint = ?", (endpoint,))
                 conn.commit()
-        except:
-            pass
+        except Exception as e:
+            logger.warning("Failed to delete subscription for endpoint %s: %s", endpoint, e)

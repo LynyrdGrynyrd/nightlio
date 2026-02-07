@@ -87,6 +87,11 @@ class ImportantDaysMixin(DatabaseConnectionMixin):
                 return item
             return None
 
+    # Whitelist of columns allowed for dynamic UPDATE in important_days
+    _IMPORTANT_DAY_UPDATE_COLUMNS = frozenset({
+        "title", "date", "category", "icon", "recurring_type", "remind_days_before", "notes"
+    })
+
     def update_important_day(
         self,
         user_id: int,
@@ -100,37 +105,31 @@ class ImportantDaysMixin(DatabaseConnectionMixin):
         notes: Optional[str] = None,
     ) -> bool:
         """Update an important day."""
+        # Map parameter names to column names (target_date -> date)
+        field_values = {
+            "title": title,
+            "date": target_date,
+            "category": category,
+            "icon": icon,
+            "recurring_type": recurring_type,
+            "remind_days_before": remind_days_before,
+            "notes": notes,
+        }
+
         updates = []
         params = []
-        
-        if title is not None:
-            updates.append("title = ?")
-            params.append(title)
-        if target_date is not None:
-            updates.append("date = ?")
-            params.append(target_date)
-        if category is not None:
-            updates.append("category = ?")
-            params.append(category)
-        if icon is not None:
-            updates.append("icon = ?")
-            params.append(icon)
-        if recurring_type is not None:
-            updates.append("recurring_type = ?")
-            params.append(recurring_type)
-        if remind_days_before is not None:
-            updates.append("remind_days_before = ?")
-            params.append(remind_days_before)
-        if notes is not None:
-            updates.append("notes = ?")
-            params.append(notes)
-        
+        for col, val in field_values.items():
+            if val is not None and col in self._IMPORTANT_DAY_UPDATE_COLUMNS:
+                updates.append(f"{col} = ?")
+                params.append(val)
+
         if not updates:
             return False
-        
+
         params.extend([day_id, user_id])
-        
+
         with self._connect() as conn:
+            # Column names are from hardcoded whitelist, safe for query
             cursor = conn.execute(
                 f"UPDATE important_days SET {', '.join(updates)} WHERE id = ? AND user_id = ?",
                 params,

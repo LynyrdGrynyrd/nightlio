@@ -1,6 +1,10 @@
-import { useState, useEffect, FormEvent, ChangeEvent, MouseEvent } from 'react';
-import { X } from 'lucide-react';
-import './ImportantDays.css';
+import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Textarea } from '../ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 // ========== Types ==========
 
@@ -63,6 +67,12 @@ const ImportantDayModal = ({ day, onSave, onClose }: ImportantDayModalProps) => 
       setCategory(day.category || 'Custom');
       setRecurringType(day.recurring_type || 'once');
       setNotes(day.notes || '');
+    } else {
+      setTitle('');
+      setDate('');
+      setCategory('Custom');
+      setRecurringType('once');
+      setNotes('');
     }
   }, [day]);
 
@@ -79,32 +89,20 @@ const ImportantDayModal = ({ day, onSave, onClose }: ImportantDayModalProps) => 
     });
   };
 
-  const handleOverlayClick = (e: MouseEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
-  const handleContentClick = (e: MouseEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-  };
-
   return (
-    <div className="important-day-modal__overlay" onClick={handleOverlayClick}>
-      <div className="important-day-modal" onClick={handleContentClick}>
-        <div className="important-day-modal__header">
-          <h3>{day ? 'Edit Important Day' : 'Add Important Day'}</h3>
-          <button onClick={onClose} className="important-day-modal__close">
-            <X size={20} />
-          </button>
-        </div>
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>{day ? 'Edit Important Day' : 'Add Important Day'}</DialogTitle>
+        </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="important-day-modal__form">
-          <div className="important-day-modal__field">
-            <label htmlFor="title">Title</label>
-            <input
+        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="title">Title</Label>
+            <Input
               id="title"
-              type="text"
+              name="important-day-title"
+              autoComplete="off"
               value={title}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
               placeholder="e.g., Mom's Birthday"
@@ -112,10 +110,12 @@ const ImportantDayModal = ({ day, onSave, onClose }: ImportantDayModalProps) => 
             />
           </div>
 
-          <div className="important-day-modal__field">
-            <label htmlFor="date">Date</label>
-            <input
+          <div className="grid gap-2">
+            <Label htmlFor="date">Date</Label>
+            <Input
               id="date"
+              name="important-day-date"
+              autoComplete="off"
               type="date"
               value={date}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setDate(e.target.value)}
@@ -123,36 +123,40 @@ const ImportantDayModal = ({ day, onSave, onClose }: ImportantDayModalProps) => 
             />
           </div>
 
-          <div className="important-day-modal__field">
-            <label htmlFor="category">Category</label>
-            <select
-              id="category"
-              value={category}
-              onChange={(e: ChangeEvent<HTMLSelectElement>) => setCategory(e.target.value)}
-            >
-              {CATEGORIES.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
+          <div className="grid gap-2">
+            <Label htmlFor="category">Category</Label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORIES.map(cat => (
+                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          <div className="important-day-modal__field">
-            <label htmlFor="recurring">Repeat</label>
-            <select
-              id="recurring"
-              value={recurringType}
-              onChange={(e: ChangeEvent<HTMLSelectElement>) => setRecurringType(e.target.value as RecurringType)}
-            >
-              {RECURRING_TYPES.map(rt => (
-                <option key={rt.value} value={rt.value}>{rt.label}</option>
-              ))}
-            </select>
+          <div className="grid gap-2">
+            <Label htmlFor="recurring">Repeat</Label>
+            <Select value={recurringType} onValueChange={(val) => setRecurringType(val as RecurringType)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select recurrence" />
+              </SelectTrigger>
+              <SelectContent>
+                {RECURRING_TYPES.map(rt => (
+                  <SelectItem key={rt.value} value={rt.value}>{rt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          <div className="important-day-modal__field">
-            <label htmlFor="notes">Notes (optional)</label>
-            <textarea
+          <div className="grid gap-2">
+            <Label htmlFor="notes">Notes (optional)</Label>
+            <Textarea
               id="notes"
+              name="important-day-notes"
+              autoComplete="off"
               value={notes}
               onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setNotes(e.target.value)}
               placeholder="Add any notes..."
@@ -160,17 +164,17 @@ const ImportantDayModal = ({ day, onSave, onClose }: ImportantDayModalProps) => 
             />
           </div>
 
-          <div className="important-day-modal__actions">
-            <button type="button" onClick={onClose} className="important-day-modal__btn--secondary">
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
               Cancel
-            </button>
-            <button type="submit" className="important-day-modal__btn--primary">
+            </Button>
+            <Button type="submit">
               {day ? 'Update' : 'Add'}
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

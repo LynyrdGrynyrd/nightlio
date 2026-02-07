@@ -1,239 +1,242 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Trophy } from 'lucide-react';
 import Modal from '../components/ui/Modal';
 import ProgressBar from '../components/ui/ProgressBar';
-import AchievementNFT from '../components/nft/AchievementNFT';
-import apiService, { Achievement } from '../services/api';
+import AchievementNFT, {
+  AchievementIconKey,
+  isAchievementIconKey,
+} from '../components/nft/AchievementNFT';
+import apiService, {
+  AchievementDefinition,
+  AchievementProgressDTO,
+} from '../services/api';
+import { Card, CardContent } from '../components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select';
+import ResponsiveGrid from '../components/layout/ResponsiveGrid';
 
-// ========== Types ==========
-
+type FilterMode = 'all' | 'locked' | 'unlocked';
+type SortMode = 'near' | 'rarity' | 'progress' | 'name';
 type AchievementRarity = 'common' | 'uncommon' | 'rare' | 'legendary';
 
-interface AchievementTemplate {
-  achievement_type: string;
-  name: string;
-  description: string;
-  icon: string;
-  rarity: AchievementRarity;
-  secret?: boolean;
-}
-
-interface AchievementProgress {
+interface AchievementCardModel {
+  definition: AchievementDefinition;
   current: number;
   max: number;
+  percent: number;
+  isUnlocked: boolean;
+  displayName: string;
+  displayDescription: string;
+  displayIcon: AchievementIconKey;
+  rarityWeight: number;
+  isSecretLocked: boolean;
 }
 
-interface ProgressMap {
-  [key: string]: AchievementProgress;
-}
+const rarityWeightMap: Record<AchievementRarity, number> = {
+  legendary: 4,
+  rare: 3,
+  uncommon: 2,
+  common: 1,
+};
 
-// ========== Constants ==========
-
-const getAllAchievements = (): AchievementTemplate[] => [
-  // Original achievements
-  {
-    achievement_type: 'first_entry',
-    name: 'First Entry',
-    description: 'Log your first mood entry',
-    icon: 'Zap',
-    rarity: 'common'
-  },
-  {
-    achievement_type: 'week_warrior',
-    name: 'Week Warrior',
-    description: 'Maintain a 7-day streak',
-    icon: 'Flame',
-    rarity: 'uncommon'
-  },
-  {
-    achievement_type: 'consistency_king',
-    name: 'Consistency King',
-    description: 'Maintain a 30-day streak',
-    icon: 'Crown',
-    rarity: 'rare'
-  },
-  {
-    achievement_type: 'data_lover',
-    name: 'Data Lover',
-    description: 'View statistics 10 times',
-    icon: 'BarChart3',
-    rarity: 'uncommon'
-  },
-  {
-    achievement_type: 'mood_master',
-    name: 'Mood Master',
-    description: 'Log 100 total entries',
-    icon: 'Target',
-    rarity: 'legendary'
-  },
-
-  // New achievements
-  {
-    achievement_type: 'complex_person',
-    name: 'Complex Person',
-    description: 'Experience all 5 mood levels',
-    icon: 'Sparkles',
-    rarity: 'uncommon'
-  },
-  {
-    achievement_type: 'half_year',
-    name: 'Half Year Hero',
-    description: 'Maintain a 180-day streak',
-    icon: 'Medal',
-    rarity: 'legendary'
-  },
-  {
-    achievement_type: 'devoted',
-    name: 'Devoted',
-    description: 'Maintain a 365-day streak',
-    icon: 'Trophy',
-    rarity: 'legendary',
-    secret: true
-  },
-  {
-    achievement_type: 'photographer',
-    name: 'Photographer',
-    description: 'Attach 50 photos to entries',
-    icon: 'Camera',
-    rarity: 'rare'
-  },
-  {
-    achievement_type: 'goal_crusher',
-    name: 'Goal Crusher',
-    description: 'Complete 10 goals',
-    icon: 'CheckCircle2',
-    rarity: 'rare'
-  },
-  {
-    achievement_type: 'comeback_king',
-    name: 'Comeback King',
-    description: 'Return to a 7-day streak after losing a longer one',
-    icon: 'RefreshCw',
-    rarity: 'rare',
-    secret: true
-  },
-
-  // Milestone achievements
-  {
-    achievement_type: 'milestone_50',
-    name: 'Getting Started',
-    description: 'Log 50 entries',
-    icon: 'Award',
-    rarity: 'uncommon'
-  },
-  {
-    achievement_type: 'milestone_250',
-    name: 'Journaling Journey',
-    description: 'Log 250 entries',
-    icon: 'Star',
-    rarity: 'rare'
-  },
-  {
-    achievement_type: 'milestone_500',
-    name: 'Prolific Writer',
-    description: 'Log 500 entries',
-    icon: 'Gem',
-    rarity: 'legendary'
-  },
-];
-
-// ========== Component ==========
+const toSafeIconKey = (icon: string, fallback: AchievementIconKey = 'Zap'): AchievementIconKey =>
+  isAchievementIconKey(icon) ? icon : fallback;
 
 const AchievementsView = () => {
-  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [definitions, setDefinitions] = useState<AchievementDefinition[]>([]);
+  const [progressRows, setProgressRows] = useState<AchievementProgressDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [active, setActive] = useState<AchievementTemplate | Achievement | null>(null);
-  const [progress, setProgress] = useState<ProgressMap>({});
+  const [active, setActive] = useState<AchievementCardModel | null>(null);
+  const [filterMode, setFilterMode] = useState<FilterMode>('all');
+  const [sortMode, setSortMode] = useState<SortMode>('near');
 
   useEffect(() => {
+    let cancelled = false;
+    const loadAchievements = async () => {
+      try {
+        setLoading(true);
+        const [definitionsData, progressData] = await Promise.all([
+          apiService.getAchievementDefinitions(),
+          apiService.getAchievementsProgress(),
+        ]);
+        if (cancelled) return;
+        setDefinitions(definitionsData || []);
+        setProgressRows(progressData || []);
+      } catch (err) {
+        if (cancelled) return;
+        setError('Failed to load achievements');
+        console.error('Failed to load achievements:', err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
     loadAchievements();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const loadAchievements = async () => {
-    try {
-      setLoading(true);
-      const [data, prog] = await Promise.all([
-        apiService.getUserAchievements(),
-        apiService.getAchievementsProgress(),
-      ]);
-      setAchievements(data);
-      setProgress(prog || {});
-    } catch (err) {
-      setError('Failed to load achievements');
-      console.error('Failed to load achievements:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const achievementCards = useMemo(() => {
+    const progressMap = new Map(
+      progressRows.map((row) => [row.achievement_type, row] as const)
+    );
+
+    const cards: AchievementCardModel[] = definitions.map((definition) => {
+      const progress = progressMap.get(definition.achievement_type);
+      const current = Math.max(0, progress?.current ?? 0);
+      const max = Math.max(1, progress?.max ?? definition.target ?? 1);
+      const percent = Math.max(
+        0,
+        Math.min(100, progress?.percent ?? Math.round((current / max) * 100))
+      );
+      const isUnlocked = Boolean(progress?.is_unlocked);
+      const isSecretLocked = Boolean(definition.secret && !isUnlocked);
+
+      return {
+        definition,
+        current,
+        max,
+        percent,
+        isUnlocked,
+        isSecretLocked,
+        displayName: isSecretLocked ? 'Hidden Achievement' : definition.name,
+        displayDescription: isSecretLocked
+          ? 'Unlock this achievement to reveal details.'
+          : definition.description,
+        displayIcon: isSecretLocked
+          ? 'Lock'
+          : toSafeIconKey(definition.icon, 'Zap'),
+        rarityWeight: rarityWeightMap[definition.rarity as AchievementRarity] || 1,
+      };
+    });
+
+    return cards
+      .filter((card) => {
+        if (filterMode === 'locked') return !card.isUnlocked;
+        if (filterMode === 'unlocked') return card.isUnlocked;
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortMode === 'name') return a.displayName.localeCompare(b.displayName);
+        if (sortMode === 'rarity') return b.rarityWeight - a.rarityWeight;
+        if (sortMode === 'progress') return b.percent - a.percent;
+        // near-unlock default
+        if (a.isUnlocked !== b.isUnlocked) return a.isUnlocked ? 1 : -1;
+        return b.percent - a.percent;
+      });
+  }, [definitions, progressRows, filterMode, sortMode]);
+
+  const unlockedCount = achievementCards.filter((card) => card.isUnlocked).length;
+  const totalCount = definitions.length;
 
   if (loading) {
     return (
-      <div style={{ marginTop: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-        Loading achievements...
-      </div>
+      <div className="mt-6 text-center text-muted-foreground">Loading achievements...</div>
     );
   }
 
   if (error) {
     return (
-      <div style={{ marginTop: '2rem', textAlign: 'center', color: 'var(--accent-600)' }}>
-        {error}
-      </div>
+      <div className="mt-6 text-center text-destructive">{error}</div>
     );
   }
 
   return (
-    <div style={{ marginTop: '1.5rem' }}>
-      {/* Achievements Grid */}
-      <div style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '1rem',
-        padding: 0,
-        margin: 0,
-        alignItems: 'stretch',
-        alignContent: 'flex-start',
-        width: '100%'
-      }}>
-        {/* All possible achievements */}
-        {getAllAchievements().map((achievement, index) => {
-          const unlockedAchievement = achievements.find(a => a.achievement_type === achievement.achievement_type);
-          const isUnlocked = !!unlockedAchievement;
-          const p = progress[achievement.achievement_type] || null;
-          const progressValue = isUnlocked ? undefined : (p ? p.current : 0);
-          const progressMax = p ? p.max : 7;
-          return (
-            <div
-              key={index}
-              onClick={() => setActive(unlockedAchievement || achievement)}
-              style={{
-                cursor: 'pointer',
-                flex: '1 1 300px',
-                minWidth: 260,
-                maxWidth: '100%',
-                display: 'flex'
-              }}
-            >
-              <AchievementNFT
-                achievement={unlockedAchievement || achievement}
-                isUnlocked={isUnlocked}
-                progressValue={progressValue}
-                progressMax={progressMax}
-              />
-            </div>
-          );
-        })}
-      </div>
-
-      <Modal open={!!active} onClose={() => setActive(null)} title={active?.name || 'Achievement'}>
-        <p style={{ marginTop: 0 }}>{active?.description}</p>
-        {!achievements.find(a => a.achievement_type === active?.achievement_type) && (() => {
-          const p = progress[active?.achievement_type || ''] || { current: 0, max: 7 };
-          return <ProgressBar value={p.current || 0} max={p.max || 7} label="Progress to unlock" />;
-        })()}
-        <div style={{ marginTop: 12, fontSize: 13, color: 'var(--text-muted)' }}>
-          Tips: Log daily to maintain your streak. Viewing statistics contributes to "Data Lover".
+    <div className="space-y-6">
+      <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-3">
+            <span className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+              <Trophy size={22} />
+            </span>
+            Achievements
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {unlockedCount}/{totalCount} unlocked • prioritize near-unlock achievements for quick wins.
+          </p>
         </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={filterMode} onValueChange={(v) => setFilterMode(v as FilterMode)}>
+            <SelectTrigger className="w-[140px] h-9 text-xs">
+              <SelectValue placeholder="Filter" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="locked">Locked</SelectItem>
+              <SelectItem value="unlocked">Unlocked</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
+            <SelectTrigger className="w-[150px] h-9 text-xs">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="near">Near Unlock</SelectItem>
+              <SelectItem value="progress">Progress</SelectItem>
+              <SelectItem value="rarity">Rarity</SelectItem>
+              <SelectItem value="name">Name</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </header>
+
+      {achievementCards.length === 0 ? (
+        <Card>
+          <CardContent className="py-10 text-center text-muted-foreground">
+            No achievements match this filter.
+          </CardContent>
+        </Card>
+      ) : (
+        <div data-testid="achievements-grid-shell" className="mx-auto w-full lg:max-w-[calc(4*12rem+3*1.25rem)] xl:max-w-[calc(5*12rem+4*1.25rem)] 2xl:max-w-[calc(6*12rem+5*1.25rem)]">
+          <ResponsiveGrid data-testid="achievements-grid" minCardWidth="12rem" gapToken="normal">
+            {achievementCards.map((card) => (
+              <button
+                key={card.definition.achievement_type}
+                onClick={() => setActive(card)}
+                className="text-left block w-full bg-transparent border-none p-0"
+                type="button"
+              >
+                <AchievementNFT
+                  achievement={{
+                    name: card.displayName,
+                    description: card.displayDescription,
+                    icon: card.displayIcon,
+                    rarity: card.definition.rarity,
+                  }}
+                  isUnlocked={card.isUnlocked}
+                  progressValue={card.isUnlocked ? undefined : card.current}
+                  progressMax={card.max}
+                />
+              </button>
+            ))}
+          </ResponsiveGrid>
+        </div>
+      )}
+
+      <Modal
+        open={!!active}
+        onClose={() => setActive(null)}
+        title={active?.displayName || 'Achievement'}
+      >
+        <p style={{ marginTop: 0 }}>{active?.displayDescription}</p>
+        {active && !active.isUnlocked && (
+          <ProgressBar value={active.current} max={active.max} label="Progress to unlock" />
+        )}
+        {active && (
+          <div style={{ marginTop: 12, fontSize: 13, color: 'var(--text-muted)' }}>
+            {active.isSecretLocked
+              ? 'Keep logging and maintaining momentum to reveal this secret achievement.'
+              : 'Tips: daily logging, streak consistency, and goal completion unlock achievements fastest.'}
+          </div>
+        )}
       </Modal>
     </div>
   );

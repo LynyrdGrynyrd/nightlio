@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import apiService, { User } from '../services/api';
 import { useConfig } from './ConfigContext';
 import { isMockMode, mockUser } from '../services/mockData.js';
@@ -126,7 +126,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   }, [token, configLoading, config.enable_google_oauth, verifyToken, localLogin]);
 
-  const login = async (googleToken?: string, credentials?: UsernamePasswordCredentials): Promise<LoginResult> => {
+  const login = useCallback(async (googleToken?: string, credentials?: UsernamePasswordCredentials): Promise<LoginResult> => {
     try {
       setLoading(true);
       let response;
@@ -164,16 +164,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const value: AuthContextValue = {
+  const value = useMemo<AuthContextValue>(() => ({
     user,
     loading,
     login,
     logout,
     isAuthenticated: !!user,
     isMockMode,
-  };
+  }), [user, loading, login, logout]);
 
   return (
     <AuthContext.Provider value={value}>

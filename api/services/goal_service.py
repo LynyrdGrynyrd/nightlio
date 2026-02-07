@@ -10,9 +10,26 @@ class GoalService:
         return self.db.get_goals(user_id)
 
     def create_goal(
-        self, user_id: int, title: str, description: str, frequency_per_week: int
+        self,
+        user_id: int,
+        title: str,
+        description: str,
+        frequency_per_week: int,
+        frequency_type: str = "weekly",
+        target_count: int = 1,
+        custom_days: Optional[str] = None,
     ) -> int:
-        return int(self.db.create_goal(user_id, title, description, frequency_per_week))
+        return int(
+            self.db.create_goal(
+                user_id,
+                title,
+                description,
+                frequency_per_week,
+                frequency_type,
+                target_count,
+                custom_days,
+            )
+        )
 
     def get_goal(self, user_id: int, goal_id: int) -> Optional[Dict]:
         return self.db.get_goal_by_id(user_id, goal_id)
@@ -24,9 +41,19 @@ class GoalService:
         title: Optional[str] = None,
         description: Optional[str] = None,
         frequency_per_week: Optional[int] = None,
+        frequency_type: Optional[str] = None,
+        target_count: Optional[int] = None,
+        custom_days: Optional[str] = None,
     ) -> bool:
         return self.db.update_goal(
-            user_id, goal_id, title, description, frequency_per_week
+            user_id,
+            goal_id,
+            title,
+            description,
+            frequency_per_week,
+            frequency_type,
+            target_count,
+            custom_days,
         )
 
     def delete_goal(self, user_id: int, goal_id: int) -> bool:

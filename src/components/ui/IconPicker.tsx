@@ -23,6 +23,7 @@ import {
   Car,
   Bike
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // ========== Types ==========
 
@@ -64,41 +65,32 @@ const ICON_LIST: IconItem[] = [
   { name: 'Bike', component: Bike, label: 'Cycling' }
 ];
 
+// Create Map for O(1) lookup
+const ICON_MAP = new Map(ICON_LIST.map(i => [i.name, i.component]));
+
 // ========== Component ==========
 
 const IconPicker = ({ onSelect, selectedIcon }: IconPickerProps) => {
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(40px, 1fr))',
-      gap: '0.5rem',
-      padding: '0.5rem',
-      maxHeight: '200px',
-      overflowY: 'auto'
-    }}>
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(44px,1fr))] gap-2 p-2 max-h-[200px] overflow-y-auto">
       {ICON_LIST.map((item) => {
         const Icon = item.component;
+        const isSelected = selectedIcon === item.name;
         return (
           <button
             key={item.name}
             type="button"
             onClick={() => onSelect(item.name)}
+            aria-label={item.label}
             title={item.label}
-            style={{
-              display: 'grid',
-              placeItems: 'center',
-              width: '40px',
-              height: '40px',
-              background: selectedIcon === item.name ? 'var(--accent-bg)' : 'var(--bg-card)',
-              color: selectedIcon === item.name ? 'white' : 'var(--text)',
-              border: selectedIcon === item.name ? 'none' : '1px solid var(--border)',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              padding: 0,
-              transition: 'all 0.2s ease',
-            }}
-          >
-            <Icon size={20} />
+              className={cn(
+                "grid place-items-center w-11 h-11 rounded-lg cursor-pointer p-0 transition-[colors,transform] duration-200",
+                isSelected
+                ? "bg-accent-bg text-[color:var(--primary-foreground)] border-none"
+                : "bg-card text-foreground border border-border hover:bg-muted"
+              )}
+            >
+            <Icon size={20} aria-hidden="true" />
           </button>
         );
       })}
@@ -110,8 +102,7 @@ const IconPicker = ({ onSelect, selectedIcon }: IconPickerProps) => {
 
 export const getIconComponent = (iconName: string): LucideIcon | null => {
   if (!iconName) return null;
-  const icon = ICON_LIST.find(i => i.name === iconName);
-  return icon ? icon.component : null;
+  return ICON_MAP.get(iconName) ?? null;
 };
 
 export default IconPicker;

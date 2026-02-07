@@ -1,26 +1,14 @@
-import { Home, BarChart3, Trophy, Settings, Target, LucideIcon } from 'lucide-react';
 import { useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { cn } from '@/lib/utils';
+import { DASHBOARD_NAV_ITEMS, SETTINGS_NAV_ITEM } from '@/constants/navigation';
 
 interface BottomNavProps {
   onLoadStatistics?: () => void;
 }
 
-interface NavItem {
-  key: string;
-  label: string;
-  icon: LucideIcon;
-  end?: boolean;
-}
-
 const BottomNav = ({ onLoadStatistics }: BottomNavProps) => {
-  const items: NavItem[] = [
-    { key: '.', label: 'Home', icon: Home, end: true },
-    { key: 'goals', label: 'Goals', icon: Target },
-    { key: 'stats', label: 'Stats', icon: BarChart3 },
-    { key: 'achievements', label: 'Awards', icon: Trophy },
-    { key: 'settings', label: 'Settings', icon: Settings },
-  ];
+  const items = [...DASHBOARD_NAV_ITEMS, SETTINGS_NAV_ITEM];
 
   const location = useLocation();
 
@@ -31,19 +19,26 @@ const BottomNav = ({ onLoadStatistics }: BottomNavProps) => {
   }, [location.pathname, onLoadStatistics]);
 
   return (
-    <nav className="bottom-nav">
-      {items.map(({ key, label, icon: Icon, end }) => (
-        <NavLink
-          key={key}
-          to={key}
-          end={end}
-          className={({ isActive }) => `bottom-nav__item ${isActive ? 'is-active' : ''}`}
-          aria-label={label}
-        >
-          <Icon size={20} />
-          <span className="bottom-nav__label">{label}</span>
-        </NavLink>
-      ))}
+    <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-card border-t pb-[env(safe-area-inset-bottom)]">
+      <div className="flex items-center justify-around h-16 px-1">
+        {items.map(({ route, shortLabel, fullLabel, icon: Icon, end }) => (
+          <NavLink
+            key={route}
+            to={route}
+            end={end}
+            className={({ isActive }) => cn(
+              "flex flex-col items-center justify-center flex-1 h-full gap-0.5 text-xs font-medium transition-colors",
+              isActive
+                ? "text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+            aria-label={fullLabel}
+          >
+            <Icon size={20} className="shrink-0" aria-hidden="true" />
+            <span className="text-[10px] leading-none max-w-[60px] truncate">{shortLabel}</span>
+          </NavLink>
+        ))}
+      </div>
     </nav>
   );
 };

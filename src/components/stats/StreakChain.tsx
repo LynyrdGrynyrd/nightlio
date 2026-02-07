@@ -1,7 +1,11 @@
-import { useState, useEffect, CSSProperties } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { Flame, Check, Plus, Trophy, Share2 } from 'lucide-react';
 import apiService from '../../services/api';
-import './StreakChain.css';
+import { Button } from '../ui/button';
+import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
+import { Skeleton } from '../ui/Skeleton';
+import { cn } from '@/lib/utils';
+import { useToast } from '../ui/ToastProvider';
 
 interface DayInfo {
   date: string;
@@ -10,29 +14,34 @@ interface DayInfo {
   isToday: boolean;
 }
 
-interface StreakData {
+interface StreakDetails {
   current_streak: number;
   longest_streak: number;
-  recent_days: DayInfo[];
+  recent_days?: DayInfo[];
+  // api types might vary, we define what we consume or map it
 }
 
 const StreakChain = () => {
-  const [data, setData] = useState<StreakData | null>(null);
+  const [data, setData] = useState<StreakDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
+  const { show } = useToast();
 
   useEffect(() => {
+    let mounted = true;
     const fetchData = async () => {
       try {
         const details = await apiService.getStreakDetails();
-        setData(details);
+        // Force type compatibility or assume structure
+        if (mounted) setData(details as unknown as StreakDetails);
       } catch (err) {
         console.error('Failed to fetch streak details:', err);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     };
     fetchData();
+    return () => { mounted = false; };
   }, []);
 
   const handleShare = async () => {
@@ -50,9 +59,8 @@ const StreakChain = () => {
           text: shareText,
         });
       } else {
-        // Fallback: copy to clipboard
         await navigator.clipboard.writeText(shareText);
-        alert('Streak copied to clipboard!');
+        show('Streak copied to clipboard!', 'success');
       }
     } catch (err) {
       if ((err as Error).name !== 'AbortError') {
@@ -65,9 +73,11 @@ const StreakChain = () => {
 
   if (loading) {
     return (
-      <div className="streak-chain streak-chain--loading">
-        <div className="streak-chain__skeleton" />
-      </div>
+      <Card>
+        <CardContent className="p-6">
+          <Skeleton className="h-24 w-full" />
+        </CardContent>
+      </Card>
     );
   }
 
@@ -75,70 +85,86 @@ const StreakChain = () => {
 
   const { current_streak, longest_streak, recent_days } = data;
 
-  const shareButtonStyle: CSSProperties = {
-    background: 'none',
-    border: '1px solid var(--border)',
-    borderRadius: '8px',
-    padding: '6px 12px',
-    cursor: current_streak === 0 ? 'not-allowed' : 'pointer',
-    color: 'var(--text-muted)',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    fontSize: '0.85rem',
-    opacity: current_streak === 0 ? 0.5 : 1,
-    transition: 'all 0.2s'
-  };
-
   return (
-    <div className="streak-chain">
-      <div className="streak-chain__header">
-        <h3 className="streak-chain__title">Days in a Row</h3>
-        <button
+    <Card className="overflow-hidden relative">
+      <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+        <CardTitle className="text-base font-semibold flex items-center gap-2">
+          <Flame className="text-[color:var(--warning)] fill-[color:var(--warning)]" size={18} />
+          Days in a Row
+        </CardTitle>
+        <Button
+          variant="outline"
+          size="sm"
           onClick={handleShare}
           disabled={sharing || current_streak === 0}
-          className="streak-chain__share-btn"
-          style={shareButtonStyle}
-          title={current_streak === 0 ? 'Start a streak to share' : 'Share your streak'}
+          className="gap-2 h-8 text-xs font-medium"
         >
-          <Share2 size={14} />
+          <Share2 size={12} />
           Share
-        </button>
-      </div>
+        </Button>
+      </CardHeader>
 
-      <div className="streak-chain__days">
-        <div className="streak-chain__line" />
+      <CardContent className="pb-6">
+        {recent_days && recent_days.length > 0 ? (
+          <div className="flex items-center justify-between relative px-2 mb-2">
+            {/* Connector Line */}
+            <div className="absolute left-4 right-4 top-5 h-0.5 bg-muted -z-10" />
 
-        {recent_days.map((day) => (
-          <div
-            key={day.date}
-            className={`streak-chain__day ${day.hasEntry ? 'streak-chain__day--logged' : ''} ${day.isToday ? 'streak-chain__day--today' : ''}`}
-          >
-            <div className="streak-chain__circle">
-              {day.hasEntry ? (
-                <Check size={14} strokeWidth={3} />
-              ) : (
-                <Plus size={14} strokeWidth={2} />
-              )}
+            {recent_days.map((day) => (
+              <div
+                key={day.date}
+                className={cn(
+                  "flex flex-col items-center gap-2 z-10",
+                  day.isToday && "scale-110"
+                )}
+              >
+                <div
+                  className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all shadow-sm bg-background",
+                    day.hasEntry
+                      ? "border-[color:var(--warning)] text-[color:var(--warning)]"
+                      : "border-muted text-muted-foreground",
+                    day.isToday && !day.hasEntry && "border-primary text-primary border-dashed animate-pulse ring-2 ring-primary/20"
+                  )}
+                >
+                  {day.hasEntry ? (
+                    <Check size={20} strokeWidth={3} />
+                  ) : (
+                    <Plus size={18} strokeWidth={2} />
+                  )}
+                </div>
+                <span className={cn(
+                  "text-[10px] font-bold uppercase",
+                  day.isToday ? "text-primary" : "text-muted-foreground"
+                )}>
+                  {day.dayName}
+                </span>
+              </div>
+            ))}
+
+            <div className="flex flex-col items-center gap-2 ml-4">
+              <div className="w-10 h-10 flex items-center justify-center">
+                <span className="text-2xl font-black text-[color:var(--warning)] drop-shadow-sm tabular-nums">{current_streak}</span>
+              </div>
+              <span className="text-[10px] font-bold text-[color:var(--warning)] uppercase">Streak</span>
             </div>
-            <span className="streak-chain__dayname">{day.dayName}</span>
           </div>
-        ))}
+        ) : (
+          <div className="flex flex-col items-center justify-center py-4">
+            <span className="text-4xl font-bold mb-2 tabular-nums">{current_streak}</span>
+            <span className="text-muted-foreground text-sm">Days Streak</span>
+          </div>
+        )}
 
-        <div className="streak-chain__count">
-          <Flame size={20} className="streak-chain__flame" />
-          <span className="streak-chain__number">{current_streak}</span>
-        </div>
-      </div>
-
-      {longest_streak > 0 && (
-        <div className="streak-chain__longest">
-          <Trophy size={14} />
-          <span>Longest Chain: {longest_streak}</span>
-        </div>
-      )}
-    </div>
+        {longest_streak > 0 && (
+          <div className="flex items-center justify-center gap-2 mt-6 text-xs text-muted-foreground bg-muted/50 py-1.5 px-3 rounded-full w-fit mx-auto">
+            <Trophy size={12} className="text-[color:var(--warning)]" />
+            <span>Longest Chain: <span className="font-medium text-foreground tabular-nums">{longest_streak}</span></span>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
-export default StreakChain;
+export default memo(StreakChain);

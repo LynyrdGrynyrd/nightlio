@@ -1,12 +1,15 @@
-import { useState, useEffect, useRef, MouseEvent } from 'react';
-import { Plus, X, CalendarPlus, ArrowLeft, Calendar, Target, Star, LucideIcon } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Plus, CalendarPlus, ArrowLeft, Calendar, Target, Star, LucideIcon } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import './FAB.css';
+import { Button } from './ui/button';
+import { cn } from '@/lib/utils';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 
 interface FABOption {
   label: string;
   icon: LucideIcon;
   action: () => void;
+  color?: string;
 }
 
 type FABContext = 'dashboard' | 'stats' | 'goals';
@@ -26,6 +29,7 @@ const SmartFAB = ({ onCreateEntry, onCreateEntryForDate }: SmartFABProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const fabRef = useRef<HTMLDivElement>(null);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -34,9 +38,9 @@ const SmartFAB = ({ onCreateEntry, onCreateEntryForDate }: SmartFABProps) => {
       }
     };
     if (expanded) {
-      document.addEventListener('mousedown', handleClickOutside as any);
+      document.addEventListener('mousedown', handleClickOutside);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside as any);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [expanded]);
 
   const getContext = (): FABContext => {
@@ -57,6 +61,14 @@ const SmartFAB = ({ onCreateEntry, onCreateEntryForDate }: SmartFABProps) => {
   const options: Record<FABContext, FABOption[]> = {
     dashboard: [
       {
+        label: 'Other day',
+        icon: CalendarPlus,
+        action: () => {
+          navigate('/dashboard/stats');
+          setExpanded(false);
+        }
+      },
+      {
         label: 'Yesterday',
         icon: ArrowLeft,
         action: () => {
@@ -70,15 +82,8 @@ const SmartFAB = ({ onCreateEntry, onCreateEntryForDate }: SmartFABProps) => {
         action: () => {
           if (onCreateEntry) onCreateEntry();
           setExpanded(false);
-        }
-      },
-      {
-        label: 'Other day',
-        icon: CalendarPlus,
-        action: () => {
-          navigate('/dashboard/stats');
-          setExpanded(false);
-        }
+        },
+        color: 'bg-primary text-primary-foreground'
       },
     ],
     stats: [
@@ -104,7 +109,8 @@ const SmartFAB = ({ onCreateEntry, onCreateEntryForDate }: SmartFABProps) => {
         action: () => {
           if (onCreateEntry) onCreateEntry();
           setExpanded(false);
-        }
+        },
+        color: 'bg-primary text-primary-foreground'
       },
     ],
     goals: [
@@ -130,32 +136,52 @@ const SmartFAB = ({ onCreateEntry, onCreateEntryForDate }: SmartFABProps) => {
   };
 
   return (
-    <div className="smart-fab" ref={fabRef}>
-      {expanded && (
-        <div className="smart-fab__menu">
-          {currentOptions.map((opt) => {
-            const Icon = opt.icon;
-            return (
-              <button
-                key={opt.label}
-                className="smart-fab__option"
-                onClick={opt.action}
-              >
-                <Icon size={18} />
-                <span>{opt.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-      <button
-        className="smart-fab__main"
+    <div className="fixed bottom-20 right-6 z-50 flex flex-col items-end gap-3 pb-[env(safe-area-inset-bottom)] touch-manipulation" ref={fabRef}>
+      <AnimatePresence>
+        {expanded && (
+          <div className="flex flex-col items-end gap-3 mb-2">
+            {currentOptions.map((opt, idx) => {
+              const Icon = opt.icon;
+              return (
+                <motion.div
+                  key={opt.label}
+                  initial={prefersReducedMotion ? {} : { opacity: 0, y: 10, scale: 0.8 }}
+                  animate={prefersReducedMotion ? {} : { opacity: 1, y: 0, scale: 1 }}
+                  exit={prefersReducedMotion ? {} : { opacity: 0, y: 10, scale: 0.8 }}
+                  transition={prefersReducedMotion ? {} : { duration: 0.15, delay: idx * 0.05 }}
+                  className="flex items-center gap-3"
+                >
+                  <span className="text-sm font-medium bg-background/80 backdrop-blur-sm px-2 py-1 rounded shadow-sm text-foreground">
+                    {opt.label}
+                  </span>
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    className={cn("h-12 w-12 rounded-full shadow-lg hover:scale-105 transition-transform", opt.color)}
+                    onClick={opt.action}
+                    aria-label={opt.label}
+                  >
+                    <Icon size={20} aria-hidden="true" />
+                  </Button>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+      </AnimatePresence>
+
+      <Button
+        size="icon"
+        className={cn(
+          "h-14 w-14 rounded-full shadow-xl transition-all duration-300",
+          expanded ? "rotate-45" : "hover:scale-105"
+        )}
         onClick={handleMainClick}
-        aria-label={expanded ? 'Close menu' : 'Open actions'}
+        aria-label={expanded ? "Close menu" : "Open actions menu"}
         aria-expanded={expanded}
       >
-        {expanded ? <X size={24} /> : <Plus size={24} />}
-      </button>
+        <Plus size={expanded ? 28 : 24} aria-hidden="true" />
+      </Button>
     </div>
   );
 };
@@ -164,9 +190,17 @@ export { SmartFAB };
 
 const FAB = ({ onClick, label = 'New Entry' }: FABProps) => {
   return (
-    <button className="fab" onClick={onClick} aria-label={label} title={label}>
-      <Plus size={24} />
-    </button>
+    <div className="fixed bottom-20 right-6 z-50 pb-[env(safe-area-inset-bottom)] touch-manipulation">
+      <Button
+        size="icon"
+        className="h-14 w-14 rounded-full shadow-xl hover:scale-105 transition-transform"
+        onClick={onClick}
+        title={label}
+        aria-label={label}
+      >
+        <Plus size={24} />
+      </Button>
+    </div>
   );
 };
 

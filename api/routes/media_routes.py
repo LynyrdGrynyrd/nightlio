@@ -52,9 +52,23 @@ def create_media_routes(media_service: MediaService, mood_service: MoodService):
     @media_bp.route("/media/<filename>", methods=["GET"])
     @require_auth
     def serve_media(filename):
-        # SECURITY: Verify user has access to this media file
-        # For now, any authenticated user can access media (shared access model)
-        # This prevents unauthenticated access while allowing collaborative use
+        # SECURITY: Verify user owns the media file via entry chain
+        user_id = get_current_user_id()
+
+        # Validate filename to prevent path traversal
+        if ".." in filename or "/" in filename or "\\" in filename:
+            return jsonify({"error": "Invalid filename"}), 400
+
+        # Look up media by file_path to verify ownership chain
+        media = media_service.get_media_by_filename(filename)
+        if not media:
+            return jsonify({"error": "Media not found"}), 404
+
+        # Verify the entry this media belongs to is owned by the current user
+        entry = mood_service.get_entry_by_id(user_id, media["entry_id"])
+        if not entry:
+            return jsonify({"error": "Media not found"}), 404
+
         return send_from_directory(media_service.upload_folder, filename)
 
     @media_bp.route("/media/<int:media_id>", methods=["DELETE"])
@@ -65,7 +79,7 @@ def create_media_routes(media_service: MediaService, mood_service: MoodService):
             
             # SECURITY: Verify ownership chain (media -> entry -> user)
             # before allowing deletion to prevent IDOR attacks
-            media = media_service.db.get_media_by_id(media_id)
+            media = media_service.get_media_by_id(media_id)
             if not media:
                 return jsonify({"error": "Media not found"}), 404
             
@@ -96,7 +110,7 @@ def create_media_routes(media_service: MediaService, mood_service: MoodService):
             start_date = request.args.get("start_date")
             end_date = request.args.get("end_date")
             
-            result = media_service.db.get_all_media_for_user(
+            result = media_service.get_all_media_for_user(
                 user_id, limit, offset, start_date, end_date
             )
             return jsonify(result)

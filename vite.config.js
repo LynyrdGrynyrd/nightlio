@@ -1,9 +1,25 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-charts': ['recharts'],
+          'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-popover', '@radix-ui/react-select', '@radix-ui/react-slot', '@radix-ui/react-tooltip'],
+          'vendor-forms': ['react-hook-form', '@hookform/resolvers', 'zod'],
+          'vendor-animation': ['framer-motion'],
+          'vendor-dates': ['date-fns'],
+        }
+      }
+    },
+    chunkSizeWarningLimit: 500,
+  },
   plugins: [
     react(),
     VitePWA({
@@ -43,11 +59,19 @@ export default defineConfig({
   ],
   server: {
     host: true,
+    watch: {
+      ignored: ['**/api/venv/**', '**/node_modules/**', '**/.git/**'],
+    },
     proxy: {
       '/api': {
         target: (globalThis && globalThis.process && globalThis.process.env && globalThis.process.env.VITE_API_URL) || 'http://localhost:5000',
         changeOrigin: true,
       },
+    },
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
     },
   },
   preview: {

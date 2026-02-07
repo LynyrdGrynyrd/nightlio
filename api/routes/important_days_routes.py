@@ -4,12 +4,18 @@ from flask import Blueprint, request, jsonify
 import logging
 from api.utils.auth_middleware import require_auth, get_current_user_id
 from api.utils.secure_errors import secure_error_response
+from api.validators import ValidationError, ImportantDayCreate, ImportantDayUpdate
+from api.utils.responses import success_response, error_response, not_found_response
 
 logger = logging.getLogger(__name__)
 
 
-def create_important_days_routes(db):
-    """Create blueprint for important days endpoints."""
+def create_important_days_routes(important_days_service):
+    """Create blueprint for important days endpoints.
+
+    Args:
+        important_days_service: ImportantDaysService instance for important days operations
+    """
     bp = Blueprint("important_days", __name__)
 
     @bp.route("/important-days", methods=["GET"])
@@ -18,10 +24,10 @@ def create_important_days_routes(db):
         try:
             user_id = get_current_user_id()
             if user_id is None:
-                return jsonify({"error": "Unauthorized"}), 401
-            
-            days = db.get_important_days(user_id)
-            return jsonify({"days": days})
+                return error_response("Unauthorized", status=401)
+
+            days = important_days_service.get_important_days(user_id)
+            return success_response(data={"days": days})
         except Exception as e:
             return secure_error_response(e, 500)
 
@@ -32,27 +38,39 @@ def create_important_days_routes(db):
             user_id = get_current_user_id()
             if user_id is None:
                 return jsonify({"error": "Unauthorized"}), 401
-            
+
             data = request.get_json(silent=True) or {}
-            title = data.get("title")
-            target_date = data.get("date")
-            
-            if not title or not target_date:
-                return jsonify({"error": "Title and date are required"}), 400
-            
-            day_id = db.create_important_day(
+
+            try:
+                validated = ImportantDayCreate(
+                    title=data.get("title"),
+                    target_date=data.get("date"),
+                    category=data.get("category", "Custom"),
+                    icon=data.get("icon", "calendar"),
+                    recurring_type=data.get("recurring_type", "once"),
+                    remind_days_before=int(data.get("remind_days_before", 1)),
+                    notes=data.get("notes"),
+                )
+            except (TypeError, ValueError) as e:
+                return jsonify({"error": str(e)}), 400
+            except ValidationError as e:
+                return jsonify({"error": e.message, "field": e.field}), 422
+
+            day_id = important_days_service.create_important_day(
                 user_id=user_id,
-                title=title,
-                target_date=target_date,
-                category=data.get("category", "Custom"),
-                icon=data.get("icon", "calendar"),
-                recurring_type=data.get("recurring_type", "once"),
-                remind_days_before=data.get("remind_days_before", 1),
-                notes=data.get("notes"),
+                title=validated.title,
+                target_date=validated.target_date,
+                category=validated.category,
+                icon=validated.icon,
+                recurring_type=validated.recurring_type,
+                remind_days_before=validated.remind_days_before,
+                notes=validated.notes,
             )
-            
-            day = db.get_important_day_by_id(user_id, day_id)
-            return jsonify({"status": "success", "day": day}), 201
+
+            day = important_days_service.get_important_day_by_id(user_id, day_id)
+            return success_response(data={"day": day}, status=201)
+        except ValidationError as e:
+            return error_response(e.message, details={"field": e.field}, status=422)
         except Exception as e:
             return secure_error_response(e, 500)
 
@@ -63,26 +81,44 @@ def create_important_days_routes(db):
             user_id = get_current_user_id()
             if user_id is None:
                 return jsonify({"error": "Unauthorized"}), 401
-            
+
             data = request.get_json(silent=True) or {}
-            
-            success = db.update_important_day(
+
+            try:
+                remind_days = data.get("remind_days_before")
+                validated = ImportantDayUpdate(
+                    title=data.get("title"),
+                    target_date=data.get("date"),
+                    category=data.get("category"),
+                    icon=data.get("icon"),
+                    recurring_type=data.get("recurring_type"),
+                    remind_days_before=int(remind_days) if remind_days is not None else None,
+                    notes=data.get("notes"),
+                )
+            except (TypeError, ValueError) as e:
+                return jsonify({"error": str(e)}), 400
+            except ValidationError as e:
+                return jsonify({"error": e.message, "field": e.field}), 422
+
+            success = important_days_service.update_important_day(
                 user_id=user_id,
                 day_id=day_id,
-                title=data.get("title"),
-                target_date=data.get("date"),
-                category=data.get("category"),
-                icon=data.get("icon"),
-                recurring_type=data.get("recurring_type"),
-                remind_days_before=data.get("remind_days_before"),
-                notes=data.get("notes"),
+                title=validated.title,
+                target_date=validated.target_date,
+                category=validated.category,
+                icon=validated.icon,
+                recurring_type=validated.recurring_type,
+                remind_days_before=validated.remind_days_before,
+                notes=validated.notes,
             )
-            
+
             if not success:
-                return jsonify({"error": "Important day not found"}), 404
-            
-            day = db.get_important_day_by_id(user_id, day_id)
-            return jsonify({"status": "success", "day": day})
+                return not_found_response("Important day")
+
+            day = important_days_service.get_important_day_by_id(user_id, day_id)
+            return success_response(data={"day": day})
+        except ValidationError as e:
+            return error_response(e.message, details={"field": e.field}, status=422)
         except Exception as e:
             return secure_error_response(e, 500)
 
@@ -92,14 +128,14 @@ def create_important_days_routes(db):
         try:
             user_id = get_current_user_id()
             if user_id is None:
-                return jsonify({"error": "Unauthorized"}), 401
-            
-            success = db.delete_important_day(user_id, day_id)
-            
-            if not success:
-                return jsonify({"error": "Important day not found"}), 404
-            
-            return jsonify({"status": "success", "message": "Important day deleted"})
+                return error_response("Unauthorized", status=401)
+
+            deleted = important_days_service.delete_important_day(user_id, day_id)
+
+            if not deleted:
+                return not_found_response("Important day")
+
+            return success_response(message="Important day deleted")
         except Exception as e:
             return secure_error_response(e, 500)
 
@@ -109,11 +145,11 @@ def create_important_days_routes(db):
         try:
             user_id = get_current_user_id()
             if user_id is None:
-                return jsonify({"error": "Unauthorized"}), 401
-            
+                return error_response("Unauthorized", status=401)
+
             days_ahead = request.args.get("days", 30, type=int)
-            days = db.get_upcoming_important_days(user_id, days_ahead)
-            return jsonify({"days": days})
+            days = important_days_service.get_upcoming_important_days(user_id, days_ahead)
+            return success_response(data={"days": days})
         except Exception as e:
             return secure_error_response(e, 500)
 

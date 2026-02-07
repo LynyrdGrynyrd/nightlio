@@ -36,6 +36,44 @@ class MoodService:
         """Get all mood entries for a user"""
         return self.db.get_all_mood_entries(user_id)
 
+    def get_all_entries_hydrated(
+        self,
+        user_id: int,
+        include_selections: bool = False,
+        include_media: bool = False,
+        include_scales: bool = False
+    ) -> List[Dict]:
+        """Get all mood entries with optional inline selections, media, and scales."""
+        entries = self.db.get_all_mood_entries(user_id)
+
+        if not entries:
+            return entries
+
+        entry_ids = [e['id'] for e in entries]
+
+        selections_map: Dict[int, List[Dict]] = {}
+        if include_selections:
+            selections_map = self.db.get_selections_for_entries(entry_ids)
+
+        media_map: Dict[int, List[Dict]] = {}
+        if include_media:
+            media_map = self.db.get_media_for_entries(entry_ids)
+
+        scales_map: Dict[int, List[Dict]] = {}
+        if include_scales:
+            scales_map = self.db.get_scale_entries_for_entries(entry_ids)
+
+        for entry in entries:
+            eid = entry['id']
+            if include_selections:
+                entry['selections'] = selections_map.get(eid, [])
+            if include_media:
+                entry['media'] = media_map.get(eid, [])
+            if include_scales:
+                entry['scale_entries'] = scales_map.get(eid, [])
+
+        return entries
+
     def get_entries_by_date_range(
         self, user_id: int, start_date: str, end_date: str
     ) -> List[Dict]:
@@ -124,10 +162,18 @@ class MoodService:
         query: str,
         moods: Optional[List[int]] = None,
         start_date: Optional[str] = None,
-        end_date: Optional[str] = None
-    ) -> List[Dict]:
-        """Search entries for a user"""
-        return self.db.search_mood_entries(user_id, query, moods, start_date, end_date)
+        end_date: Optional[str] = None,
+        page: int = 1,
+        per_page: int = 20,
+    ) -> Dict:
+        """Search entries for a user with pagination.
+
+        Returns:
+            Dict with 'entries' list and 'total' count
+        """
+        return self.db.search_mood_entries(
+            user_id, query, moods, start_date, end_date, page, per_page
+        )
 
     def get_streak_details(self, user_id: int) -> Dict:
         """Get detailed streak information for a user"""

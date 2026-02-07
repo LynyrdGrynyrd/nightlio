@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useState, useCallback, KeyboardEvent } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef, KeyboardEvent } from 'react';
 import apiService, { Goal } from '../../services/api';
 import { useToast } from '../ui/ToastProvider';
+import { Button } from '../ui/button';
+import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // ========== Types ==========
 
@@ -45,13 +48,14 @@ const MonthCalendar = ({ year, month, dates = new Set(), onToggle, toggling }: M
   };
 
   return (
-    <div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, marginBottom: 8, fontSize: 12, color: 'var(--text-muted)' }}>
+    <div className="space-y-4">
+      <div className="grid grid-cols-7 gap-1 text-center text-xs text-muted-foreground font-medium">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-          <div key={d} style={{ textAlign: 'center' }}>{d}</div>
+          <div key={d} className="h-6 flex items-center justify-center">{d}</div>
         ))}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
+
+      <div className="grid grid-cols-7 gap-1">
         {cells.map((d, i) => {
           const iso = d ? `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}` : null;
           const isHit = iso && dates.has(iso);
@@ -66,29 +70,27 @@ const MonthCalendar = ({ year, month, dates = new Set(), onToggle, toggling }: M
               role={isClickable ? 'button' : undefined}
               tabIndex={isClickable ? 0 : undefined}
               onKeyDown={(e) => iso && isClickable && handleKeyDown(e, iso)}
-              style={{
-                height: 28,
-                borderRadius: 6,
-                border: '1px solid var(--border)',
-                background: isHit ? 'var(--accent-bg)' : 'var(--accent-bg-soft)',
-                color: isHit ? '#fff' : 'var(--text)',
-                display: 'grid',
-                placeItems: 'center',
-                fontSize: 12,
-                cursor: isClickable ? 'pointer' : 'default',
-                opacity: isTogglingThis ? 0.5 : (isFuture ? 0.4 : 1),
-                transition: 'background-color 0.2s, transform 0.1s',
-                transform: isTogglingThis ? 'scale(0.95)' : 'scale(1)',
-              }}
+              className={cn(
+                "h-9 rounded-md flex items-center justify-center text-xs font-medium transition-[colors,transform]",
+                !d && "invisible",
+                isHit
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                  : "bg-muted text-foreground hover:bg-muted/80",
+                isFuture && "opacity-40 cursor-not-allowed hover:bg-muted",
+                !isClickable && !isFuture && "cursor-default",
+                isTogglingThis && "opacity-70 scale-95 cursor-wait",
+                isClickable && "cursor-pointer active:scale-95"
+              )}
               title={isClickable ? (isHit ? 'Click to unmark' : 'Click to mark complete') : undefined}
             >
-              {d || ''}
+              {isTogglingThis ? <Loader2 size={12} className="animate-spin" /> : d}
             </div>
           );
         })}
       </div>
-      <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10, textAlign: 'center' }}>
-        Click any date to toggle completion
+
+      <p className="text-[10px] text-muted-foreground text-center">
+        Click any date (past or present) to toggle completion
       </p>
     </div>
   );
@@ -105,6 +107,10 @@ const GoalStatsCalendar = ({ goalId, onGoalUpdated }: GoalStatsCalendarProps) =>
   const [loading, setLoading] = useState(false);
   const [toggling, setToggling] = useState<string | null>(null);
   const { show } = useToast();
+
+  // Use ref to avoid stale closure in handleToggle
+  const datesRef = useRef(dates);
+  useEffect(() => { datesRef.current = dates; }, [dates]);
 
   const monthLabel = useMemo(
     () => new Date(yearMonth.y, yearMonth.m, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' }),
@@ -134,7 +140,7 @@ const GoalStatsCalendar = ({ goalId, onGoalUpdated }: GoalStatsCalendarProps) =>
     if (toggling) return;
     setToggling(dateStr);
 
-    const wasCompleted = dates.has(dateStr);
+    const wasCompleted = datesRef.current.has(dateStr);
     setDates(prev => {
       const next = new Set(prev);
       if (wasCompleted) {
@@ -147,9 +153,12 @@ const GoalStatsCalendar = ({ goalId, onGoalUpdated }: GoalStatsCalendarProps) =>
 
     try {
       const result = await apiService.toggleGoalCompletion(goalId, dateStr);
-      show(result.is_completed ? 'Marked complete' : 'Unmarked', 'success');
-      if (onGoalUpdated && result) {
-        onGoalUpdated(result);
+      // Result contains { completed: boolean } not { is_completed: boolean }
+      const isCompleted = (result as { completed?: boolean }).completed;
+      show(isCompleted ? 'Marked complete' : 'Unmarked', 'success');
+      // onGoalUpdated expects a full Goal, but result is partial - skip if not a full Goal
+      if (onGoalUpdated && result && 'id' in result && 'user_id' in result && 'title' in result && 'created_at' in result) {
+        onGoalUpdated(result as unknown as Goal);
       }
     } catch {
       setDates(prev => {
@@ -165,17 +174,24 @@ const GoalStatsCalendar = ({ goalId, onGoalUpdated }: GoalStatsCalendarProps) =>
     } finally {
       setToggling(null);
     }
-  }, [goalId, dates, toggling, show, onGoalUpdated]);
+  }, [goalId, toggling, show, onGoalUpdated]);
 
   const prevMonth = () => setYearMonth(({ y, m }) => (m === 0 ? { y: y - 1, m: 11 } : { y, m: m - 1 }));
   const nextMonth = () => setYearMonth(({ y, m }) => (m === 11 ? { y: y + 1, m: 0 } : { y, m: m + 1 }));
 
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <button onClick={prevMonth} className="primary" style={{ padding: '6px 10px' }}>{'<'}</button>
-        <div style={{ fontWeight: 600 }}>{monthLabel}{loading ? '…' : ''}</div>
-        <button onClick={nextMonth} className="primary" style={{ padding: '6px 10px' }}>{'>'}</button>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Button variant="outline" size="icon" onClick={prevMonth} className="h-10 w-10" aria-label="Previous month">
+          <ChevronLeft size={16} aria-hidden="true" />
+        </Button>
+        <div className="font-semibold text-sm flex items-center gap-2">
+          {monthLabel}
+          {loading && <Loader2 size={12} className="animate-spin text-muted-foreground" />}
+        </div>
+        <Button variant="outline" size="icon" onClick={nextMonth} className="h-10 w-10" aria-label="Next month">
+          <ChevronRight size={16} aria-hidden="true" />
+        </Button>
       </div>
       <MonthCalendar
         year={yearMonth.y}

@@ -59,6 +59,14 @@ class ProductionConfig(Config):
     # Use Railway's writable directory for database
     DATABASE_PATH = os.environ.get("DATABASE_PATH") or "/tmp/twilightio.db"
 
+    # SECURITY: Exclude localhost from CORS in production
+    # Only use explicitly configured origins in production
+    CORS_ORIGINS = [
+        origin.strip()
+        for origin in os.environ.get("CORS_ORIGINS", "https://twilightio.vercel.app").split(",")
+        if not origin.strip().startswith("http://localhost")
+    ] or ["https://twilightio.vercel.app"]
+
 
 class TestingConfig(Config):
     """Testing configuration"""

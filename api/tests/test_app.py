@@ -42,10 +42,10 @@ def test_api():
     except Exception as e:
         print(f"❌ Time endpoint error: {e}")
 
-    # 3. Test groups endpoint (Public)
-    print("\n3. Testing groups endpoint (Public)...")
+    # 3. Test groups endpoint (Protected - requires auth)
+    print("\n3. Testing groups endpoint (Protected)...")
     try:
-        response = requests.get(f"{BASE_URL}/groups")
+        response = requests.get(f"{BASE_URL}/groups", headers=headers)
         if response.status_code == 200:
             groups = response.json()
             print(f"✅ Groups endpoint working - found {len(groups)} groups")

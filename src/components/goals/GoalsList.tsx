@@ -2,6 +2,7 @@ import GoalCard from './GoalCard';
 import AddGoalCard from './AddGoalCard';
 import EmptyState from '../ui/EmptyState';
 import { Goal } from '../../services/api';
+import ResponsiveGrid from '../layout/ResponsiveGrid';
 
 // ========== Types ==========
 
@@ -19,20 +20,18 @@ interface GoalsListProps {
 const GoalsList = ({ goals, onDelete, onUpdateProgress, onToggleCompletion, onGoalUpdated, onAdd }: GoalsListProps) => {
   if (goals.length === 0) {
     return (
-      <div className="card-grid">
-        {onAdd && <AddGoalCard onAdd={onAdd} />}
+      <ResponsiveGrid minCardWidth="17rem" maxColumns={5} gapToken="normal">
+        {onAdd ? <AddGoalCard onAdd={onAdd} /> : null}
         <div className="col-span-full">
           <EmptyState variant="noGoals" />
         </div>
-      </div>
+      </ResponsiveGrid>
     );
   }
 
   return (
-    <div className="card-grid">
-      {onAdd && (
-        <AddGoalCard onAdd={onAdd} />
-      )}
+    <ResponsiveGrid minCardWidth="17rem" maxColumns={5} gapToken="normal">
+      {onAdd ? <AddGoalCard onAdd={onAdd} /> : null}
       {goals.map(goal => (
         <GoalCard
           key={goal.id}
@@ -43,7 +42,7 @@ const GoalsList = ({ goals, onDelete, onUpdateProgress, onToggleCompletion, onGo
           onGoalUpdated={onGoalUpdated}
         />
       ))}
-    </div>
+    </ResponsiveGrid>
   );
 };
 

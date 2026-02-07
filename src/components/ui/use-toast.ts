@@ -14,21 +14,21 @@ type ToastState = ToastProps & {
 
 type ToastActionType =
   | {
-      type: "ADD_TOAST";
-      toast: ToastState;
-    }
+    type: "ADD_TOAST";
+    toast: ToastState;
+  }
   | {
-      type: "UPDATE_TOAST";
-      toast: Partial<ToastState>;
-    }
+    type: "UPDATE_TOAST";
+    toast: Partial<ToastState>;
+  }
   | {
-      type: "DISMISS_TOAST";
-      toastId?: ToastState["id"];
-    }
+    type: "DISMISS_TOAST";
+    toastId?: ToastState["id"];
+  }
   | {
-      type: "REMOVE_TOAST";
-      toastId?: ToastState["id"];
-    };
+    type: "REMOVE_TOAST";
+    toastId?: ToastState["id"];
+  };
 
 const TOAST_LIMIT = 1;
 const TOAST_REMOVE_DELAY = 1000000;
@@ -75,9 +75,9 @@ export const reducer = (state: ToastState[], action: ToastActionType) => {
       return state.map((t) =>
         t.id === toastId || toastId === undefined
           ? {
-              ...t,
-              open: false,
-            }
+            ...t,
+            open: false,
+          }
           : t
       );
     }
@@ -149,7 +149,7 @@ function useToast() {
   }, [state]);
 
   return {
-    ...state,
+    toasts: state,
     toast,
     dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
   };

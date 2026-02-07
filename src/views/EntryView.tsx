@@ -1,37 +1,45 @@
-import { useState, useRef, useEffect, CSSProperties } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import MoodPicker from '../components/mood/MoodPicker';
 import MoodDisplay from '../components/mood/MoodDisplay';
 import GroupSelector from '../components/groups/GroupSelector';
 import GroupManager from '../components/groups/GroupManager';
-import MDArea from '../components/MarkdownArea';
-import apiService, { Group, Media } from '../services/api';
+import MDArea, { MarkdownAreaHandle } from '../components/MarkdownAreaLazy';
+import apiService, { Group, Media, API_BASE_URL, Scale, ScaleValuesMap } from '../services/api';
 import { useToast } from '../components/ui/ToastProvider';
 import PhotoPicker from '../components/media/PhotoPicker';
 import TemplateSelector from '../components/entry/TemplateSelector';
 import VoiceRecorder from '../components/entry/VoiceRecorder';
 import VoicePlayer from '../components/entry/VoicePlayer';
+import ScaleSection from '../components/scales/ScaleSection';
 import { offlineStorage } from '../services/offlineStorage';
-import { Mic } from 'lucide-react';
-import { useConfig } from '../contexts/ConfigContext';
+import { Mic, ArrowLeft, Loader2, Save, CalendarIcon, PenLine } from 'lucide-react';
 import { TIMEOUTS } from '../constants/appConstants';
 import { HistoryEntry } from '../types/entry';
+import { Button } from '../components/ui/button';
+import { Card, CardContent } from '../components/ui/card';
+import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
+import { cn } from '@/lib/utils';
+import { badgeVariants } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
-// ========== Types ==========
-
-interface MarkdownEditorHandle {
-  getInstance?: () => {
-    setMarkdown: (content: string) => void;
-  };
-  getMarkdown?: () => string;
-}
+/**
+ * Extract non-null scale entries from the values map.
+ * Used for saving to API and offline storage.
+ */
+const getNonNullScaleEntries = (values: ScaleValuesMap): Record<number, number> => {
+  return Object.entries(values).reduce((acc, [id, value]) => {
+    if (value !== null) acc[Number(id)] = value;
+    return acc;
+  }, {} as Record<number, number>);
+};
 
 interface EntryViewProps {
   selectedMood?: number;
   groups: Group[];
   onBack: () => void;
-  onCreateGroup: (name: string) => Promise<void>;
-  onCreateOption: (groupId: number, name: string, icon: string) => Promise<void>;
-  onMoveOption: (optionId: number, fromGroupId: number, toGroupId: number) => Promise<void>;
+  onCreateGroup: (name: string) => Promise<boolean>;
+  onCreateOption: (groupId: number, name: string, icon?: string) => Promise<boolean>;
+  onMoveOption: (optionId: number, newGroupId: number) => Promise<void | boolean>;
   onEntrySubmitted: () => void;
   onSelectMood: (mood: number) => void;
   editingEntry?: HistoryEntry | null;
@@ -40,13 +48,9 @@ interface EntryViewProps {
   targetDate?: string | null;
 }
 
-// ========== Constants ==========
-
 const DEFAULT_MARKDOWN = `# How was your day?
 
 Write about your thoughts, feelings, and experiences...`;
-
-// ========== Component ==========
 
 const EntryView = ({
   selectedMood,
@@ -70,22 +74,86 @@ const EntryView = ({
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState('');
-  const [showMoodPicker, setShowMoodPicker] = useState(false);
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
   const [audioFiles, setAudioFiles] = useState<File[]>([]);
   const [showRecorder, setShowRecorder] = useState(false);
   const [existingMedia, setExistingMedia] = useState<Media[]>([]);
-  const { API_BASE_URL } = useConfig();
-  const markdownRef = useRef<MarkdownEditorHandle>(null);
+  const [scales, setScales] = useState<Scale[]>([]);
+  const [scaleValues, setScaleValues] = useState<ScaleValuesMap>({});
+  const [scalesLoading, setScalesLoading] = useState(true);
+  // API_BASE_URL imported directly
+  const markdownRef = useRef<MarkdownAreaHandle>(null);
   const { show } = useToast();
+
+  // Helper to reset scale values to null (skipped state)
+  const resetScaleValues = useCallback((scaleList: Scale[]) => {
+    const resetValues: ScaleValuesMap = {};
+    scaleList.forEach(s => { resetValues[s.id] = null; });
+    setScaleValues(resetValues);
+  }, []);
+
+  // Load scales on mount
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadScales = async () => {
+      try {
+        const fetchedScales = await apiService.getScales();
+        if (cancelled) return;
+        setScales(fetchedScales);
+        // Initialize all scales as null (skipped)
+        const initial: ScaleValuesMap = {};
+        fetchedScales.forEach(s => { initial[s.id] = null; });
+        setScaleValues(initial);
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed to load scales:', error);
+        }
+      } finally {
+        if (!cancelled) {
+          setScalesLoading(false);
+        }
+      }
+    };
+    loadScales();
+
+    return () => { cancelled = true; };
+  }, []);
+
+  // Load existing scale values when editing
+  useEffect(() => {
+    if (!isEditing || !editingEntry || scales.length === 0) return;
+
+    let cancelled = false;
+
+    const loadExistingScaleValues = async () => {
+      try {
+        const existing = await apiService.getEntryScales(editingEntry.id);
+        if (cancelled) return;
+        const valuesMap: ScaleValuesMap = {};
+        // Initialize all scales as null
+        scales.forEach(s => { valuesMap[s.id] = null; });
+        // Set existing values
+        existing.forEach(se => { valuesMap[se.scale_id] = se.value; });
+        setScaleValues(valuesMap);
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed to load existing scale values:', error);
+        }
+      }
+    };
+    loadExistingScaleValues();
+
+    return () => { cancelled = true; };
+  }, [isEditing, editingEntry, scales]);
 
   useEffect(() => {
     if (!isEditing || !editingEntry) return;
 
     setSelectedOptions(editingEntry.selections?.map((selection) => selection.id) ?? []);
 
-    // Load existing media
-    apiService.getEntryMedia(editingEntry.id).then(setExistingMedia).catch(console.error);
+    // Use inline media from hydrated entry (no extra API call needed)
+    setExistingMedia(editingEntry.media ?? []);
 
     const instance = markdownRef.current?.getInstance?.();
     if (instance && typeof instance.setMarkdown === 'function') {
@@ -97,12 +165,15 @@ const EntryView = ({
     setSelectedOptions(prev => (prev.includes(optionId) ? prev.filter(id => id !== optionId) : [...prev, optionId]));
   };
 
+  const handleScaleChange = (scaleId: number, value: number | null) => {
+    setScaleValues(prev => ({ ...prev, [scaleId]: value }));
+  };
+
   const handleMoodSelection = (moodValue: number) => {
     if (isEditing) {
       if (typeof onEditMoodSelect === 'function') {
         onEditMoodSelect(moodValue);
       }
-      setShowMoodPicker(false);
     } else if (typeof onSelectMood === 'function') {
       onSelectMood(moodValue);
     }
@@ -137,9 +208,8 @@ const EntryView = ({
       }
 
       let entryId: number;
-      let finalEntry: any;
+      let finalEntry: Record<string, unknown> = {};
 
-      // Online logic attempt
       try {
         if (isEditing && editingEntry) {
           const response = await apiService.updateMoodEntry(editingEntry.id, {
@@ -147,23 +217,20 @@ const EntryView = ({
             content: markdownContent,
             selected_options: selectedOptions,
           });
+
           entryId = editingEntry.id;
-          finalEntry = response.entry;
+          finalEntry = response.entry as Record<string, unknown>;
         } else {
           const now = new Date();
           const response = await apiService.createMoodEntry({
             mood: selectedMood,
             date: entryDate,
-            time: now.toISOString(),
+            timestamp: now.toISOString(),
             content: markdownContent,
             selected_options: selectedOptions,
           });
-          entryId = response.entry.id;
-          finalEntry = response.entry;
 
-          if (response.new_achievements && response.new_achievements.length > 0) {
-            // Achievements toast handled by response usually or we can show it
-          }
+          entryId = response.entry_id;
         }
 
         // Upload photos
@@ -176,14 +243,20 @@ const EntryView = ({
           await Promise.all(audioFiles.map(file => apiService.uploadMedia(entryId, file)));
         }
 
+        // Save scale entries
+        const nonNullScales = getNonNullScaleEntries(scaleValues);
+        if (Object.keys(nonNullScales).length > 0) {
+          await apiService.saveEntryScales(entryId, nonNullScales);
+        }
+
         // Success Handling
         if (isEditing) {
           if (typeof onEntryUpdated === 'function') {
             onEntryUpdated({
               ...editingEntry,
               ...finalEntry,
-              selections: finalEntry.selections ?? [],
-            });
+              selections: (finalEntry.selections as HistoryEntry['selections']) ?? [],
+            } as HistoryEntry);
           }
           if (typeof onBack === 'function') onBack();
           show('Entry updated successfully!', 'success');
@@ -193,6 +266,7 @@ const EntryView = ({
           setSelectedOptions([]);
           setSelectedPhotos([]);
           setAudioFiles([]);
+          resetScaleValues(scales);
           setTimeout(() => onEntrySubmitted(), TIMEOUTS.REDIRECT_DELAY_MS);
         }
 
@@ -200,19 +274,23 @@ const EntryView = ({
         // OFFLINE FALLBACK
         if (!navigator.onLine || (networkError.message && networkError.message.includes('Failed to fetch'))) {
           const now = new Date();
+          const offlineScaleEntries = getNonNullScaleEntries(scaleValues);
+
           const payload = {
             mood: selectedMood,
             date: entryDate,
             time: now.toISOString(),
             content: markdownContent,
             selected_options: selectedOptions,
+            scale_entries: offlineScaleEntries,
             photos: selectedPhotos,
             audio: audioFiles,
             id: isEditing ? editingEntry?.id : undefined,
             updates: isEditing ? {
               mood: selectedMood,
               content: markdownContent,
-              selected_options: selectedOptions
+              selected_options: selectedOptions,
+              scale_entries: offlineScaleEntries
             } : undefined
           };
 
@@ -221,7 +299,6 @@ const EntryView = ({
 
           show('Saved offline. Will sync when online.', 'info');
 
-          // Mimic success UI
           if (isEditing) {
             if (typeof onBack === 'function') onBack();
           } else {
@@ -230,6 +307,7 @@ const EntryView = ({
             setSelectedOptions([]);
             setSelectedPhotos([]);
             setAudioFiles([]);
+            resetScaleValues(scales);
             setTimeout(() => onEntrySubmitted(), TIMEOUTS.REDIRECT_DELAY_MS);
           }
           return;
@@ -244,133 +322,85 @@ const EntryView = ({
     }
   };
 
-  const buttonStyle: CSSProperties = {
-    padding: '0.5rem 1rem',
-    background: 'var(--accent-bg)',
-    color: 'white',
-    border: 'none',
-    borderRadius: 'var(--radius-pill)',
-    cursor: 'pointer',
-    fontSize: '0.9rem',
-    fontWeight: '500',
-    transition: 'all 0.3s ease',
-    boxShadow: 'var(--shadow-md)',
-  };
-
   if (!selectedMood && !isEditing) {
     return (
-      <div style={{ marginTop: '1rem' }}>
-        <div style={{ marginBottom: '1rem' }}>
-          <button onClick={onBack} style={buttonStyle}>
-            {isEditing ? '← Cancel Edit' : '← Back'}
-          </button>
+      <div className="max-w-4xl mx-auto py-4 md:py-6 space-y-6 animate-in fade-in duration-500">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" className="gap-2" onClick={onBack}>
+            <ArrowLeft size={18} aria-hidden="true" />
+            Back
+          </Button>
         </div>
-        <h3 style={{ marginTop: 0 }}>
-          {isEditing ? 'Pick a new mood for this entry' : 'Pick your mood to start an entry'}
-        </h3>
-        <MoodPicker onMoodSelect={handleMoodSelection} />
+        <Card className="border-0 shadow-none bg-transparent">
+          <CardContent className="p-0 text-center space-y-6 pt-12">
+            <h3 className="text-2xl font-bold tracking-tight">How are you feeling right now?</h3>
+            <div className="flex justify-center">
+              <MoodPicker onMoodSelect={handleMoodSelection} selectedMood={null} />
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="entry-container" style={{ marginTop: '1rem', position: 'relative' }}>
-      <div style={{ marginBottom: '1rem' }}>
-        <button onClick={onBack} style={buttonStyle}>
-          {isEditing ? '← Cancel Edit' : '← Back to History'}
-        </button>
+    <div className="flex flex-col min-h-[calc(100vh-4rem)] py-4 md:py-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" onClick={onBack} className="gap-2 text-muted-foreground hover:text-foreground">
+          <ArrowLeft size={18} aria-hidden="true" />
+          {isEditing ? 'Cancel Edit' : 'Back to History'}
+        </Button>
       </div>
 
-      <div className="entry-grid">
-        <div className="entry-left">
-          {isEditing && editingEntry && (
-            <div style={{
-              marginBottom: '0.75rem',
-              fontSize: '0.85rem',
-              color: 'color-mix(in oklab, var(--text), transparent 40%)'
-            }}>
-              Editing entry from <strong style={{ color: 'var(--text)' }}>{editingEntry.date}</strong>
-            </div>
-          )}
-          {isRetroactiveEntry && (
-            <div style={{
-              marginBottom: '0.75rem',
-              padding: '0.6rem 1rem',
-              borderRadius: '12px',
-              background: 'var(--accent-bg-softer)',
-              border: '1px solid var(--accent-200)',
-              fontSize: '0.9rem',
-              color: 'var(--text)'
-            }}>
-              📅 Creating entry for <strong style={{ color: 'var(--accent-600)' }}>{entryDate}</strong>
-            </div>
-          )}
-          <div style={{ marginBottom: '1rem' }}>
-            <MoodDisplay moodValue={selectedMood} />
-            {isEditing && (
-              <button
-                type="button"
-                onClick={() => setShowMoodPicker(true)}
-                style={{
-                  marginTop: '0.75rem',
-                  padding: '0.4rem 0.9rem',
-                  borderRadius: '999px',
-                  border: '1px solid var(--border)',
-                  background: 'var(--surface)',
-                  color: 'var(--text)',
-                  cursor: 'pointer',
-                  fontSize: '0.85rem',
-                  fontWeight: 500,
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                Change mood
-              </button>
-            )}
-          </div>
-          {isEditing && showMoodPicker && (
-            <div
-              style={{
-                marginBottom: '1rem',
-                padding: '1rem',
-                borderRadius: '16px',
-                border: '1px solid var(--border)',
-                background: 'var(--surface)',
-                boxShadow: 'var(--shadow-sm)'
-              }}
-            >
-              <p style={{ marginTop: 0, marginBottom: '0.75rem', fontWeight: 600, color: 'var(--text)' }}>
-                Pick a new mood
-              </p>
-              <MoodPicker
-                onMoodSelect={handleMoodSelection}
-                selectedMood={selectedMood}
-              />
-              <div style={{ marginTop: '0.75rem', textAlign: 'right' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowMoodPicker(false)}
-                  style={{
-                    padding: '0.35rem 0.85rem',
-                    borderRadius: '999px',
-                    border: '1px solid var(--border)',
-                    background: 'transparent',
-                    cursor: 'pointer',
-                    fontSize: '0.85rem',
-                    color: 'color-mix(in oklab, var(--text), transparent 30%)'
-                  }}
-                >
-                  Cancel
-                </button>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* LEFT COLUMN: Metadata & Options */}
+        <div className="lg:col-span-5 space-y-8">
+          {/* Header Info */}
+          <div className="space-y-4">
+            {isEditing && editingEntry && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg w-fit">
+                <PenLine size={14} aria-hidden="true" />
+                Editing entry from <span className="font-semibold text-foreground">{editingEntry.date}</span>
               </div>
+            )}
+            {isRetroactiveEntry && (
+              <div className={cn(badgeVariants({ variant: "outline" }), "bg-[color:var(--warning-soft)] border-[color:var(--warning)] text-[color:var(--warning)] gap-2 py-1.5 px-3 h-auto")}>
+                <CalendarIcon size={14} aria-hidden="true" />
+                Creating entry for <span className="font-semibold">{entryDate}</span>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-4">
+              <MoodDisplay moodValue={selectedMood ?? 3} />
+              {isEditing && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-fit rounded-full">
+                      Change Mood
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-4" align="start">
+                    <div className="space-y-2">
+                      <h4 className="font-medium leading-none">Pick a new mood</h4>
+                      <MoodPicker onMoodSelect={handleMoodSelection} selectedMood={selectedMood || null} />
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
             </div>
-          )}
-          <GroupSelector
-            groups={groups}
-            selectedOptions={selectedOptions}
-            onOptionToggle={handleOptionToggle}
-          />
-          <div style={{ marginTop: '1rem' }}>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-lg">Activities</h3>
+            </div>
+            <GroupSelector
+              groups={groups}
+              selectedOptions={selectedOptions}
+              onOptionToggle={handleOptionToggle}
+            />
             <GroupManager
               groups={groups}
               onCreateGroup={onCreateGroup}
@@ -378,16 +408,32 @@ const EntryView = ({
               onMoveOption={onMoveOption}
             />
           </div>
+
+          <Separator />
+
+          <ScaleSection
+            scales={scales}
+            values={scaleValues}
+            onChange={handleScaleChange}
+            loading={scalesLoading}
+            disabled={isSubmitting}
+            defaultExpanded={Object.values(scaleValues).some(v => v !== null)}
+          />
+
+          <Separator />
+
           <PhotoPicker
             existingMedia={existingMedia.filter(m => m.file_type.startsWith('image/'))}
             onFilesSelected={setSelectedPhotos}
             onMediaDeleted={handleMediaDeleted}
           />
 
-          {/* Voice Recording Section */}
-          <div className="mt-4 border-t border-[var(--border)] pt-4">
-            <h4 className="flex items-center gap-2 text-sm font-semibold text-[var(--text-muted)] mb-3">
-              <Mic size={16} />
+          <Separator />
+
+          {/* Voice Notes */}
+          <div className="space-y-4">
+            <h4 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <Mic size={16} aria-hidden="true" />
               Voice Notes
             </h4>
 
@@ -400,19 +446,22 @@ const EntryView = ({
                 onCancel={() => setShowRecorder(false)}
               />
             ) : (
-              <button
+              <Button
+                variant="outline"
+                className="w-full justify-start h-auto py-3 gap-3 border-dashed hover:border-primary/50 hover:bg-muted/50"
                 onClick={() => setShowRecorder(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-dashed border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--accent-bg-soft)] hover:text-[var(--accent-600)] hover:border-[var(--accent-600)] transition-all w-full justify-center"
               >
-                <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 text-red-500 flex items-center justify-center">
-                  <Mic size={18} />
+                <div className="w-8 h-8 rounded-full bg-[color:var(--destructive-soft)] text-destructive flex items-center justify-center shrink-0">
+                  <Mic size={16} aria-hidden="true" />
                 </div>
-                <span>Record a voice note</span>
-              </button>
+                <div className="flex flex-col items-start text-sm">
+                  <span className="font-medium text-foreground">Record a voice note</span>
+                  <span className="text-xs text-muted-foreground">Tap to start recording</span>
+                </div>
+              </Button>
             )}
 
-            <div className="flex flex-col gap-3 mt-4">
-              {/* Existing Audio */}
+            <div className="space-y-2">
               {existingMedia.filter(m => !m.file_type.startsWith('image/')).map((media) => (
                 <VoicePlayer
                   key={media.id}
@@ -421,7 +470,6 @@ const EntryView = ({
                 />
               ))}
 
-              {/* New Audio (Before Upload) */}
               {audioFiles.map((file, idx) => (
                 <VoicePlayer
                   key={`new-${idx}`}
@@ -433,8 +481,10 @@ const EntryView = ({
           </div>
         </div>
 
-        <div className="entry-right">
-          <div style={{ position: 'relative', marginBottom: '0.75rem' }}>
+        {/* RIGHT COLUMN: Editor */}
+        <div className="lg:col-span-7 flex flex-col h-full space-y-4 lg:border-l lg:pl-8 min-h-[500px]">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold text-lg">Journal</h3>
             <TemplateSelector
               onSelectTemplate={(content) => {
                 const instance = markdownRef.current?.getInstance?.();
@@ -444,74 +494,45 @@ const EntryView = ({
               }}
             />
           </div>
-          <MDArea ref={markdownRef} />
-          <div className="entry-savebar">
-            <button
-              disabled={isSubmitting}
+
+          <div className="flex-1 border rounded-xl overflow-hidden shadow-sm bg-card">
+            <MDArea ref={markdownRef} />
+          </div>
+
+          <div className="pt-4 flex justify-end sticky bottom-6 z-10">
+            <Button
               onClick={handleSubmit}
-              style={{
-                padding: '0.9rem 2rem',
-                fontSize: '1rem',
-                background: 'linear-gradient(135deg, var(--accent-bg), var(--accent-bg-2))',
-                color: 'white',
-                border: 'none',
-                borderRadius: '50px',
-                cursor: !isSubmitting ? 'pointer' : 'not-allowed',
-                transition: 'all 0.3s ease',
-                fontWeight: '600',
-                boxShadow: 'var(--shadow-md)'
-              }}
+              disabled={isSubmitting}
+              size="lg"
+              className="rounded-full shadow-xl px-8 h-12 text-base font-semibold bg-gradient-to-r from-primary to-[color:var(--accent-bg-2)] hover:brightness-95 transition-all font-sans"
             >
-              {isSubmitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Save Entry'}
-            </button>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden="true" />
+                  Saving…
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-5 w-5" aria-hidden="true" />
+                  {isEditing ? 'Save Changes' : 'Save Entry'}
+                </>
+              )}
+            </Button>
           </div>
         </div>
       </div>
 
       {submitMessage && (
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            display: 'grid',
-            placeItems: 'center',
-            zIndex: 10,
-          }}
-        >
-          <div
-            style={{
-              background: 'var(--bg-card)',
-              padding: '2rem',
-              borderRadius: '16px',
-              boxShadow: 'var(--shadow-3)',
-              border: '1px solid var(--border)',
-              textAlign: 'center',
-              minWidth: '300px',
-              maxWidth: 'min(560px, 90%)',
-            }}
-          >
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎉</div>
-            <div style={{
-              color: submitMessage.includes('achievement') ? 'var(--accent-600)' : 'var(--text)',
-              fontWeight: '600',
-              fontSize: '1.1rem',
-              lineHeight: '1.4'
-            }}>
-              {submitMessage}
-            </div>
-          </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-300">
+            <Card className="w-full max-w-md mx-6 border-none shadow-2xl bg-card">
+              <CardContent className="flex flex-col items-center p-10 text-center space-y-6">
+              <div className="w-20 h-20 rounded-full bg-[color:var(--success-soft)] text-[color:var(--success)] flex items-center justify-center text-4xl animate-bounce">
+                🎉
+              </div>
+              <h3 className="text-2xl font-bold tracking-tight">{submitMessage}</h3>
+            </CardContent>
+          </Card>
         </div>
-      )}
-
-      {submitMessage && (
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: 'var(--overlay)',
-            zIndex: 5
-          }}
-        />
       )}
     </div>
   );

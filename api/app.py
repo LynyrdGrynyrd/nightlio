@@ -159,18 +159,6 @@ def create_app(config_name="default"):
 
     app.register_blueprint(create_config_routes(), url_prefix="/api")
 
-    # Analytics Services
-    try:
-        from api.services.analytics_service import AnalyticsService
-        from api.routes.analytics_routes import create_analytics_routes
-        analytics_service = AnalyticsService(db)
-        app.register_blueprint(create_analytics_routes(analytics_service), url_prefix="/api")
-    except ImportError:
-        from services.analytics_service import AnalyticsService
-        from routes.analytics_routes import create_analytics_routes
-        analytics_service = AnalyticsService(db)
-        app.register_blueprint(create_analytics_routes(analytics_service), url_prefix="/api")
-
     # Search Services
     try:
         from api.routes.search_routes import create_search_routes
@@ -219,29 +207,67 @@ def create_app(config_name="default"):
         export_service = ExportService(db)
         app.register_blueprint(create_export_routes(export_service), url_prefix="/api")
 
+    # Daylio Import Service
+    try:
+        from api.services.daylio_import_service import DaylioImportService
+        from api.routes.import_routes import create_import_routes
+
+        daylio_import_service = DaylioImportService(db)
+        app.register_blueprint(create_import_routes(daylio_import_service), url_prefix="/api")
+    except ImportError:
+        from services.daylio_import_service import DaylioImportService
+        from routes.import_routes import create_import_routes
+
+        daylio_import_service = DaylioImportService(db)
+        app.register_blueprint(create_import_routes(daylio_import_service), url_prefix="/api")
+
     # Custom Mood Definitions
     try:
+        from api.services.mood_definition_service import MoodDefinitionService
         from api.routes.mood_definition_routes import create_mood_definition_routes
-        app.register_blueprint(create_mood_definition_routes(db), url_prefix="/api")
+        mood_definition_service = MoodDefinitionService(db)
+        app.register_blueprint(create_mood_definition_routes(mood_definition_service), url_prefix="/api")
     except ImportError:
+        from services.mood_definition_service import MoodDefinitionService
         from routes.mood_definition_routes import create_mood_definition_routes
-        app.register_blueprint(create_mood_definition_routes(db), url_prefix="/api")
+        mood_definition_service = MoodDefinitionService(db)
+        app.register_blueprint(create_mood_definition_routes(mood_definition_service), url_prefix="/api")
 
     # Scale Tracking
     try:
+        from api.services.scale_service import ScaleService
         from api.routes.scale_routes import create_scale_routes
-        app.register_blueprint(create_scale_routes(db), url_prefix="/api")
+        scale_service = ScaleService(db)
+        app.register_blueprint(create_scale_routes(scale_service), url_prefix="/api")
     except ImportError:
+        from services.scale_service import ScaleService
         from routes.scale_routes import create_scale_routes
-        app.register_blueprint(create_scale_routes(db), url_prefix="/api")
+        scale_service = ScaleService(db)
+        app.register_blueprint(create_scale_routes(scale_service), url_prefix="/api")
+
+    # Analytics Services (after scale_service so we can pass it)
+    try:
+        from api.services.analytics_service import AnalyticsService
+        from api.routes.analytics_routes import create_analytics_routes
+        analytics_service = AnalyticsService(db)
+        app.register_blueprint(create_analytics_routes(analytics_service, scale_service=scale_service), url_prefix="/api")
+    except ImportError:
+        from services.analytics_service import AnalyticsService
+        from routes.analytics_routes import create_analytics_routes
+        analytics_service = AnalyticsService(db)
+        app.register_blueprint(create_analytics_routes(analytics_service, scale_service=scale_service), url_prefix="/api")
 
     # Important Days / Countdowns
     try:
+        from api.services.important_days_service import ImportantDaysService
         from api.routes.important_days_routes import create_important_days_routes
-        app.register_blueprint(create_important_days_routes(db), url_prefix="/api")
+        important_days_service = ImportantDaysService(db)
+        app.register_blueprint(create_important_days_routes(important_days_service), url_prefix="/api")
     except ImportError:
+        from services.important_days_service import ImportantDaysService
         from routes.important_days_routes import create_important_days_routes
-        app.register_blueprint(create_important_days_routes(db), url_prefix="/api")
+        important_days_service = ImportantDaysService(db)
+        app.register_blueprint(create_important_days_routes(important_days_service), url_prefix="/api")
 
     # User Settings / App Lock
     try:

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useMemo, ReactNode } from 'react';
 import api, { PublicConfig } from '../services/api';
 
 // ========== Types ==========
@@ -49,8 +49,14 @@ export const ConfigProvider = ({ children }: ConfigProviderProps) => {
     return () => { isMounted = false; };
   }, []);
 
+  const value = useMemo<ConfigContextValue>(() => ({
+    config,
+    loading,
+    error,
+  }), [config, loading, error]);
+
   return (
-    <ConfigContext.Provider value={{ config, loading, error }}>
+    <ConfigContext.Provider value={value}>
       {children}
     </ConfigContext.Provider>
   );

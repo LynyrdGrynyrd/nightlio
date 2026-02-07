@@ -50,6 +50,17 @@ class MediaMixin(DatabaseConnectionMixin):
             row = cursor.fetchone()
             return dict(row) if row else None
 
+    def get_media_by_filename(self, filename: str) -> Optional[Dict]:
+        """Get media record by file_path (filename) for ownership verification."""
+        with self._connect() as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                "SELECT id, entry_id, file_path, file_type, created_at FROM media_attachments WHERE file_path = ?",
+                (filename,),
+            )
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
     def delete_media_attachment(self, media_id: int) -> bool:
         with self._connect() as conn:
             cursor = conn.execute(
@@ -74,6 +85,29 @@ class MediaMixin(DatabaseConnectionMixin):
             )
             conn.commit()
             return file_paths
+
+    def get_media_for_entries(self, entry_ids: List[int]) -> Dict[int, List[Dict]]:
+        """Fetch media for multiple entries in one query."""
+        if not entry_ids:
+            return {}
+
+        with self._connect() as conn:
+            conn.row_factory = sqlite3.Row
+            placeholders = ','.join('?' for _ in entry_ids)
+            cursor = conn.execute(
+                f"""
+                SELECT id, entry_id, file_path, file_type, thumbnail_path, created_at
+                  FROM media_attachments
+                 WHERE entry_id IN ({placeholders})
+                 ORDER BY entry_id, created_at DESC
+                """,
+                entry_ids,
+            )
+
+            result: Dict[int, List[Dict]] = {eid: [] for eid in entry_ids}
+            for row in cursor.fetchall():
+                result[row['entry_id']].append(dict(row))
+            return result
 
     def get_all_media_for_user(
         self,

@@ -1,9 +1,8 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify
 import logging
 from api.services.achievement_service import AchievementService
 from api.utils.auth_middleware import require_auth, get_current_user_id
 from api.utils.secure_errors import secure_error_response
-from api.config import get_config
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +39,18 @@ def create_achievement_routes(achievement_service: AchievementService):
         except Exception as e:
             return secure_error_response(e, 500)
 
+    @achievement_bp.route("/achievements/definitions", methods=["GET"])
+    @require_auth
+    def get_achievement_definitions():
+        try:
+            user_id = get_current_user_id()
+            if not isinstance(user_id, int):
+                return jsonify({"error": "Unauthorized"}), 401
+            definitions = achievement_service.get_achievement_definitions()
+            return jsonify(definitions)
+        except Exception as e:
+            return secure_error_response(e, 500)
+
     # CORS preflight should not require auth
     @achievement_bp.route(
         "/achievements/progress", methods=["OPTIONS"], strict_slashes=False
@@ -62,7 +73,7 @@ def create_achievement_routes(achievement_service: AchievementService):
             user_id = get_current_user_id()
             if not isinstance(user_id, int):
                 return jsonify({"error": "Unauthorized"}), 401
-            progress = achievement_service.db.get_achievements_progress(user_id)
+            progress = achievement_service.get_achievement_progress_dto(user_id)
             return jsonify(progress)
         except Exception as e:
             return secure_error_response(e, 500)

@@ -1,4 +1,5 @@
 import { LucideIcon, PlusCircle, Sparkles, FolderOpen, List, Camera, Target, Calendar, Heart } from 'lucide-react';
+import { Button } from './button';
 
 type IconName = 'sparkles' | 'folder' | 'list' | 'plus' | 'camera' | 'target' | 'calendar' | 'heart';
 type EmptyStateVariant = 'default' | 'firstEntry' | 'noEntriesThisWeek' | 'noPhotos' | 'noGoals' | 'noHistory' | 'noStats' | 'emptyFolder';
@@ -91,27 +92,27 @@ const EmptyState = ({
   const IconComponent = getIcon();
 
   return (
-    <div className="flex flex-col items-center justify-center p-8 text-center rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-dashed border-gray-300 dark:border-gray-700 w-full min-h-[200px] animate-in fade-in duration-500">
-      <div className="w-16 h-16 mb-4 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-500 dark:text-blue-400">
+    <div className="flex flex-col items-center justify-center p-8 text-center rounded-2xl bg-muted/50 border border-dashed border-border w-full min-h-[200px] animate-in fade-in duration-300">
+      <div className="w-16 h-16 mb-4 rounded-full bg-accent flex items-center justify-center text-accent-foreground">
         <IconComponent size={32} />
       </div>
 
-      <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+      <h3 className="text-xl font-bold text-foreground mb-2">
         {finalTitle}
       </h3>
 
-      <p className="text-gray-500 dark:text-gray-400 max-w-xs mb-6 mx-auto">
+      <p className="text-muted-foreground max-w-xs mb-6 mx-auto">
         {finalMessage}
       </p>
 
       {actionLabel && onAction && (
-        <button
+        <Button
           onClick={onAction}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[var(--accent-600)] text-white hover:opacity-90 transition-all transform hover:scale-105 shadow-md font-medium"
+          className="flex items-center gap-2 rounded-full shadow-md"
         >
           <PlusCircle size={18} />
           {actionLabel}
-        </button>
+        </Button>
       )}
     </div>
   );

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Delete } from 'lucide-react';
+import { Button } from '../ui/button';
+import { cn } from '@/lib/utils';
 
 // ========== Types ==========
 
@@ -44,55 +46,52 @@ const PinPad = ({ onComplete, length = 4, error }: PinPadProps) => {
         {[...Array(length)].map((_, i) => (
           <div
             key={i}
-            className={`w-4 h-4 rounded-full border border-[var(--text-muted)] transition-all duration-200 ${
-              i < pin.length ? 'bg-[var(--accent-500)] border-[var(--accent-500)]' : 'bg-transparent'
-            } ${error ? 'border-red-500 animate-shake' : ''}`}
+            className={cn(
+              "w-4 h-4 rounded-full border border-muted-foreground transition-all duration-200",
+              i < pin.length && "bg-primary border-primary",
+              error && "border-destructive animate-shake"
+            )}
           />
         ))}
       </div>
 
-      {error && <p className="text-red-500 text-sm font-medium animate-pulse">{error}</p>}
+      {error ? <p className="text-destructive text-sm font-medium animate-pulse">{error}</p> : null}
 
       {/* Keypad */}
       <div className="grid grid-cols-3 gap-6">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
-          <button
+          <Button
             key={num}
+            variant="outline"
+            size="icon"
             onClick={() => handleDigit(num)}
-            className="w-16 h-16 rounded-full text-2xl font-medium
-                     bg-[var(--surface-active)] text-[var(--text)]
-                     hover:bg-[var(--accent-bg-soft)] hover:border-[var(--accent-200)]
-                     border border-transparent transition-all
-                     flex items-center justify-center shadow-sm active:scale-95"
+            className="w-16 h-16 rounded-full text-2xl font-medium shadow-sm active:scale-95"
           >
             {num}
-          </button>
+          </Button>
         ))}
 
         {/* Empty spacer for alignment */}
         <div />
 
-        <button
+        <Button
+          variant="outline"
+          size="icon"
           onClick={() => handleDigit(0)}
-          className="w-16 h-16 rounded-full text-2xl font-medium
-                   bg-[var(--surface-active)] text-[var(--text)]
-                   hover:bg-[var(--accent-bg-soft)] hover:border-[var(--accent-200)]
-                   border border-transparent transition-all
-                   flex items-center justify-center shadow-sm active:scale-95"
+          className="w-16 h-16 rounded-full text-2xl font-medium shadow-sm active:scale-95"
         >
           0
-        </button>
+        </Button>
 
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={handleBackspace}
-          className="w-16 h-16 rounded-full text-xl
-                   text-[var(--text-muted)] hover:text-[var(--text)]
-                   hover:bg-red-500/10 active:scale-95 transition-all
-                   flex items-center justify-center"
+          className="w-16 h-16 rounded-full text-muted-foreground hover:text-foreground hover:bg-destructive/10 active:scale-95"
           aria-label="Backspace"
         >
           <Delete size={24} />
-        </button>
+        </Button>
       </div>
     </div>
   );

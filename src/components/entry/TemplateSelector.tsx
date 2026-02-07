@@ -1,5 +1,11 @@
-import { useState, MouseEvent, CSSProperties } from 'react';
-import { FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { FileText, ChevronDown } from 'lucide-react';
+import { Button } from '../ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
 
 // ========== Types ==========
 
@@ -86,94 +92,28 @@ const DEFAULT_TEMPLATES: Template[] = [
 // ========== Component ==========
 
 const TemplateSelector = ({ onSelectTemplate }: TemplateSelectorProps) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  const handleTemplateClick = (content: string) => {
-    onSelectTemplate(content);
-    setIsExpanded(false);
-  };
-
-  const handleMouseEnter = (e: MouseEvent<HTMLButtonElement>) => {
-    (e.target as HTMLButtonElement).style.background = 'var(--bg)';
-  };
-
-  const handleMouseLeave = (e: MouseEvent<HTMLButtonElement>) => {
-    (e.target as HTMLButtonElement).style.background = 'transparent';
-  };
-
-  const toggleStyle: CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    padding: '0.5rem 0.75rem',
-    background: 'var(--bg-card)',
-    border: '1px solid var(--border)',
-    borderRadius: '8px',
-    color: 'var(--text-muted)',
-    fontSize: '0.875rem',
-    cursor: 'pointer',
-    transition: 'all 0.2s'
-  };
-
-  const dropdownStyle: CSSProperties = {
-    position: 'absolute',
-    zIndex: 10,
-    marginTop: '0.5rem',
-    background: 'var(--surface)',
-    border: '1px solid var(--border)',
-    borderRadius: '12px',
-    boxShadow: 'var(--shadow-lg)',
-    padding: '0.5rem',
-    minWidth: '220px',
-    maxWidth: '300px'
-  };
-
-  const buttonStyle: CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.75rem',
-    width: '100%',
-    padding: '0.75rem',
-    background: 'transparent',
-    border: 'none',
-    borderRadius: '8px',
-    textAlign: 'left',
-    cursor: 'pointer',
-    color: 'var(--text)',
-    transition: 'background 0.15s'
-  };
-
   return (
-    <div className="template-selector">
-      <button
-        type="button"
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="template-toggle"
-        style={toggleStyle}
-      >
-        <FileText size={16} />
-        Load Template
-        {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-      </button>
-
-      {isExpanded && (
-        <div style={dropdownStyle}>
-          {DEFAULT_TEMPLATES.map((template) => (
-            <button
-              key={template.id}
-              type="button"
-              onClick={() => handleTemplateClick(template.content)}
-              style={buttonStyle}
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
-            >
-              <span style={{ fontSize: '1.25rem' }}>{template.icon}</span>
-              <span style={{ fontWeight: 500 }}>{template.name}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-2 h-9">
+          <FileText size={16} />
+          Load Template
+          <ChevronDown size={14} className="opacity-50" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-[240px]">
+        {DEFAULT_TEMPLATES.map((template) => (
+          <DropdownMenuItem
+            key={template.id}
+            onClick={() => onSelectTemplate(template.content)}
+            className="gap-3 py-3 cursor-pointer"
+          >
+            <span className="text-xl leading-none">{template.icon}</span>
+            <span className="font-medium">{template.name}</span>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
 

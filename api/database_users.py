@@ -88,32 +88,31 @@ class UsersMixin(DatabaseConnectionMixin):
                 conn.rollback()
                 raise
 
+    # Whitelist of tables that have a user_id column for safe deletion
+    _USER_DATA_TABLES = frozenset({
+        "mood_entries",
+        "goals",
+        "groups",
+        "user_settings",
+        "achievement_unlocks",
+        "important_days",
+        "scale_definitions",
+        "push_subscriptions",
+    })
+
     def delete_user_data(self, user_id: int) -> None:
         """Permanently delete all data for a user."""
         with self._connect() as conn:
             # Enable foreign keys just in case
             conn.execute("PRAGMA foreign_keys = ON")
 
-            # Manual cleanup if cascades miss something (or for safety)
-            tables = [
-                "mood_entry_selections", # No user_id, linked to entry
-                "mood_entries",
-                "goals",
-                "groups",
-                "user_settings",
-                "achievement_unlocks"
-            ]
-
-            # Selections are tough without CASCADE.
-            # If we delete entries, selection links should die if CASCADE is on.
-            # Let's trust FK CASCADE for entry->selection.
-
-            # Direct user_id tables:
-            direct_tables = ["mood_entries", "goals", "groups", "user_settings", "achievement_unlocks", "important_days"]
-            for table in direct_tables:
+            # Delete from whitelisted tables only (prevents SQL injection)
+            for table in self._USER_DATA_TABLES:
                 try:
+                    # Table name is from a hardcoded frozenset, safe to use in query
                     conn.execute(f"DELETE FROM {table} WHERE user_id = ?", (user_id,))
-                except Exception:
+                except sqlite3.OperationalError:
+                    # Table might not exist in all deployments
                     pass
 
             # Finally delete user

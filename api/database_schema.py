@@ -36,7 +36,6 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
 
                 # Push Notifications
                 self._create_reminders_table(conn)
-                self._create_reminders_table(conn)
                 self._create_push_subscriptions_table(conn)
                 self._create_media_table(conn)
                 self._create_fts_tables(conn)
@@ -124,12 +123,27 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
             """
             CREATE TABLE IF NOT EXISTS groups (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL UNIQUE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                name TEXT NOT NULL,
+                user_id INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
             )
             """
         )
+        self._migrate_groups_table_schema(conn)
         logger.info("Groups table ready")
+
+    def _migrate_groups_table_schema(self, conn: sqlite3.Connection) -> None:
+        """Add user_id column to groups table if it doesn't exist."""
+        try:
+            cur = conn.execute("PRAGMA table_info(groups)")
+            cols: Iterable[str] = {row[1] for row in cur.fetchall()}
+
+            if "user_id" not in cols:
+                conn.execute("ALTER TABLE groups ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE")
+                logger.info("Groups table migrated to include user_id")
+        except sqlite3.Error as exc:
+            logger.warning("Groups table migration failed (non-critical): %s", exc)
 
     def _create_group_options_table(self, conn: sqlite3.Connection) -> None:
         conn.execute(
@@ -287,11 +301,30 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
 
     def _create_database_indexes(self, conn: sqlite3.Connection) -> None:
         try:
+            # Core indexes for query performance
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_mood_entries_date ON mood_entries(date)"
             )
             conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_mood_entries_user_date ON mood_entries(user_id, date)"
+            )
+            conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)"
+            )
+            # Scale entries index for faster lookups
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_scale_entries_scale_id ON scale_entries(scale_id)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_scale_entries_entry_id ON scale_entries(entry_id)"
+            )
+            # Entry selections index
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_entry_selections_entry_id ON entry_selections(entry_id)"
+            )
+            # Groups user_id index
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_groups_user_id ON groups(user_id)"
             )
             logger.info("Database indexes ready")
         except sqlite3.Error as exc:
@@ -307,12 +340,31 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
                     time TEXT NOT NULL,           -- "09:00" format
                     days_of_week TEXT NOT NULL,   -- JSON array: [0,1,2,3,4,5,6] (Mon-Sun)
                     message TEXT DEFAULT 'Time to log your mood!',
+                    goal_id INTEGER,
                     is_active BOOLEAN DEFAULT 1,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (goal_id) REFERENCES goals (id) ON DELETE SET NULL,
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 )
                 """
             )
+            # Migrations for existing reminders table
+            cur = conn.execute("PRAGMA table_info(reminders)")
+            cols: Iterable[str] = {row[1] for row in cur.fetchall()}
+
+            if "message" not in cols:
+                conn.execute(
+                    "ALTER TABLE reminders ADD COLUMN message TEXT DEFAULT 'Time to log your mood!'"
+                )
+            if "goal_id" not in cols:
+                conn.execute("ALTER TABLE reminders ADD COLUMN goal_id INTEGER")
+            if "is_active" not in cols:
+                conn.execute("ALTER TABLE reminders ADD COLUMN is_active BOOLEAN DEFAULT 1")
+            if "updated_at" not in cols:
+                conn.execute(
+                    "ALTER TABLE reminders ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+                )
             logger.info("Reminders table ready")
         except sqlite3.Error as exc:
             logger.warning("Reminders table creation failed: %s", exc)

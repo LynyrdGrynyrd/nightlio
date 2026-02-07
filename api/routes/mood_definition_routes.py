@@ -8,8 +8,12 @@ except ImportError:
     from utils.auth_middleware import require_auth, get_current_user_id
 
 
-def create_mood_definition_routes(db):
-    """Create routes for managing custom mood definitions."""
+def create_mood_definition_routes(mood_definition_service):
+    """Create routes for managing custom mood definitions.
+
+    Args:
+        mood_definition_service: MoodDefinitionService instance for mood definition operations
+    """
     bp = Blueprint('mood_definitions', __name__)
 
     @bp.route('/mood-definitions', methods=['GET'])
@@ -17,7 +21,7 @@ def create_mood_definition_routes(db):
     def get_mood_definitions():
         """Get all mood definitions for the current user."""
         user_id = get_current_user_id()
-        definitions = db.get_user_mood_definitions(user_id)
+        definitions = mood_definition_service.get_user_mood_definitions(user_id)
         return jsonify(definitions)
 
     @bp.route('/mood-definitions/<int:score>', methods=['PUT'])
@@ -37,7 +41,7 @@ def create_mood_definition_routes(db):
         if not any([label, icon, color_hex]):
             return jsonify({"error": "At least one of label, icon, or color_hex is required"}), 400
         
-        updated = db.update_mood_definition(
+        updated = mood_definition_service.update_mood_definition(
             user_id=user_id,
             score=score,
             label=label,

@@ -40,13 +40,19 @@ const HistoryView = ({
 
   return (
     <>
-      <div className="history-header">
-        <MoodPicker onMoodSelect={onMoodSelect} />
-        <div className="history-date">
-          <h2 className="history-today-title">Today</h2>
-          <div className="history-datetime-group">
-            <span className="history-date-part">{dateString}</span>
-            <span className="history-time-part">{timeString}</span>
+      <div className="space-y-6">
+        {/* Mood Picker - Now visible and properly styled */}
+        <div className="flex justify-center">
+          <MoodPicker onMoodSelect={onMoodSelect} selectedMood={null} />
+        </div>
+
+        {/* Date Section with proper spacing */}
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl font-bold tracking-tight">Today</h2>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 text-sm text-muted-foreground">
+            <span>{dateString}</span>
+            <span className="hidden sm:inline">•</span>
+            <span>{timeString}</span>
           </div>
         </div>
       </div>
@@ -54,7 +60,7 @@ const HistoryView = ({
         <HistoryList
           entries={pastEntries}
           loading={loading}
-          error={error}
+          error={error ?? undefined}
           onDelete={onDelete}
           onEdit={onEdit}
         />

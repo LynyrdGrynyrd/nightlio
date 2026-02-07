@@ -1,5 +1,8 @@
-import { CSSProperties } from 'react';
+import { memo } from 'react';
 import { getIconComponent } from '../ui/IconPicker';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../ui/card';
+import { cn } from '@/lib/utils';
+import { Badge } from '../ui/badge';
 
 interface Activity {
   id: number;
@@ -22,118 +25,63 @@ interface ActivityCorrelationsProps {
 const ActivityCorrelations = ({ data }: ActivityCorrelationsProps) => {
   if (!data || !data.activities || data.activities.length === 0) {
     return (
-      <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '20px' }}>
+      <Card className="p-6 text-center text-muted-foreground border-dashed bg-muted/10">
         Not enough data to calculate impact yet.
-      </div>
+      </Card>
     );
   }
 
   const { activities, overall_average } = data;
 
-  const cardStyle: CSSProperties = {
-    padding: '0px'
-  };
-
-  const headerStyle: CSSProperties = {
-    padding: '20px',
-    borderBottom: '1px solid var(--border)'
-  };
-
-  const titleStyle: CSSProperties = {
-    margin: 0,
-    fontSize: '1.2rem'
-  };
-
-  const subtitleStyle: CSSProperties = {
-    margin: '4px 0 0',
-    color: 'var(--text-secondary)',
-    fontSize: '0.9rem'
-  };
-
-  const activityStyle: CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '12px 20px',
-    borderBottom: '1px solid var(--border)'
-  };
-
-  const activityInfoStyle: CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px'
-  };
-
-  const iconContainerStyle: CSSProperties = {
-    width: '32px',
-    height: '32px',
-    borderRadius: '8px',
-    background: 'var(--surface-hover)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: 'var(--text)'
-  };
-
-  const activityNameStyle: CSSProperties = {
-    fontWeight: 600
-  };
-
-  const activityStatsStyle: CSSProperties = {
-    fontSize: '0.8rem',
-    color: 'var(--text-secondary)'
-  };
-
   return (
-    <div className="card" style={cardStyle}>
-      <div style={headerStyle}>
-        <h3 style={titleStyle}>Influence on Mood</h3>
-        <p style={subtitleStyle}>
-          How activities affect your average ({overall_average.toFixed(2)})
-        </p>
-      </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base font-semibold">Influence on Mood</CardTitle>
+        <CardDescription>
+          How activities affect your average ({(overall_average ?? 0).toFixed(2)})
+        </CardDescription>
+      </CardHeader>
 
-      <div className="list-container">
-        {activities.map((activity) => {
-          const Icon = getIconComponent(activity.icon);
-          const impact = activity.impact_score;
-          const isPositive = impact > 0;
+      <CardContent className="p-0">
+        <div className="divide-y">
+          {activities.map((activity) => {
+            const Icon = getIconComponent(activity.icon);
+            const impact = activity.impact_score;
+            const isPositive = impact > 0;
+            const isNeutral = impact === 0;
 
-          let color = 'var(--text-secondary)';
-          if (isPositive) color = 'var(--success, var(--mood-5))';
-          if (impact < 0) color = 'var(--danger, var(--mood-1))';
-
-          const impactStyle: CSSProperties = {
-            fontWeight: 700,
-            color: color,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px'
-          };
-
-          return (
-            <div key={activity.id} style={activityStyle}>
-              <div style={activityInfoStyle}>
-                <div style={iconContainerStyle}>
-                  {Icon && <Icon size={18} />}
-                </div>
-                <div>
-                  <div style={activityNameStyle}>{activity.name}</div>
-                  <div style={activityStatsStyle}>
-                    {activity.count} entries • Avg: {activity.average_mood}
+            return (
+              <div key={activity.id} className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-md bg-accent/20 flex items-center justify-center text-foreground shrink-0">
+                    {Icon && <Icon size={18} />}
+                  </div>
+                  <div>
+                    <div className="font-semibold text-sm">{activity.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {activity.count} entries • Avg: {activity.average_mood}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div style={impactStyle}>
-                {impact > 0 ? '+' : ''}{impact}
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "font-bold text-xs px-2 min-w-[3rem] justify-center",
+                    isPositive && "border-[color:var(--success)] bg-[color:var(--success-soft)] text-[color:var(--success)]",
+                    !isPositive && !isNeutral && "border-[color:var(--destructive)] bg-[color:var(--destructive-soft)] text-[color:var(--destructive)]",
+                    isNeutral && "bg-muted text-muted-foreground"
+                  )}
+                >
+                  {isPositive && '+'}{impact}
+                </Badge>
               </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
-export default ActivityCorrelations;
+export default memo(ActivityCorrelations);

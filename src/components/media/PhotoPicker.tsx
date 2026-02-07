@@ -1,10 +1,12 @@
 import { useState, useRef, ChangeEvent } from 'react';
-import { Camera, X } from 'lucide-react';
+import { Camera, X, Plus } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
-import './PhotoPicker.css';
 import { Media } from '../../services/api';
-
-// ========== Types ==========
+import { Button } from '../ui/button';
+import { cn } from '@/lib/utils';
+import { Badge } from '../ui/badge';
+import ConfirmDialog from '../ui/ConfirmDialog';
+import { useToast } from '../ui/ToastProvider';
 
 interface PhotoPickerProps {
   existingMedia?: Media[];
@@ -12,12 +14,14 @@ interface PhotoPickerProps {
   onMediaDeleted: (mediaId: number) => void;
 }
 
-// ========== Component ==========
-
 const PhotoPicker = ({ existingMedia = [], onFilesSelected, onMediaDeleted }: PhotoPickerProps) => {
   const [previews, setPreviews] = useState<string[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [mediaToDelete, setMediaToDelete] = useState<number | null>(null);
+  const { show } = useToast();
 
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -26,10 +30,11 @@ const PhotoPicker = ({ existingMedia = [], onFilesSelected, onMediaDeleted }: Ph
     // Limit to 3 files total (including existing)
     const totalCount = existingMedia.length + selectedFiles.length + files.length;
     if (totalCount > 3) {
-      alert("Maximum 3 photos per entry.");
+      show("Maximum 3 photos per entry.", "info");
       return;
     }
 
+    setIsCompressing(true);
     const compressedFiles: File[] = [];
 
     for (const file of files) {
@@ -58,6 +63,7 @@ const PhotoPicker = ({ existingMedia = [], onFilesSelected, onMediaDeleted }: Ph
     const updatedFiles = [...selectedFiles, ...compressedFiles];
     setSelectedFiles(updatedFiles);
     onFilesSelected(updatedFiles);
+    setIsCompressing(false);
   };
 
   const removeNewPhoto = (index: number) => {
@@ -68,43 +74,97 @@ const PhotoPicker = ({ existingMedia = [], onFilesSelected, onMediaDeleted }: Ph
     onFilesSelected(updatedFiles);
   };
 
-  const removeExistingPhoto = (mediaId: number) => {
-    if (window.confirm("Remove this photo permanently?")) {
-      onMediaDeleted(mediaId);
+  const handleRemoveExistingPhoto = (mediaId: number) => {
+    setMediaToDelete(mediaId);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmRemovePhoto = () => {
+    if (mediaToDelete !== null) {
+      onMediaDeleted(mediaToDelete);
+      setMediaToDelete(null);
     }
   };
 
-  return (
-    <div className="photo-picker-container">
-      <h3 className="section-title"><Camera size={18} /> Photos</h3>
+  const canAdd = existingMedia.length + selectedFiles.length < 3;
 
-      <div className="photo-grid">
+  return (
+    <div className="mt-6 border-t pt-4">
+      <h3 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground mb-4">
+        <Camera size={16} /> Photos
+        <Badge variant="outline" className="text-[10px] h-5 px-1.5 font-normal">
+          {existingMedia.length + selectedFiles.length}/3
+        </Badge>
+      </h3>
+
+      <div className="flex flex-wrap gap-4">
         {/* Existing Photos */}
         {existingMedia.map(media => (
-          <div key={media.id} className="photo-bubble existing">
-            <img src={`/api/media/${media.file_path}`} alt="Attachment" />
-            <button className="remove-btn" onClick={() => removeExistingPhoto(media.id)}>
-              <X size={14} />
-            </button>
+          <div key={media.id} className="relative group w-24 h-24 rounded-xl overflow-hidden shadow-sm border bg-muted">
+            <img
+              src={`/api/media/${media.file_path}`}
+              alt="Attachment"
+              width={96}
+              height={96}
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+            />
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <Button
+                variant="destructive"
+                size="icon"
+                className="h-10 w-10 rounded-full"
+                onClick={() => handleRemoveExistingPhoto(media.id)}
+                aria-label="Remove photo"
+              >
+                <X size={14} aria-hidden="true" />
+              </Button>
+            </div>
           </div>
         ))}
 
         {/* New Previews */}
         {previews.map((src, index) => (
-          <div key={index} className="photo-bubble new">
-            <img src={src} alt="Preview" />
-            <button className="remove-btn" onClick={() => removeNewPhoto(index)}>
-              <X size={14} />
-            </button>
+          <div key={index} className="relative group w-24 h-24 rounded-xl overflow-hidden shadow-sm border bg-muted">
+            <img
+              src={src}
+              alt="Preview"
+              width={96}
+              height={96}
+              className={cn("w-full h-full object-cover", isCompressing && "opacity-50 grayscale")}
+            />
+            {!isCompressing && (
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="h-10 w-10 rounded-full"
+                  onClick={() => removeNewPhoto(index)}
+                  aria-label="Remove photo"
+                >
+                  <X size={14} aria-hidden="true" />
+                </Button>
+              </div>
+            )}
+            {isCompressing && index === previews.length - 1 && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-5 h-5 border-2 border-[color:color-mix(in_oklab,var(--overlay-foreground),transparent_50%)] border-t-[color:var(--overlay-foreground)] rounded-full animate-spin" />
+              </div>
+            )}
           </div>
         ))}
 
         {/* Add Button */}
-        {(existingMedia.length + selectedFiles.length < 3) && (
-          <button className="add-photo-btn" onClick={() => fileInputRef.current?.click()}>
-            <Plus className="w-5 h-5" />
-            <span>Add</span>
-          </button>
+        {canAdd && (
+          <Button
+            variant="outline"
+            className="w-24 h-24 rounded-xl border-dashed border-2 flex flex-col gap-2 items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/50 hover:bg-muted/50 p-0"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isCompressing}
+            aria-label="Add photo"
+          >
+            <Plus className="w-6 h-6" aria-hidden="true" />
+            <span className="text-xs font-medium">Add</span>
+          </Button>
         )}
       </div>
 
@@ -114,18 +174,20 @@ const PhotoPicker = ({ existingMedia = [], onFilesSelected, onMediaDeleted }: Ph
         onChange={handleFileChange}
         accept="image/*"
         multiple
-        style={{ display: 'none' }}
+        className="hidden"
+      />
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        title="Remove Photo"
+        description="Are you sure you want to remove this photo? This action cannot be undone."
+        confirmLabel="Remove"
+        variant="destructive"
+        onConfirm={confirmRemovePhoto}
       />
     </div>
   );
 };
-
-// Simple Plus icon component
-const Plus = ({ className }: { className?: string }) => (
-  <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="12" y1="5" x2="12" y2="19"></line>
-    <line x1="5" y1="12" x2="19" y2="12"></line>
-  </svg>
-);
 
 export default PhotoPicker;

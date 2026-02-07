@@ -73,11 +73,10 @@ export function getStrengthLabel(score: number): string {
 }
 
 export function getStrengthColor(score: number): string {
-  if (score <= 1) return '#d32f2f';
-  if (score === 2) return '#f57c00';
-  if (score === 3) return '#fbc02d';
-  if (score === 4) return '#689f38';
-  return '#388e3c';
+  if (score <= 1) return 'var(--destructive)';
+  if (score === 2) return 'var(--warning)';
+  if (score === 3) return 'color-mix(in oklab, var(--warning) 60%, var(--success) 40%)';
+  return 'var(--success)';
 }
 
 export function validateUsername(username: string): UsernameValidation {

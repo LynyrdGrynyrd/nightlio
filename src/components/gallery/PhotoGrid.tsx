@@ -1,5 +1,7 @@
 import { KeyboardEvent } from 'react';
-import './PhotoGrid.css';
+import Skeleton from '../ui/Skeleton';
+import { MOODS } from '../../utils/moodUtils';
+import { API_BASE_URL } from '../../services/api';
 
 // ========== Types ==========
 
@@ -20,16 +22,6 @@ interface PhotoGridProps {
   loading: boolean;
 }
 
-// ========== Constants ==========
-
-const MOOD_COLORS: Record<number, string> = {
-  1: 'var(--mood-1)',
-  2: 'var(--mood-2)',
-  3: 'var(--mood-3)',
-  4: 'var(--mood-4)',
-  5: 'var(--mood-5)',
-};
-
 // ========== Component ==========
 
 const PhotoGrid = ({ photos, onPhotoClick, loading }: PhotoGridProps) => {
@@ -39,37 +31,47 @@ const PhotoGrid = ({ photos, onPhotoClick, loading }: PhotoGridProps) => {
     }
   };
 
+  const getMoodColor = (moodId: number) => {
+    return MOODS.find(m => m.value === moodId)?.color || 'var(--primary)';
+  };
+
   if (loading) {
     return (
-      <div className="photo-grid">
+      <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-4">
         {Array.from({ length: 12 }).map((_, i) => (
-          <div key={i} className="photo-grid__skeleton" />
+          <Skeleton key={i} className="aspect-square rounded-xl" />
         ))}
       </div>
     );
   }
 
   return (
-    <div className="photo-grid">
+    <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-4">
       {photos.map(photo => (
         <div
           key={photo.id}
-          className="photo-grid__item"
+          className="group relative cursor-pointer overflow-hidden rounded-xl bg-muted aspect-square transition-all hover:ring-2 hover:ring-primary hover:ring-offset-2"
           onClick={() => onPhotoClick(photo)}
           role="button"
           tabIndex={0}
           onKeyDown={(e) => handleKeyDown(e, photo)}
-          style={{ '--mood-color': MOOD_COLORS[photo.entry_mood] || MOOD_COLORS[3] } as React.CSSProperties}
         >
           <img
-            src={`/api/media/${photo.thumbnail_path || photo.file_path}`}
+            src={`${API_BASE_URL}/api/media/${photo.thumbnail_path || photo.file_path}`}
             alt={`Entry from ${photo.entry_date}`}
+            width={200}
+            height={200}
             loading="lazy"
-            className="photo-grid__image"
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
           />
-          <div className="photo-grid__overlay">
-            <span className="photo-grid__date">{photo.entry_date}</span>
-            <span className="photo-grid__mood-indicator" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
+            <div className="flex items-center justify-between text-[color:var(--overlay-foreground)] text-xs font-medium">
+              <span>{photo.entry_date}</span>
+              <span
+                className="w-2.5 h-2.5 rounded-full border border-[color:color-mix(in_oklab,var(--overlay-foreground),transparent_50%)]"
+                style={{ backgroundColor: getMoodColor(photo.entry_mood) }}
+              />
+            </div>
           </div>
         </div>
       ))}

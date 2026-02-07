@@ -1,4 +1,5 @@
 import { Frown, Meh, Smile, Heart, LucideIcon } from 'lucide-react';
+import type { BaseEntry } from '../types/entry';
 
 // ========== Types ==========
 
@@ -21,53 +22,49 @@ export interface WeeklyMoodDataPoint {
   hasEntry: boolean;
 }
 
-interface Entry {
-  date: string;
-  mood: number;
-  created_at?: string;
-}
-
-interface EntryWithFormatting extends Entry {
-  created_at: string;
-}
+// Use shared BaseEntry type
+type Entry = BaseEntry;
 
 // ========== Helper Functions ==========
 
-// Resolve a CSS variable to its computed value (fallback to provided value)
-const cssVar = (name: string, fallback: string): string => {
-  try {
-    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    return v || fallback;
-  } catch {
-    return fallback;
-  }
-};
+
 
 // ========== Constants ==========
 
 export const MOODS: Mood[] = [
   { icon: Frown, value: 1, color: 'var(--mood-1)', label: 'Terrible' },
   { icon: Frown, value: 2, color: 'var(--mood-2)', label: 'Bad' },
-  { icon: Meh,   value: 3, color: 'var(--mood-3)', label: 'Okay' },
+  { icon: Meh, value: 3, color: 'var(--mood-3)', label: 'Okay' },
   { icon: Smile, value: 4, color: 'var(--mood-4)', label: 'Good' },
   { icon: Heart, value: 5, color: 'var(--mood-5)', label: 'Amazing' },
 ];
 
+// Create Map at module level for O(1) lookup (one-time cost)
+const MOOD_MAP = new Map(MOODS.map(m => [m.value, m]));
+
 // ========== Utility Functions ==========
 
 export const getMoodIcon = (moodValue: number): MoodIcon => {
-  const mood = MOODS.find(m => m.value === moodValue);
-  if (!mood) return { icon: Meh, color: cssVar('--mood-3', '#f1fa8c') };
-  // Resolve CSS var to concrete color for places that need an actual color value
-  const resolved = mood.color.startsWith('var(')
-    ? cssVar(mood.color.slice(4, -1), '#999')
-    : mood.color;
-  return { icon: mood.icon, color: resolved };
+  const mood = MOOD_MAP.get(moodValue);
+
+  // Use a fallback if mood isn't found
+  if (!mood) {
+    return {
+      icon: Meh,
+      color: 'var(--mood-3)'
+    };
+  }
+
+  // Return the color string as-is (e.g., 'var(--mood-1)'). 
+  // Standard React style and Lucide props handle this perfectly.
+  return {
+    icon: mood.icon,
+    color: mood.color
+  };
 };
 
 export const getMoodLabel = (moodValue: number): string => {
-  const mood = MOODS.find(m => m.value === moodValue);
-  return mood ? mood.label : 'Unknown';
+  return MOOD_MAP.get(moodValue)?.label ?? 'Unknown';
 };
 
 export const formatEntryTime = (entry: Entry): string => {
@@ -87,18 +84,40 @@ export const getWeeklyMoodData = (pastEntries: Entry[], days: number = 7): Weekl
   const today = new Date();
   const weekData: WeeklyMoodDataPoint[] = [];
 
-  // Create entry lookup by date
+  // Create entry lookup by date (support both ISO format and created_at)
   const entryLookup: Record<string, Entry> = {};
   pastEntries.forEach(entry => {
-    entryLookup[entry.date] = entry;
+    // Try the date field first (may be ISO format YYYY-MM-DD or locale string)
+    if (entry.date) {
+      entryLookup[entry.date] = entry;
+      // Also add normalized ISO format if it looks like a parseable date
+      try {
+        const parsed = new Date(entry.date);
+        if (!isNaN(parsed.getTime())) {
+          const isoKey = parsed.toISOString().split('T')[0];
+          entryLookup[isoKey] = entry;
+        }
+      } catch { /* ignore */ }
+    }
+    // Also index by created_at for fallback
+    if (entry.created_at) {
+      try {
+        const parsed = new Date(entry.created_at);
+        if (!isNaN(parsed.getTime())) {
+          const isoKey = parsed.toISOString().split('T')[0];
+          entryLookup[isoKey] = entry;
+        }
+      } catch { /* ignore */ }
+    }
   });
 
   // Get last N days
   for (let i = days - 1; i >= 0; i--) {
     const date = new Date(today);
     date.setDate(date.getDate() - i);
-    const dateStr = date.toLocaleDateString();
-    const entry = entryLookup[dateStr];
+    // Use ISO format for lookup
+    const isoDateStr = date.toISOString().split('T')[0];
+    const entry = entryLookup[isoDateStr];
 
     weekData.push({
       date: days <= 7

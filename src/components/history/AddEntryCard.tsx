@@ -1,5 +1,7 @@
 import { Plus } from 'lucide-react';
-import { KeyboardEvent, CSSProperties } from 'react';
+import { KeyboardEvent } from 'react';
+import { cn } from '@/lib/utils';
+import { Card } from '../ui/card';
 
 const AddEntryCard = () => {
   const handleAdd = () => {
@@ -13,58 +15,27 @@ const AddEntryCard = () => {
     }
   };
 
-  const cardStyle: CSSProperties = {
-    display: 'grid',
-    placeItems: 'center',
-    minHeight: 200,
-    background: 'var(--accent-bg-softer)',
-    borderStyle: 'dashed',
-    borderColor: 'color-mix(in oklab, var(--accent-600), transparent 40%)',
-    cursor: 'pointer',
-    transition: 'background 0.2s, border-color 0.2s'
-  };
-
-  const contentStyle: CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 8,
-    color: 'var(--accent-600)'
-  };
-
-  const iconContainerStyle: CSSProperties = {
-    width: 56,
-    height: 56,
-    borderRadius: '50%',
-    display: 'grid',
-    placeItems: 'center',
-    background: 'var(--accent-bg)',
-    color: '#fff',
-    boxShadow: 'var(--shadow-sm)'
-  };
-
-  const labelStyle: CSSProperties = {
-    fontWeight: 600
-  };
-
   return (
-    <div
-      className="entry-card"
-      role="button"
-      tabIndex={0}
+    <Card
+      className={cn(
+        "flex flex-col items-center justify-center min-h-[200px] cursor-pointer transition-all border-dashed shadow-sm",
+        "bg-accent/5 hover:bg-accent/10 border-primary/30 hover:border-primary/50",
+        "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+      )}
       onClick={handleAdd}
       onKeyDown={handleKeyDown}
-      style={cardStyle}
+      tabIndex={0}
+      role="button"
       aria-label="Add Entry"
       title="Add Entry"
     >
-      <div style={contentStyle}>
-        <div style={iconContainerStyle}>
+      <div className="flex flex-col items-center gap-3 text-primary">
+        <div className="flex items-center justify-center w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-sm">
           <Plus size={24} />
         </div>
-        <div style={labelStyle}>Add Entry</div>
+        <div className="font-semibold text-lg">Add Entry</div>
       </div>
-    </div>
+    </Card>
   );
 };
 

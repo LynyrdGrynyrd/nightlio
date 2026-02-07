@@ -56,7 +56,7 @@ def test_search_entries_with_query_and_filters(client):
         headers=headers,
     )
     assert query_resp.status_code == 200
-    query_results = query_resp.get_json()
+    query_results = query_resp.get_json()["data"]
     assert len(query_results) == 1
     assert query_results[0]["content"] == "Happy day"
 
@@ -65,7 +65,7 @@ def test_search_entries_with_query_and_filters(client):
         headers=headers,
     )
     assert mood_resp.status_code == 200
-    mood_results = mood_resp.get_json()
+    mood_results = mood_resp.get_json()["data"]
     assert len(mood_results) == 1
     assert mood_results[0]["mood"] == 2
 
@@ -96,5 +96,5 @@ def test_search_ignores_invalid_moods_param(client):
 
     resp = client.get("/api/search?moods=bad,4x", headers=headers)
     assert resp.status_code == 200
-    data = resp.get_json()
+    data = resp.get_json()["data"]
     assert len(data) == 2

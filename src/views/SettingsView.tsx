@@ -1,70 +1,59 @@
 import RemindersManager from '../components/settings/RemindersManager';
-import ExportData from '../components/Settings/ExportData';
+import ExportData from '../components/settings/ExportData';
 import ImportData from '../components/settings/ImportData';
-import ThemeSelector from '../components/Settings/ThemeSelector';
-import CustomizeMoods from '../components/Settings/CustomizeMoods';
+import ThemeSelector from '../components/settings/ThemeSelector';
+import CustomizeMoods from '../components/settings/CustomizeMoods';
+import ScaleManager from '../components/settings/ScaleManager';
 import SecuritySettings from '../components/settings/SecuritySettings';
-import { CSSProperties } from 'react';
-
-// ========== Component ==========
+import { Settings } from 'lucide-react';
 
 const SettingsView = () => {
-  const containerStyle: CSSProperties = {
-    textAlign: 'left',
-    paddingBottom: '3rem'
-  };
-
-  const titleStyle: CSSProperties = {
-    marginTop: 0,
-    color: 'var(--text)',
-    marginBottom: '1.5rem'
-  };
-
-  const sectionStyle: CSSProperties = {
-    marginBottom: '2rem'
-  };
-
-  const otherTitleStyle: CSSProperties = {
-    fontSize: '1.1rem',
-    marginBottom: '1rem'
-  };
-
-  const otherTextStyle: CSSProperties = {
-    color: 'var(--text-muted)'
-  };
-
   return (
-    <div style={containerStyle}>
-      <h2 style={titleStyle}>Settings</h2>
+    <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+          <Settings size={24} />
+        </div>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Settings</h1>
+          <p className="text-muted-foreground mt-1">Manage app preferences and data</p>
+        </div>
+      </div>
 
-      <section style={sectionStyle}>
-        <ThemeSelector />
-      </section>
+      <div className="space-y-6">
+        <section>
+          <ThemeSelector />
+        </section>
 
-      <section style={sectionStyle}>
-        <CustomizeMoods />
-      </section>
+        <section>
+          <CustomizeMoods />
+        </section>
 
-      <section style={sectionStyle}>
-        <RemindersManager />
-      </section>
+        <section>
+          <ScaleManager />
+        </section>
 
-      <section style={sectionStyle}>
-        <SecuritySettings />
-      </section>
+        <section>
+          <RemindersManager />
+        </section>
 
-      <section style={sectionStyle}>
-        <ExportData />
-      </section>
+        <section>
+          <SecuritySettings />
+        </section>
 
-      <section style={sectionStyle}>
-        <ImportData />
-      </section>
+        <section>
+          <ExportData />
+        </section>
 
-      <section>
-        <h3 style={otherTitleStyle}>Other Settings</h3>
-        <p style={otherTextStyle}>Manage profile, appearance and privacy here (Coming soon).</p>
-      </section>
+        <section>
+          <ImportData />
+        </section>
+
+        <section className="pt-4 border-t">
+          <h3 className="text-lg font-semibold mb-2">Other Settings</h3>
+          <p className="text-muted-foreground">Manage profile, appearance and privacy here (Coming soon).</p>
+        </section>
+      </div>
     </div>
   );
 };

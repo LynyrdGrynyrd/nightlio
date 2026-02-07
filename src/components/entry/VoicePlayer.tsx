@@ -1,18 +1,19 @@
-import { useState, useRef, useEffect, ChangeEvent } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Trash2, Volume2, VolumeX } from 'lucide-react';
-
-// ========== Types ==========
+import { Button } from '../ui/button';
+import { Slider } from '../ui/slider';
+import { cn } from '@/lib/utils';
+import { Card } from '../ui/card';
 
 interface VoicePlayerProps {
   src: string;
   onDelete?: () => void;
   onPlay?: () => void;
   onPause?: () => void;
+  className?: string; // Added className prop for flexibility
 }
 
-// ========== Component ==========
-
-const VoicePlayer = ({ src, onDelete, onPlay, onPause }: VoicePlayerProps) => {
+const VoicePlayer = ({ src, onDelete, onPlay, onPause, className }: VoicePlayerProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -67,11 +68,12 @@ const VoicePlayer = ({ src, onDelete, onPlay, onPause }: VoicePlayerProps) => {
     }
   };
 
-  const handleSeek = (e: ChangeEvent<HTMLInputElement>) => {
-    const newTime = (parseFloat(e.target.value) / 100) * duration;
+  const handleSeek = (values: number[]) => {
+    const newVal = values[0];
+    const newTime = (newVal / 100) * duration;
     if (audioRef.current) {
       audioRef.current.currentTime = newTime;
-      setProgress(parseFloat(e.target.value));
+      setProgress(newVal);
     }
   };
 
@@ -83,52 +85,58 @@ const VoicePlayer = ({ src, onDelete, onPlay, onPause }: VoicePlayerProps) => {
   };
 
   return (
-    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 w-full max-w-md">
+    <Card className={cn("flex items-center gap-3 p-3 w-full max-w-md", className)}>
       <audio ref={audioRef} src={src} preload="metadata" />
 
-      <button
+      <Button
         onClick={togglePlay}
-        className="w-10 h-10 flex items-center justify-center rounded-full bg-[var(--accent-600)] text-white hover:bg-[var(--accent-700)] transition-colors flex-shrink-0"
+        size="icon"
+        className="h-10 w-10 shrink-0 rounded-full"
       >
         {isPlaying ? (
           <Pause size={18} fill="currentColor" />
         ) : (
-          <Play size={18} fill="currentColor" className="ml-1" />
+          <Play size={18} fill="currentColor" className="ml-0.5" />
         )}
-      </button>
+      </Button>
 
-      <div className="flex-1 flex flex-col justify-center gap-1">
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={progress || 0}
-          onChange={handleSeek}
-          className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[var(--accent-600)]"
+      <div className="flex-1 flex flex-col justify-center gap-1.5 px-1">
+        <Slider
+          value={[progress || 0]}
+          max={100}
+          step={0.1}
+          onValueChange={handleSeek}
+          className="cursor-pointer"
         />
-        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 font-medium">
+        <div className="flex justify-between text-[10px] text-muted-foreground font-medium tabular-nums px-0.5">
           <span>{formatTime(audioRef.current?.currentTime || 0)}</span>
           <span>{formatTime(duration)}</span>
         </div>
       </div>
 
-      <button
-        onClick={toggleMute}
-        className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-      >
-        {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-      </button>
-
-      {onDelete && (
-        <button
-          onClick={onDelete}
-          className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-          title="Delete recording"
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleMute}
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
         >
-          <Trash2 size={18} />
-        </button>
-      )}
-    </div>
+          {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+        </Button>
+
+        {onDelete && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onDelete}
+            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+            title="Delete recording"
+          >
+            <Trash2 size={16} />
+          </Button>
+        )}
+      </div>
+    </Card>
   );
 };
 

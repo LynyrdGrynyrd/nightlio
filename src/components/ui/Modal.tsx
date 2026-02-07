@@ -1,4 +1,20 @@
-import { useEffect, ReactNode } from 'react';
+/**
+ * Modal - Backwards-compatible wrapper around shadcn Dialog
+ * 
+ * This component maintains the existing Modal API (open, onClose, title, children)
+ * while internally using shadcn/ui Dialog primitives.
+ * 
+ * For new code, prefer using Dialog components directly:
+ * import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+ */
+import { ReactNode } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from './dialog';
+import { cn } from '@/lib/utils';
 
 interface ModalProps {
   open: boolean;
@@ -6,49 +22,31 @@ interface ModalProps {
   children: ReactNode;
   onClose: () => void;
   maxWidth?: number;
+  className?: string;
 }
 
-const Modal = ({ open, title, children, onClose, maxWidth = 520 }: ModalProps) => {
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        if (typeof onClose === 'function') onClose();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [open, onClose]);
-
-  if (!open) return null;
+const Modal = ({
+  open,
+  title,
+  children,
+  onClose,
+  maxWidth = 520,
+  className
+}: ModalProps) => {
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1000 }} aria-modal="true" role="dialog">
-      <div
-        onClick={onClose}
-        style={{ position: 'absolute', inset: 0, background: 'var(--overlay)' }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          left: '50%',
-          top: '50%',
-          transform: 'translate(-50%, -50%)',
-          background: 'var(--bg-card)',
-          color: 'var(--fg-body)',
-          width: 'calc(100% - 32px)',
-          maxWidth,
-          borderRadius: '16px',
-          boxShadow: 'var(--shadow-3)',
-          border: '1px solid var(--border)',
-        }}
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <DialogContent
+        className={cn("sm:max-w-[520px]", className)}
+        style={{ maxWidth: maxWidth }}
       >
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-          <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{title}</h3>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <div className="py-2">
+          {children}
         </div>
-        <div style={{ padding: 20 }}>{children}</div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

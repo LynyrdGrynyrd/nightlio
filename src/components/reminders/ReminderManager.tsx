@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import apiService from '../../services/api';
 import { useToast } from '../ui/ToastProvider';
 
@@ -14,15 +14,16 @@ interface ImportantDaysResponse {
 }
 
 const ReminderManager = () => {
-  const { addToast } = useToast();
+  const { show } = useToast();
+  const mountedRef = useRef(true);
 
   const sendNotification = useCallback((day: ImportantDay, diffDays: number) => {
-    const title = `Upcoming: \${day.title}`;
+    const title = `Upcoming: ${day.title}`;
     let body = '';
 
     if (diffDays === 0) body = `It's happening today!`;
     else if (diffDays === 1) body = `Tomorrow!`;
-    else body = `In \${diffDays} days.`;
+    else body = `In ${diffDays} days.`;
 
     if (Notification.permission === 'granted') {
       new Notification(title, {
@@ -31,11 +32,13 @@ const ReminderManager = () => {
       });
     } else {
       // Fallback to toast
-      addToast(`\${title} - \${body}`, 'info');
+      show(`${title} - ${body}`, 'info');
     }
-  }, [addToast]);
+  }, [show]);
 
   useEffect(() => {
+    mountedRef.current = true;
+
     const checkReminders = async () => {
       try {
         // Request permission if not denied
@@ -43,7 +46,14 @@ const ReminderManager = () => {
           await Notification.requestPermission();
         }
 
+        // Check if component is still mounted before proceeding
+        if (!mountedRef.current) return;
+
         const response: ImportantDaysResponse = await apiService.getImportantDays();
+
+        // Check again after async call
+        if (!mountedRef.current) return;
+
         const days = response.days || [];
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -55,7 +65,7 @@ const ReminderManager = () => {
 
           // Notify if within 3 days (0 = today, 1 = tomorrow, etc)
           if (diffDays >= 0 && diffDays <= 3) {
-            const notificationKey = `twilightio_reminder_\${day.id}_\${nextDate.getFullYear()}`;
+            const notificationKey = `twilightio_reminder_${day.id}_${nextDate.getFullYear()}`;
             const alreadySent = localStorage.getItem(notificationKey);
 
             if (!alreadySent) {
@@ -70,7 +80,11 @@ const ReminderManager = () => {
     };
 
     checkReminders();
-  }, [addToast, sendNotification]);
+
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [show, sendNotification]);
 
   return null;
 };

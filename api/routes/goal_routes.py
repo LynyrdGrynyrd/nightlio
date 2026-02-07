@@ -1,8 +1,10 @@
 from flask import Blueprint, request, jsonify
+import json
 import logging
 from api.services.goal_service import GoalService
 from api.utils.auth_middleware import require_auth, get_current_user_id
 from api.utils.secure_errors import secure_error_response
+from api.validators import ValidationError, GoalCreate, GoalUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -30,17 +32,38 @@ def create_goal_routes(goal_service: GoalService):
             if not isinstance(user_id, int):
                 return jsonify({"error": "Unauthorized"}), 401
             data = request.json or {}
-            title = data.get("title", "").strip()
-            description = (data.get("description") or "").strip()
-            frequency = int(
-                data.get("frequency_per_week") or data.get("frequency") or 0
+
+            try:
+                frequency_raw = data.get("frequency_per_week") or data.get("frequency") or 1
+                validated = GoalCreate(
+                    title=data.get("title", "").strip(),
+                    description=(data.get("description") or "").strip(),
+                    frequency_per_week=int(frequency_raw),
+                    frequency_type=data.get("frequency_type", "weekly"),
+                    target_count=int(data.get("target_count", 1)),
+                    custom_days=(
+                        json.dumps(data.get("custom_days"))
+                        if isinstance(data.get("custom_days"), list)
+                        else data.get("custom_days")
+                    ),
+                )
+            except (TypeError, ValueError) as e:
+                return jsonify({"error": str(e)}), 400
+            except ValidationError as e:
+                return jsonify({"error": e.message, "field": e.field}), 422
+
+            goal_id = goal_service.create_goal(
+                user_id,
+                validated.title,
+                validated.description,
+                validated.frequency_per_week,
+                validated.frequency_type,
+                validated.target_count,
+                validated.custom_days,
             )
-            if not title:
-                return jsonify({"error": "Title is required"}), 400
-            if frequency < 1 or frequency > 7:
-                return jsonify({"error": "frequency_per_week must be 1..7"}), 400
-            goal_id = goal_service.create_goal(user_id, title, description, frequency)
             return jsonify({"id": goal_id}), 201
+        except ValidationError as e:
+            return jsonify({"error": e.message, "field": e.field}), 422
         except ValueError as e:
             # SECURITY: Log but don't expose validation details
             logger.warning(f"Goal validation error: {e}")
@@ -70,22 +93,45 @@ def create_goal_routes(goal_service: GoalService):
             if not isinstance(user_id, int):
                 return jsonify({"error": "Unauthorized"}), 401
             data = request.json or {}
-            title = data.get("title")
-            description = data.get("description")
+
             frequency = data.get("frequency_per_week")
             if frequency is None:
                 # Accept `frequency` alias from UI
                 frequency = data.get("frequency")
+
+            try:
+                validated = GoalUpdate(
+                    title=data.get("title"),
+                    description=data.get("description"),
+                    frequency_per_week=int(frequency) if frequency is not None else None,
+                    frequency_type=data.get("frequency_type"),
+                    target_count=int(data.get("target_count")) if data.get("target_count") is not None else None,
+                    custom_days=(
+                        json.dumps(data.get("custom_days"))
+                        if isinstance(data.get("custom_days"), list)
+                        else data.get("custom_days")
+                    ),
+                )
+            except (TypeError, ValueError) as e:
+                return jsonify({"error": str(e)}), 400
+            except ValidationError as e:
+                return jsonify({"error": e.message, "field": e.field}), 422
+
             success = goal_service.update_goal(
                 user_id,
                 goal_id,
-                title,
-                description,
-                int(frequency) if frequency is not None else None,
+                validated.title,
+                validated.description,
+                validated.frequency_per_week,
+                validated.frequency_type,
+                validated.target_count,
+                validated.custom_days,
             )
             if not success:
                 return jsonify({"error": "No changes or goal not found"}), 404
             return jsonify({"status": "ok"})
+        except ValidationError as e:
+            return jsonify({"error": e.message, "field": e.field}), 422
         except ValueError as e:
             logger.warning(f"Goal update validation error: {e}")
             return jsonify({"error": "Invalid input"}), 400

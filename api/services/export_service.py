@@ -14,7 +14,7 @@ import pydyf
 
 class ExportService:
     def __init__(self, db):
-        self.db = db
+        self._db = db
 
     def generate_pdf(self, user_id: int, start_date: Optional[str] = None, end_date: Optional[str] = None, format_type: str = "standard") -> bytes:
         """
@@ -23,10 +23,10 @@ class ExportService:
         """
         # Fetch entries
         if start_date and end_date:
-            entries = self.db.get_mood_entries_by_date_range(user_id, start_date, end_date)
+            entries = self._db.get_mood_entries_by_date_range(user_id, start_date, end_date)
             period_str = f"{start_date} to {end_date}"
         else:
-            entries = self.db.get_all_mood_entries(user_id)
+            entries = self._db.get_all_mood_entries(user_id)
             if entries:
                 period_str = f"{entries[-1]['date']} to {entries[0]['date']}"
             else:
@@ -36,21 +36,25 @@ class ExportService:
         total_entries = len(entries)
         avg_mood = 0
         mood_counts = {1:0, 2:0, 3:0, 4:0, 5:0}
-        
+
+        # Batch fetch selections to avoid N+1 query problem
+        entry_ids = [e["id"] for e in entries]
+        selections_map = self._db.get_selections_for_entries(entry_ids) if entry_ids else {}
+
         enriched_entries = []
         for entry in entries:
             m = entry["mood"]
             avg_mood += m
             mood_counts[m] = mood_counts.get(m, 0) + 1
-            
-            # Enrich for template
-            selections = self.db.get_entry_selections(entry["id"])
+
+            # Enrich for template using batch-fetched selections
+            selections = selections_map.get(entry["id"], [])
             entry_data = dict(entry)
             entry_data["mood_label"] = self._get_mood_label(m)
             entry_data["date_formatted"] = entry["date"]
             entry_data["activities"] = [s["name"] for s in selections]
             enriched_entries.append(entry_data)
-            
+
         if total_entries > 0:
             avg_mood = round(avg_mood / total_entries, 1)
 
@@ -163,44 +167,41 @@ class ExportService:
         Generate a CSV string of all mood entries for the user.
         Columns: Date, Time, Mood, Content, Activities, Photos
         """
-        # Fetch detailed data (requires advanced query or loop)
-        # For simplicity, we can reuse get_all_mood_entries and iterate to get details
-        # Or add a method in DB mixin to get flat export data.
-        # Let's try to fetch all entries first.
-        entries = self.db.get_all_mood_entries(user_id)
-        
+        entries = self._db.get_all_mood_entries(user_id)
+
+        # Batch fetch selections and media to avoid N+1 query problem
+        entry_ids = [e["id"] for e in entries]
+        selections_map = self._db.get_selections_for_entries(entry_ids) if entry_ids else {}
+        media_map = {}
+        if entry_ids and hasattr(self._db, "get_media_for_entries"):
+            media_map = self._db.get_media_for_entries(entry_ids)
+
         output = io.StringIO()
         writer = csv.writer(output)
-        
+
         # Header
         writer.writerow(["Date", "Time", "Mood", "Content", "Activities", "Photos"])
-        
+
         for entry in entries:
             entry_id = entry["id"]
-            
-            # Fetch details if not present (activities, photos)
-            # This suffers from N+1 query problem but is acceptable for export task (low frequency)
-            selections = self.db.get_entry_selections(entry_id)
+
+            # Use batch-fetched data
+            selections = selections_map.get(entry_id, [])
             activities_str = ", ".join([s["name"] for s in selections])
-            
-            # Media (not in mixin? let's check media service logic or db mixin)
-            # Assuming MediaMixin is part of MoodDatabase
-            media_files = []
-            if hasattr(self.db, "get_media_for_entry"):
-                media = self.db.get_media_for_entry(entry_id)
-                media_files = [m["file_path"] for m in media]
-            photos_str = ", ".join(media_files)
-            
+
+            media_files = media_map.get(entry_id, [])
+            photos_str = ", ".join([m["file_path"] for m in media_files])
+
             row = [
                 entry["date"],
-                entry["created_at"], # This is technically datetime or time depending on schema usage
+                entry["created_at"],
                 entry["mood"],
                 entry["content"],
                 activities_str,
                 photos_str
             ]
             writer.writerow(row)
-            
+
         return output.getvalue()
 
     def generate_json(self, user_id: int) -> Dict[str, Any]:
@@ -221,8 +222,8 @@ class ExportService:
         # User info (optional, skip for now or fetch basic)
         
         # Groups and Options
-        if hasattr(self.db, "get_all_groups"):
-            data["groups"] = self.db.get_all_groups()
+        if hasattr(self._db, "get_all_groups"):
+            data["groups"] = self._db.get_all_groups()
 
         # Since we want to avoid complex logic here, let's keep it simple.
         # We will assume we can rely on existing methods or add new ones if absolutely needed.
@@ -230,21 +231,22 @@ class ExportService:
         
         # 1. Activities (Groups + Options)
         # We'll rely on `get_all_groups` which returns nested options.
-        if hasattr(self.db, "get_all_groups"):
-            data["groups"] = self.db.get_all_groups()
+        if hasattr(self._db, "get_all_groups"):
+            data["groups"] = self._db.get_all_groups()
             
-        # Let's just dump entries for now as the primary value.
-        data["entries"] = self.db.get_all_mood_entries(user_id)
-        
-        # Enrich entries with selections because get_all_mood_entries returns flat rows
-        # This is expensive (N+1) but fine for export
+        # Fetch entries and batch-fetch selections to avoid N+1 query problem
+        data["entries"] = self._db.get_all_mood_entries(user_id)
+
+        entry_ids = [e["id"] for e in data["entries"]]
+        selections_map = self._db.get_selections_for_entries(entry_ids) if entry_ids else {}
+
         for entry in data["entries"]:
-            selections = self.db.get_entry_selections(entry["id"])
+            selections = selections_map.get(entry["id"], [])
             # Add full selection details including icon and group name
             entry["selections"] = selections
             # Also add simplified list of names for easier reading
             entry["activities"] = [s["name"] for s in selections]
-            
+
         return data
 
     def import_json(self, user_id: int, data: Dict[str, Any]) -> Dict[str, int]:
@@ -261,13 +263,13 @@ class ExportService:
                 # Upsert entries
                 selected_ids = [] # TODO: Tag matching logic if time permits
                 
-                self.db.create_mood_entry(
+                self._db.add_mood_entry(
                    user_id=user_id,
                    mood=entry["mood"],
                    date=entry["date"],
-                   time=entry.get("time") or entry.get("created_at"), 
+                   time=entry.get("time") or entry.get("created_at"),
                    content=entry["content"],
-                   selected_options=selected_ids 
+                   selected_options=selected_ids
                 )
                 import_stats["entries"] += 1
                 

@@ -26,7 +26,7 @@ const NotFound = () => {
   const linkStyle: CSSProperties = {
     padding: '0.75rem 1.5rem',
     backgroundColor: 'var(--primary)',
-    color: 'white',
+    color: 'var(--primary-foreground)',
     textDecoration: 'none',
     borderRadius: 'var(--radius)',
     fontWeight: '500'

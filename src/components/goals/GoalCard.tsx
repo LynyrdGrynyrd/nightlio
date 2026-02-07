@@ -1,9 +1,19 @@
-import { useState, KeyboardEvent, MouseEvent } from 'react';
-import { Target, Trash2, CheckCircle, Calendar, XCircle } from 'lucide-react';
+import { useState, KeyboardEvent, MouseEvent, lazy, Suspense } from 'react';
+import { Target, Trash2, CheckCircle, Calendar, XCircle, Flame, Loader2 } from 'lucide-react';
 import { useToast } from '../ui/ToastProvider';
-import GoalStatsCalendar from './GoalStatsCalendar';
 import Modal from '../ui/Modal';
+import ConfirmDialog from '../ui/ConfirmDialog';
+import { Skeleton } from '../ui/Skeleton';
+
+// Lazy load GoalStatsCalendar since it's only shown in modal
+const GoalStatsCalendar = lazy(() => import('./GoalStatsCalendar'));
 import { Goal } from '../../services/api';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../ui/card';
+import { Button } from '../ui/button';
+import { Progress } from '../ui/progress';
+import { Badge } from '../ui/badge';
+import { cn } from '@/lib/utils';
+import type { ActionVisibility } from '@/types/common';
 
 // ========== Types ==========
 
@@ -12,7 +22,7 @@ interface GoalCardProps {
     frequency?: string;
     completed?: number;
     total?: number;
-    last_completed_date?: string;
+    last_completed_date?: string | null;
     streak?: number;
     _doneToday?: boolean;
   };
@@ -24,15 +34,36 @@ interface GoalCardProps {
 
 // ========== Component ==========
 
+// Helper to compute isDoneToday outside component
+const computeIsDoneToday = (goal: GoalCardProps['goal']): boolean => {
+  const d = new Date();
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  try {
+    const localVal = typeof localStorage !== 'undefined' ? localStorage.getItem(`goal_done_${goal.id}`) : null;
+    return (localVal === today) || goal.last_completed_date === today || goal._doneToday === true;
+  } catch {
+    return goal.last_completed_date === today || goal._doneToday === true;
+  }
+};
+
+const DELETE_ACTION_VISIBILITY: ActionVisibility = 'adaptiveTouch';
+
 const GoalCard = ({ goal, onDelete, onUpdateProgress, onToggleCompletion, onGoalUpdated }: GoalCardProps) => {
-  const [isHovered, setIsHovered] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { show } = useToast();
 
-  const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this goal?')) return;
+  // Compute isDoneToday early so it can be used in handlers
+  const isDoneToday = computeIsDoneToday(goal);
+
+  const handleDeleteClick = (e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
     setIsDeleting(true);
 
     // Simulate API call delay
@@ -93,16 +124,6 @@ const GoalCard = ({ goal, onDelete, onUpdateProgress, onToggleCompletion, onGoal
     ? (goal.completed / goal.total) * 100
     : 0;
   const isCompleted = goal.completed !== undefined && goal.total !== undefined && goal.completed >= goal.total;
-  const isDoneToday = (() => {
-    const d = new Date();
-    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    try {
-      const localVal = typeof localStorage !== 'undefined' ? localStorage.getItem(`goal_done_${goal.id}`) : null;
-      return (localVal === today) || goal.last_completed_date === today || goal._doneToday === true;
-    } catch {
-      return goal.last_completed_date === today || goal._doneToday === true;
-    }
-  })();
 
   // When calendar updates the goal, bubble it up
   const handleGoalUpdatedFromCalendar = (updatedGoal: Goal) => {
@@ -118,169 +139,122 @@ const GoalCard = ({ goal, onDelete, onUpdateProgress, onToggleCompletion, onGoal
     }
   };
 
-  const handleDeleteClick = (e: MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    handleDelete();
-  };
-
   const handleToggleClick = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     handleToggleComplete();
   };
 
   return (
-    <div
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+    <Card
       onClick={() => setShowStats(true)}
-      className="entry-card"
-      style={{
-        border: isHovered ? '1px solid color-mix(in oklab, var(--accent-600), transparent 55%)' : '1px solid var(--border)',
-        boxShadow: isHovered ? 'var(--shadow-md)' : 'var(--shadow-sm)',
-        position: 'relative',
-        opacity: isDeleting ? 0.5 : 1,
-        pointerEvents: isDeleting ? 'none' : 'auto',
-        cursor: 'pointer'
-      }}
+      className={cn(
+        "group relative cursor-pointer transition-[colors,shadow] hover:border-primary/50 hover:shadow-md",
+        isDeleting && "opacity-50 pointer-events-none"
+      )}
       role="button"
       tabIndex={0}
       onKeyDown={handleKeyDown}
     >
-      {/* Header: icon + delete button */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', position: 'relative' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, marginRight: (goal.streak && goal.streak > 0) ? '60px' : '40px' }}>
-          <span style={{
-            color: 'var(--accent-600)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 28,
-            height: 28,
-            borderRadius: '50%',
-            background: 'var(--accent-bg-softer)',
-            border: '1px solid var(--border)'
-          }}>
-            <Target size={16} strokeWidth={2} />
-          </span>
-          <div style={{ display: 'flex', alignItems: 'center', fontSize: '0.85rem', color: 'var(--text)', opacity: 0.8 }}>
-            <Calendar size={14} style={{ marginRight: '4px' }} />
-            <span>{goal.frequency}</span>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)' }}>
-          {goal.streak && goal.streak > 0 && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              background: 'var(--accent-600)',
-              color: 'white',
-              fontSize: '0.75rem',
-              padding: '2px 6px',
-              borderRadius: '12px',
-              fontWeight: '500',
-              lineHeight: '1'
-            }}>
-              🔥 {goal.streak}
+      <CardHeader className="pb-3 pt-4 px-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 overflow-hidden">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 border text-primary">
+              <Target size={14} className="shrink-0" />
             </div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Calendar size={12} />
+              <span className="truncate">{goal.frequency}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {goal.streak && goal.streak > 0 && (
+              <Badge variant="secondary" className="h-6 px-1.5 gap-1 bg-primary text-primary-foreground hover:bg-primary">
+                <Flame size={12} />
+                {goal.streak}
+              </Badge>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                'h-11 w-11 min-h-[44px] min-w-[44px] text-muted-foreground transition-opacity hover:text-destructive',
+                DELETE_ACTION_VISIBILITY === 'always' && 'opacity-100',
+                DELETE_ACTION_VISIBILITY === 'hover' && 'opacity-0 group-hover:opacity-100',
+                DELETE_ACTION_VISIBILITY === 'adaptiveTouch' && 'opacity-100 md:opacity-0 md:group-hover:opacity-100'
+              )}
+              onClick={handleDeleteClick}
+              aria-label="Delete goal"
+            >
+              <Trash2 size={14} />
+            </Button>
+          </div>
+        </div>
+        <CardTitle className="text-lg leading-tight mt-2">{goal.title}</CardTitle>
+        {goal.description && (
+          <CardDescription className="line-clamp-2 text-sm">
+            {goal.description}
+          </CardDescription>
+        )}
+      </CardHeader>
+
+      <CardContent className="px-4 pb-3">
+        {goal.completed !== undefined && goal.total !== undefined && (
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs font-medium">
+              <span>Progress</span>
+              <span className="tabular-nums">{goal.completed}/{goal.total}</span>
+            </div>
+            <Progress
+              value={progressPercentage}
+              className="h-2"
+              indicatorClassName={cn(isCompleted ? "bg-[color:var(--success)]" : "bg-primary")}
+            />
+          </div>
+        )}
+      </CardContent>
+
+      <CardFooter className="px-4 pb-4 pt-0">
+        <Button
+          onClick={handleToggleClick}
+          disabled={isToggling}
+          size="sm"
+          className={cn(
+            "w-full gap-2 transition-colors",
+            isDoneToday ? "bg-[color:var(--success)] hover:brightness-95" : "bg-primary"
           )}
-          <button
-            onClick={handleDeleteClick}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--text)',
-              opacity: isHovered ? 0.7 : 0.4,
-              cursor: 'pointer',
-              padding: '4px',
-              borderRadius: '4px',
-              transition: 'opacity 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-            aria-label="Delete goal"
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
-      </div>
+          title={isDoneToday ? 'Click to unmark' : 'Click to mark as done'}
+        >
+          {isToggling ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : isDoneToday ? (
+            <XCircle size={14} />
+          ) : (
+            <CheckCircle size={14} />
+          )}
+          {isToggling ? 'Updating...' : (isDoneToday ? 'Completed (click to undo)' : 'Mark as done')}
+        </Button>
+      </CardFooter>
 
-      {/* Title */}
-      <div className="entry-card__title" style={{ marginBottom: '8px' }}>
-        {goal.title}
-      </div>
-
-      {/* Description */}
-      {goal.description && (
-        <div className="entry-card__excerpt" style={{ marginBottom: '16px' }}>
-          {goal.description}
-        </div>
-      )}
-
-      {/* Progress Bar */}
-      {goal.completed !== undefined && goal.total !== undefined && (
-        <div style={{ marginBottom: '12px' }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '6px',
-            fontSize: '0.85rem',
-            color: 'var(--text)',
-            opacity: 0.9
-          }}>
-            <span>Progress</span>
-            <span>{goal.completed}/{goal.total}</span>
-          </div>
-          <div style={{
-            width: '100%',
-            height: '8px',
-            background: 'var(--accent-bg-softer)',
-            borderRadius: '4px',
-            overflow: 'hidden'
-          }}>
-            <div style={{
-              width: `${progressPercentage}%`,
-              height: '100%',
-              background: isCompleted ? 'var(--success)' : 'var(--accent-600)',
-              transition: 'width 0.3s ease'
-            }} />
-          </div>
-        </div>
-      )}
-
-      {/* Action Button - now supports toggle */}
-      <button
-        onClick={handleToggleClick}
-        disabled={isToggling}
-        style={{
-          width: '100%',
-          padding: '8px 12px',
-          borderRadius: '8px',
-          border: 'none',
-          background: isDoneToday ? 'var(--success)' : 'var(--accent-bg)',
-          color: '#fff',
-          fontSize: '0.85rem',
-          fontWeight: '500',
-          cursor: isToggling ? 'wait' : 'pointer',
-          opacity: isToggling ? 0.7 : 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '6px',
-          transition: 'background-color 0.2s'
-        }}
-        title={isDoneToday ? 'Click to unmark' : 'Click to mark as done'}
-      >
-        {isDoneToday ? <XCircle size={14} /> : <CheckCircle size={14} />}
-        {isToggling ? 'Updating...' : (isDoneToday ? 'Completed (click to undo)' : 'Mark as done')}
-      </button>
       <Modal open={showStats} title="Goal Statistics" onClose={() => setShowStats(false)}>
-        <GoalStatsCalendar goalId={goal.id} onGoalUpdated={handleGoalUpdatedFromCalendar} />
+        <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+          <GoalStatsCalendar goalId={goal.id} onGoalUpdated={handleGoalUpdatedFromCalendar} />
+        </Suspense>
       </Modal>
-    </div>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title="Delete Goal"
+        description="Are you sure you want to delete this goal? This action cannot be undone."
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={handleConfirmDelete}
+      />
+    </Card>
   );
 };
+
+
 
 export default GoalCard;

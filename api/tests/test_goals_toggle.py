@@ -87,3 +87,27 @@ def test_toggle_completion_count_logic(service, db):
     # After removing d1, there are 2 completions (d2, d3) in the week, capped at 2
     assert res["completed"] == 2
 
+
+def test_custom_goal_blocks_unscheduled_days(service, db):
+    user_id = db.create_user("google_custom", "custom@example.com", "Custom User")
+    today = datetime.now().date()
+    today_weekday = today.weekday()
+    allowed_day = (today_weekday + 1) % 7
+
+    goal_id = service.create_goal(
+        user_id=user_id,
+        title="Custom Days Goal",
+        description="Only one weekday",
+        frequency_per_week=1,
+        frequency_type="custom",
+        target_count=1,
+        custom_days=f"[{allowed_day}]",
+    )
+
+    today_str = today.strftime("%Y-%m-%d")
+    result = service.toggle_completion(user_id, goal_id, today_str)
+    assert result["blocked_by_schedule"] is True
+    assert result["is_completed"] is False
+
+    completions = service.get_completions(user_id, goal_id)
+    assert len(completions) == 0

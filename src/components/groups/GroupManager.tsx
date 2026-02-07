@@ -1,133 +1,92 @@
-import { useState, ChangeEvent, KeyboardEvent, CSSProperties } from 'react';
-import { Settings, X, SmilePlus, Grid, List, ArrowRightLeft, FolderInput } from 'lucide-react';
+import { useState } from 'react';
+import { Settings, X, Plus, Grid, List, ArrowRightLeft, FolderInput, FolderPlus, Tag } from 'lucide-react';
 import IconPicker, { getIconComponent } from '../ui/IconPicker';
 import { Group, GroupOption } from '../../services/api';
+import { Button } from '../ui/button';
+import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
+import { Input } from '../ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Badge } from '../ui/badge';
+import { ScrollArea } from '../ui/scroll-area';
+import { cn } from '@/lib/utils';
 
-// ========== Types ==========
 
 interface MoveOptionModalProps {
   option: GroupOption & { group_id: number };
   groups: Group[];
   onClose: () => void;
-  onMove: (optionId: number, newGroupId: number) => Promise<void>;
+  onMove: (optionId: number, newGroupId: number) => Promise<void | boolean>;
 }
 
 interface GroupManagerProps {
   groups: Group[];
   onCreateGroup: (name: string) => Promise<boolean>;
-  onCreateOption: (groupId: number, name: string, icon: string | null) => Promise<boolean>;
-  onMoveOption: (optionId: number, newGroupId: number) => Promise<void>;
+  onCreateOption: (groupId: number, name: string, icon?: string) => Promise<boolean>;
+  onMoveOption: (optionId: number, newGroupId: number) => Promise<void | boolean>;
 }
 
 type ViewMode = 'grid' | 'list';
 
-// ========== Sub-Components ==========
-
 const MoveOptionModal = ({ option, groups, onClose, onMove }: MoveOptionModalProps) => {
-  const [selectedGroup, setSelectedGroup] = useState<number>(option.group_id);
+  const [selectedGroup, setSelectedGroup] = useState<string>(String(option.group_id));
   const [loading, setLoading] = useState(false);
 
   const handleMove = async () => {
-    if (selectedGroup === option.group_id) return;
+    const groupId = parseInt(selectedGroup);
+    if (groupId === option.group_id) return;
     setLoading(true);
-    await onMove(option.id, selectedGroup);
+    await onMove(option.id, groupId);
     setLoading(false);
     onClose();
   };
 
-  const overlayStyle: CSSProperties = {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: 'rgba(0,0,0,0.5)',
-    zIndex: 100,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center'
-  };
-
-  const cardStyle: CSSProperties = {
-    width: '300px',
-    maxWidth: '90%',
-    background: 'var(--bg-card)',
-    borderRadius: '16px',
-    padding: '1.5rem',
-    boxShadow: 'var(--shadow-lg)'
-  };
-
   return (
-    <div className="modal-overlay" style={overlayStyle}>
-      <div className="card" style={cardStyle}>
-        <h4 style={{ margin: '0 0 1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <FolderInput size={18} />
-          Move "{option.name}"
-        </h4>
-        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-          Select a new category for this activity:
-        </p>
+    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[400px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FolderInput size={18} />
+            Move "{option.name}"
+          </DialogTitle>
+          <DialogDescription>
+            Select a new category for this activity:
+          </DialogDescription>
+        </DialogHeader>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
-          {groups.map(g => (
-            <button
-              key={g.id}
-              onClick={() => setSelectedGroup(g.id)}
-              disabled={g.id === option.group_id}
-              style={{
-                padding: '10px',
-                borderRadius: '8px',
-                border: selectedGroup === g.id ? '2px solid var(--accent-600)' : '1px solid var(--border)',
-                background: g.id === option.group_id ? 'var(--surface-hover)' : 'var(--surface)',
-                opacity: g.id === option.group_id ? 0.5 : 1,
-                textAlign: 'left',
-                cursor: g.id === option.group_id ? 'default' : 'pointer',
-                fontWeight: selectedGroup === g.id ? 600 : 400,
-                color: 'var(--text)'
-              }}
-            >
-              {g.name}
-              {g.id === option.group_id && " (Current)"}
-            </button>
-          ))}
-        </div>
+        <ScrollArea className="max-h-[300px] mt-4">
+          <div className="flex flex-col gap-2 pr-4">
+            {groups.map(g => (
+              <Button
+                key={g.id}
+                variant={selectedGroup === String(g.id) ? "default" : "outline"}
+                className={cn(
+                  "justify-start h-auto py-3",
+                  g.id === option.group_id && "opacity-50 cursor-not-allowed"
+                )}
+                onClick={() => setSelectedGroup(String(g.id))}
+                disabled={g.id === option.group_id}
+              >
+                <div className="flex flex-col items-start gap-0.5">
+                  <span className="font-medium">{g.name}</span>
+                  {g.id === option.group_id && <span className="text-[10px] uppercase">Current</span>}
+                </div>
+              </Button>
+            ))}
+          </div>
+        </ScrollArea>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '1.5rem' }}>
-          <button
-            onClick={onClose}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '8px',
-              border: '1px solid var(--border)',
-              background: 'transparent',
-              cursor: 'pointer',
-              color: 'var(--text)'
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleMove}
-            disabled={selectedGroup === option.group_id || loading}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '8px',
-              border: 'none',
-              background: 'var(--accent-600)',
-              color: 'white',
-              cursor: 'pointer',
-              opacity: (selectedGroup === option.group_id || loading) ? 0.5 : 1
-            }}
-          >
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleMove} disabled={parseInt(selectedGroup) === option.group_id || loading}>
             {loading ? 'Moving...' : 'Move Here'}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
-
-// ========== Main Component ==========
 
 const GroupManager = ({ groups, onCreateGroup, onCreateOption, onMoveOption }: GroupManagerProps) => {
   const [showManager, setShowManager] = useState(false);
@@ -137,7 +96,6 @@ const GroupManager = ({ groups, onCreateGroup, onCreateOption, onMoveOption }: G
   const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [isCreatingOption, setIsCreatingOption] = useState(false);
-  const [showIconPicker, setShowIconPicker] = useState(false);
   const [movingOption, setMovingOption] = useState<(GroupOption & { group_id: number }) | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
 
@@ -156,365 +114,199 @@ const GroupManager = ({ groups, onCreateGroup, onCreateOption, onMoveOption }: G
     if (!newOptionName.trim() || !selectedGroupForOption) return;
     setIsCreatingOption(true);
     try {
-      const success = await onCreateOption(parseInt(selectedGroupForOption), newOptionName.trim(), selectedIcon);
+      const success = await onCreateOption(parseInt(selectedGroupForOption), newOptionName.trim(), selectedIcon ?? undefined);
       if (success) {
         setNewOptionName('');
         setSelectedIcon(null);
-        setShowIconPicker(false);
       }
     } finally {
       setIsCreatingOption(false);
     }
   };
 
-  const handleGroupNameKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') handleCreateGroup();
-  };
-
-  const handleOptionNameKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') handleCreateOption();
-  };
-
-  const handleGroupNameChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setNewGroupName(e.target.value);
-  };
-
-  const handleOptionNameChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setNewOptionName(e.target.value);
-  };
-
-  const handleGroupSelectChange = (e: ChangeEvent<HTMLSelectElement>) => {
-    setSelectedGroupForOption(e.target.value);
-  };
+  const IconDisplay = getIconComponent(selectedIcon || 'SmilePlus');
 
   if (!showManager) {
     return (
-      <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-        <button
+      <div className="flex justify-center mt-4">
+        <Button
           onClick={() => setShowManager(true)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.75rem 1.5rem',
-            background: 'linear-gradient(135deg, var(--accent-bg), var(--accent-bg-2))',
-            color: 'white',
-            border: 'none',
-            borderRadius: '25px',
-            cursor: 'pointer',
-            fontSize: '0.9rem',
-            fontWeight: '500',
-            margin: '0 auto',
-            transition: 'all 0.3s ease',
-            boxShadow: 'var(--shadow-md)',
-          }}
+          className="rounded-full shadow-md bg-gradient-to-r from-primary to-[color:var(--accent-bg-2)] hover:brightness-95 text-[color:var(--primary-foreground)] border-0"
         >
-          <Settings size={16} />
+          <Settings size={16} className="mr-2" />
           Manage Categories
-        </button>
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="card" style={{ padding: '1.5rem', marginTop: '1rem', position: 'relative' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ padding: '8px', background: 'var(--accent-100)', borderRadius: '8px', color: 'var(--accent-600)' }}>
+    <Card className="mt-4 border-dashed relative animate-in fade-in slide-in-from-bottom-4 duration-300">
+      <CardHeader className="flex flex-row items-center justify-between pb-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-primary/10 rounded-lg text-primary">
             <Grid size={20} />
           </div>
-          <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '600' }}>Manage Categories</h3>
+          <CardTitle className="text-lg">Manage Categories</CardTitle>
         </div>
-        <button
-          onClick={() => setShowManager(false)}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            color: 'var(--text-muted)',
-            padding: '0.25rem'
-          }}
-        >
-          <X size={20} />
-        </button>
 
-        <div style={{ display: 'flex', gap: '4px', marginLeft: '16px' }}>
-          <button
-            onClick={() => setViewMode('grid')}
-            style={{
-              padding: '6px 10px',
-              borderRadius: '6px',
-              border: `1px solid ${viewMode === 'grid' ? 'var(--accent-600)' : 'var(--border)'}`,
-              background: viewMode === 'grid' ? 'var(--accent-bg-soft)' : 'var(--surface)',
-              color: viewMode === 'grid' ? 'var(--accent-600)' : 'var(--text-muted)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center'
-            }}
-            title="Grid view"
-          >
-            <Grid size={16} />
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            style={{
-              padding: '6px 10px',
-              borderRadius: '6px',
-              border: `1px solid ${viewMode === 'list' ? 'var(--accent-600)' : 'var(--border)'}`,
-              background: viewMode === 'list' ? 'var(--accent-bg-soft)' : 'var(--surface)',
-              color: viewMode === 'list' ? 'var(--accent-600)' : 'var(--text-muted)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center'
-            }}
-            title="List view"
-          >
-            <List size={16} />
-          </button>
-        </div>
-      </div>
-
-      {movingOption && (
-        <MoveOptionModal
-          option={movingOption}
-          groups={groups}
-          onClose={() => setMovingOption(null)}
-          onMove={onMoveOption}
-        />
-      )}
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-        <div>
-          <h4 style={{ margin: '0 0 0.8rem 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>New Category</h4>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <input
-              type="text"
-              placeholder="Name..."
-              value={newGroupName}
-              onChange={handleGroupNameChange}
-              onKeyPress={handleGroupNameKeyPress}
-              style={{
-                flex: 1,
-                padding: '10px',
-                borderRadius: '8px',
-                border: '1px solid var(--border)',
-                background: 'var(--bg-primary)',
-                color: 'var(--text)'
-              }}
-            />
-            <button
-              onClick={handleCreateGroup}
-              disabled={!newGroupName.trim() || isCreatingGroup}
-              style={{
-                padding: '0 16px',
-                background: 'var(--accent-600)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: 500
-              }}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 border rounded-md p-0.5 bg-muted/50">
+            <Button
+              variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('grid')}
+              className="h-11 w-11 min-h-[44px] min-w-[44px] p-0"
+              title="Grid view"
             >
-              Add
-            </button>
+              <Grid size={14} />
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+              className="h-11 w-11 min-h-[44px] min-w-[44px] p-0"
+              title="List view"
+            >
+              <List size={14} />
+            </Button>
           </div>
+          <Button variant="ghost" size="icon" onClick={() => setShowManager(false)} className="ml-2 h-10 w-10" aria-label="Close manager">
+            <X size={18} className="text-muted-foreground" aria-hidden="true" />
+          </Button>
         </div>
 
-        <div>
-          <h4 style={{ margin: '0 0 0.8rem 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>New Activity</h4>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <select
-              value={selectedGroupForOption}
-              onChange={handleGroupSelectChange}
-              style={{
-                padding: '10px',
-                borderRadius: '8px',
-                border: '1px solid var(--border)',
-                background: 'var(--bg-primary)',
-                color: 'var(--text)',
-                minWidth: '120px'
-              }}
-            >
-              <option value="">Category...</option>
-              {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-            </select>
+      </CardHeader>
 
-            <div style={{ display: 'flex', flex: 1, gap: '8px' }}>
-              <button
-                onClick={() => setShowIconPicker(!showIconPicker)}
-                style={{
-                  padding: '10px',
-                  border: `1px solid ${selectedIcon ? 'var(--accent-600)' : 'var(--border)'}`,
-                  borderRadius: '8px',
-                  background: selectedIcon ? 'var(--accent-bg-subtle)' : 'var(--bg-primary)',
-                  color: selectedIcon ? 'var(--accent-600)' : 'var(--text-muted)',
-                  cursor: 'pointer',
-                  display: 'grid',
-                  placeItems: 'center'
-                }}
-              >
-                {selectedIcon ? (
-                  <span style={{ fontSize: '1.2rem' }}>
-                    {getIconComponent(selectedIcon)?.({}) || <SmilePlus size={18} />}
-                  </span>
-                ) : (
-                  <SmilePlus size={18} />
-                )}
-              </button>
-              {showIconPicker && (
-                <div style={{
-                  position: 'absolute',
-                  top: '160px',
-                  left: '20px',
-                  width: '280px',
-                  background: 'var(--bg-card)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '12px',
-                  boxShadow: 'var(--shadow-lg)',
-                  zIndex: 50
-                }}>
-                  <IconPicker
-                    onSelect={(icon) => {
-                      setSelectedIcon(icon);
-                      setShowIconPicker(false);
-                    }}
-                    selectedIcon={selectedIcon}
-                  />
-                  <div style={{ padding: '8px', borderTop: '1px solid var(--border)', textAlign: 'right' }}>
-                    <button
-                      onClick={() => setShowIconPicker(false)}
-                      style={{
-                        fontSize: '0.8rem',
-                        color: 'var(--text-muted)',
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Close
-                    </button>
-                  </div>
-                </div>
-              )}
+      <CardContent className="space-y-8">
+        {movingOption && (
+          <MoveOptionModal
+            option={movingOption}
+            groups={groups}
+            onClose={() => setMovingOption(null)}
+            onMove={onMoveOption}
+          />
+        )}
 
-              <input
-                type="text"
-                placeholder="Activity..."
-                value={newOptionName}
-                onChange={handleOptionNameChange}
-                onKeyPress={handleOptionNameKeyPress}
-                style={{
-                  flex: 1,
-                  padding: '10px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border)',
-                  background: 'var(--bg-primary)',
-                  color: 'var(--text)'
-                }}
+        {/* Creation Forms */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* New Group */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <FolderPlus size={14} /> New Category
+            </h4>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Category Name..."
+                name="group-name"
+                autoComplete="off"
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCreateGroup()}
               />
-              <button
-                onClick={handleCreateOption}
-                disabled={!newOptionName.trim() || !selectedGroupForOption || isCreatingOption}
-                style={{
-                  padding: '0 16px',
-                  background: 'var(--accent-600)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontWeight: 500
-                }}
-              >
+              <Button onClick={handleCreateGroup} disabled={!newGroupName.trim() || isCreatingGroup}>
                 Add
-              </button>
+              </Button>
+            </div>
+          </div>
+
+          {/* New Option */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Tag size={14} /> New Activity
+            </h4>
+            <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+              <Select value={selectedGroupForOption} onValueChange={setSelectedGroupForOption}>
+                <SelectTrigger className="w-[130px]">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {groups.map(g => (
+                    <SelectItem key={g.id} value={String(g.id)}>{g.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <div className="flex flex-1 gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="icon" className="shrink-0 aspect-square">
+                      {selectedIcon && IconDisplay ? <IconDisplay size={18} className="text-primary" /> : <Plus size={18} />}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] p-0" align="start">
+                    <IconPicker onSelect={(icon) => setSelectedIcon(icon)} selectedIcon={selectedIcon} />
+                  </PopoverContent>
+                </Popover>
+
+                <Input
+                  placeholder="Activity Name..."
+                  name="option-name"
+                  autoComplete="off"
+                  value={newOptionName}
+                  onChange={(e) => setNewOptionName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleCreateOption()}
+                  className="min-w-[120px]"
+                />
+                <Button onClick={handleCreateOption} disabled={!newOptionName.trim() || !selectedGroupForOption || isCreatingOption}>
+                  Add
+                </Button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text)', opacity: 0.9, fontSize: '1rem' }}>Categories & Activities</h4>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
-        {groups.map(group => (
-          <div
-            key={group.id}
-            style={{
-              background: 'var(--surface)',
-              borderRadius: '12px',
-              border: '1px solid var(--border)',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column'
-            }}
-          >
-            <div style={{
-              padding: '12px 16px',
-              borderBottom: '1px solid var(--border)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              background: 'var(--surface-hover)'
-            }}>
-              <span style={{ fontWeight: 600, color: 'var(--text)' }}>{group.name}</span>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{group.options.length}</span>
-            </div>
-
-            <div style={{ padding: '16px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {group.options.length === 0 ? (
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Empty</span>
-              ) : (
-                group.options.map(option => {
-                  const Icon = getIconComponent(option.icon || '');
-                  return (
-                    <div
-                      key={option.id}
-                      className="activity-chip"
-                      style={{
-                        padding: '6px 10px',
-                        borderRadius: '8px',
-                        background: 'var(--bg-card)',
-                        border: '1px solid var(--border)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        fontSize: '0.85rem',
-                        color: 'var(--text)',
-                        cursor: 'default',
-                        position: 'relative',
-                      }}
-                      title="Click move icon to change category"
-                    >
-                      {Icon && <Icon size={14} style={{ opacity: 0.7 }} />}
-                      {option.name}
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setMovingOption({ ...option, group_id: group.id });
-                        }}
-                        style={{
-                          marginLeft: '4px',
-                          padding: '2px',
-                          borderRadius: '4px',
-                          border: 'none',
-                          background: 'transparent',
-                          color: 'var(--text-muted)',
-                          cursor: 'pointer',
-                          display: 'flex'
-                        }}
-                        className="move-btn"
-                        title="Move to another category"
-                      >
-                        <ArrowRightLeft size={12} />
-                      </button>
-                    </div>
-                  );
-                })
-              )}
-            </div>
+        {/* List */}
+        <div className="space-y-4">
+          <h4 className="text-sm font-semibold text-foreground/80">Categories & Activities</h4>
+          <div className={cn(
+            "grid gap-4",
+            viewMode === 'grid' ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"
+          )}>
+            {groups.map(group => (
+              <div
+                key={group.id}
+                className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden"
+              >
+                <div className="px-4 py-3 bg-muted/40 border-b flex justify-between items-center">
+                  <span className="font-semibold">{group.name}</span>
+                  <Badge variant="secondary" className="text-xs">{group.options.length}</Badge>
+                </div>
+                <div className="p-4 flex flex-wrap gap-2">
+                  {group.options.length === 0 ? (
+                    <span className="text-xs text-muted-foreground italic">Empty</span>
+                  ) : (
+                    group.options.map(option => {
+                      const Icon = getIconComponent(option.icon || '');
+                      return (
+                        <div
+                          key={option.id}
+                          className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border bg-background hover:border-primary/50 transition-colors select-none"
+                        >
+                          {Icon && <Icon size={14} className="text-muted-foreground" />}
+                          <span className="text-sm font-medium">{option.name}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMovingOption({ ...option, group_id: group.id });
+                            }}
+                            className="ml-1 p-0.5 rounded hover:bg-muted text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Move"
+                          >
+                            <ArrowRightLeft size={12} />
+                          </button>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-    </div>
+        </div>
+
+      </CardContent>
+    </Card>
   );
 };
 

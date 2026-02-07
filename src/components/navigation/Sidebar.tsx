@@ -1,27 +1,15 @@
-import { Home, BarChart3, Trophy, Settings, Target, LucideIcon } from 'lucide-react';
-import { useEffect, CSSProperties } from 'react';
+import { useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { cn } from '@/lib/utils';
+import { DASHBOARD_NAV_ITEMS, SETTINGS_NAV_ITEM } from '@/constants/navigation';
 
 interface SidebarProps {
   onLoadStatistics?: () => void;
 }
 
-interface NavItem {
-  key: string;
-  label: string;
-  icon: LucideIcon;
-  end?: boolean;
-}
-
 const Sidebar = ({ onLoadStatistics }: SidebarProps) => {
-  const items: NavItem[] = [
-    { key: '.', label: 'Home', icon: Home, end: true },
-    { key: 'goals', label: 'Goals', icon: Target },
-    { key: 'stats', label: 'Statistics', icon: BarChart3 },
-    { key: 'achievements', label: 'Achievements', icon: Trophy },
-  ];
-
   const location = useLocation();
+  const SettingsIcon = SETTINGS_NAV_ITEM.icon;
 
   useEffect(() => {
     if (location.pathname.includes('stats') && typeof onLoadStatistics === 'function') {
@@ -29,96 +17,59 @@ const Sidebar = ({ onLoadStatistics }: SidebarProps) => {
     }
   }, [location.pathname, onLoadStatistics]);
 
-  const brandContainerStyle: CSSProperties = {
-    alignItems: 'flex-start',
-    flexDirection: 'column',
-    gap: '0.75rem'
-  };
-
-  const brandInnerStyle: CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.75rem'
-  };
-
-  const logoContainerStyle: CSSProperties = {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    background: 'transparent',
-    display: 'grid',
-    placeItems: 'center',
-    color: 'var(--text)',
-    overflow: 'hidden'
-  };
-
-  const logoImageStyle: CSSProperties = {
-    width: '100%',
-    height: '100%',
-    objectFit: 'contain',
-    display: 'block',
-    background: 'transparent',
-    outline: 'none'
-  };
-
-  const titleStyle: CSSProperties = {
-    color: 'var(--text)',
-    letterSpacing: '-0.01em',
-    fontSize: '1.5rem',
-    fontWeight: '700'
-  };
-
-  const subtitleStyle: CSSProperties = {
-    color: 'var(--text)',
-    opacity: 0.85,
-    fontSize: '0.875rem',
-    paddingLeft: '0.25rem'
-  };
-
-  const iconStyle: CSSProperties = {
-    flexShrink: 0
-  };
-
   return (
-    <aside className="sidebar">
-      <div className="sidebar__inner">
-        <div className="sidebar__brand" style={brandContainerStyle}>
-          <div style={brandInnerStyle}>
-            <div style={logoContainerStyle}>
-              <img
-                src="/logo.png"
-                alt="Twilightio"
-                style={logoImageStyle}
-              />
-            </div>
-            <strong style={titleStyle}>Twilightio</strong>
+    <aside className="fixed left-0 top-0 h-full w-64 xl:w-72 2xl:w-80 border-r bg-card hidden md:flex flex-col z-30">
+      <div className="flex flex-col h-full p-4">
+        {/* Brand */}
+        <div className="flex items-center gap-3 px-2 mb-8 mt-2">
+          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <img
+              src="/logo.png"
+              alt="Twilightio"
+              width={36}
+              height={36}
+              className="w-full h-full object-contain p-1"
+            />
           </div>
-          <span style={subtitleStyle}>Your daily mood companion.</span>
+          <div className="flex flex-col">
+            <h1 className="text-lg font-bold leading-none tracking-tight">Twilightio</h1>
+            <span className="text-[10px] text-muted-foreground font-medium">Daily Mood Companion</span>
+          </div>
         </div>
 
-        <div className="sidebar__sections">
-          {items.map(({ key, label, icon: Icon, end }) => (
+        {/* Navigation */}
+        <nav className="flex-1 space-y-1">
+          {DASHBOARD_NAV_ITEMS.map(({ route, fullLabel, icon: Icon, end }) => (
             <NavLink
-              key={key}
-              to={key}
+              key={route}
+              to={route}
               end={end}
-              className={({ isActive }) => `sidebar__item ${isActive ? 'is-active' : ''}`}
-              title={label}
+              className={({ isActive }) => cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group relative",
+                isActive
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
             >
-              <Icon size={18} style={iconStyle} />
-              <span>{label}</span>
+              <Icon size={18} aria-hidden="true" />
+              <span>{fullLabel}</span>
             </NavLink>
           ))}
-        </div>
+        </nav>
 
-        <div className="sidebar__footer">
+        {/* Footer */}
+        <div className="mt-auto pt-4 border-t">
           <NavLink
-            to="settings"
-            className={({ isActive }) => `sidebar__item ${isActive ? 'is-active' : ''}`}
-            title="Settings"
+            to={SETTINGS_NAV_ITEM.route}
+            className={({ isActive }) => cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
+              isActive
+                ? "bg-accent/50 text-accent-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
           >
-            <Settings size={18} style={iconStyle} />
-            <span>Settings</span>
+            <SettingsIcon size={18} aria-hidden="true" />
+            <span>{SETTINGS_NAV_ITEM.fullLabel}</span>
           </NavLink>
         </div>
       </div>

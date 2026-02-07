@@ -1,5 +1,7 @@
 import { Plus } from 'lucide-react';
 import { KeyboardEvent } from 'react';
+import { cn } from '@/lib/utils';
+import { Card } from '../ui/card';
 
 // ========== Types ==========
 
@@ -18,41 +20,26 @@ const AddGoalCard = ({ onAdd }: AddGoalCardProps) => {
   };
 
   return (
-    <div
-      className="entry-card"
+    <Card
+      className={cn(
+        'flex flex-col items-center justify-center min-h-[170px] cursor-pointer transition-all border-dashed shadow-sm',
+        'bg-accent/5 hover:bg-accent/10 border-primary/30 hover:border-primary/50',
+        'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2'
+      )}
       role="button"
       tabIndex={0}
       onClick={onAdd}
       onKeyDown={handleKeyDown}
-      style={{
-        display: 'grid',
-        placeItems: 'center',
-        minHeight: 160,
-        background: 'var(--accent-bg-softer)',
-        borderStyle: 'dashed',
-        borderColor: 'color-mix(in oklab, var(--accent-600), transparent 40%)',
-        cursor: 'pointer',
-        transition: 'background 0.2s, border-color 0.2s'
-      }}
       aria-label="Add Goal"
       title="Add Goal"
     >
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, color: 'var(--accent-600)' }}>
-        <div style={{
-          width: 56,
-          height: 56,
-          borderRadius: '50%',
-          display: 'grid',
-          placeItems: 'center',
-          background: 'var(--accent-bg)',
-          color: '#fff',
-          boxShadow: 'var(--shadow-sm)'
-        }}>
+      <div className="flex flex-col items-center gap-2 text-primary">
+        <div className="w-14 h-14 rounded-full flex items-center justify-center bg-primary text-primary-foreground shadow-sm">
           <Plus size={24} />
         </div>
-        <div style={{ fontWeight: 600 }}>Add Goal</div>
+        <div className="font-semibold">Add Goal</div>
       </div>
-    </div>
+    </Card>
   );
 };
 

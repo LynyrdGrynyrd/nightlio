@@ -1,7 +1,6 @@
-import './LandingPage.css';
 import { Link } from 'react-router-dom';
-
-// ========== Types ==========
+import { Github, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface Highlight {
   title: string;
@@ -12,8 +11,6 @@ interface FeatureBlock {
   title: string;
   items: string[];
 }
-
-// ========== Constants ==========
 
 const highlights: Highlight[] = [
   {
@@ -57,121 +54,156 @@ const featureBlocks: FeatureBlock[] = [
   }
 ];
 
-// ========== Component ==========
-
 const LandingPage = () => {
   return (
-    <div className="landing">
-      <header className="landing__hero">
-        <nav className="landing__nav">
-          <Link className="landing__brand" to="/">
-            <img src="/logo.png" alt="Twilightio logo" className="landing__brand-mark" />
-            <span className="landing__brand-name">Twilightio</span>
+    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
+      <header className="relative overflow-hidden bg-gradient-to-b from-primary/5 to-background pt-6 pb-16 lg:pb-32">
+        <nav className="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16 mb-16">
+          <Link className="flex items-center gap-2 group" to="/">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+              <img src="/logo.png" alt="Twilightio logo" width={32} height={32} className="w-8 h-8 object-contain" />
+            </div>
+            <span className="text-xl font-bold tracking-tight">Twilightio</span>
           </Link>
-          <div className="landing__nav-links">
-            <a href="#features">Features</a>
-            <Link to="/about">About</Link>
+
+          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
+            <a href="#features" className="hover:text-primary transition-colors">Features</a>
+            <Link to="/about" className="hover:text-primary transition-colors">About</Link>
           </div>
-          <div className="landing__nav-actions">
-            <a className="landing__button landing__button--icon" href="https://github.com/shirsakm/twilightio" target="_blank" rel="noreferrer" aria-label="GitHub">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405 1.02 0 2.04.135 3 .405 2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.285 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
-              </svg>
+
+          <div className="flex items-center gap-4">
+            <a href="https://github.com/shirsakm/twilightio" target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
+              <Github size={20} />
             </a>
-            <Link className="landing__button landing__button--primary landing__button--circle" to="/dashboard" aria-label="Launch App">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </Link>
+            <Button asChild className="rounded-full shadow-lg shadow-primary/20">
+              <Link to="/dashboard">
+                Launch App <ArrowRight size={16} className="ml-2" />
+              </Link>
+            </Button>
           </div>
         </nav>
 
-        <div className="landing__hero-body">
-          <div className="landing__hero-copy">
-            <span className="landing__tag">Your data, your rules</span>
-            <h1>Privacy-first mood tracker and daily journal.</h1>
-            <p>
-              Designed for effortless self-hosting. Your data, your server, your rules.
-              No ads, no subscriptions, and absolutely no data mining.
-            </p>
-            <div className="landing__cta-group">
-              <Link className="landing__button landing__button--primary" to="/dashboard">Get started for free</Link>
-              <a className="landing__button landing__button--ghost" href="https://github.com/shirsakm/twilightio">View on GitHub</a>
-            </div>
-          </div>
-          <div className="landing__hero-visual">
-            <div className="landing__card">
-              <div className="landing__card-header">
-                <span className="landing__card-label">Tonight</span>
-                <span className="landing__card-time">10:36 PM</span>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-24">
+            <div className="flex-1 space-y-8 text-center lg:text-left">
+              <div className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold text-primary transition-colors bg-background">
+                Your data, your rules
               </div>
-              <div className="landing__mood">
-                <span className="landing__mood-emoji" role="img" aria-label="Glowing moon">🌙</span>
-                <div>
-                  <p className="landing__mood-title">Feeling grounded</p>
-                  <p className="landing__mood-subtitle">2 day streak • Gratitude tag</p>
-                </div>
-              </div>
-              <p className="landing__note">
-                Wrapped up the day with a quiet walk. Noticed how the cool air reset my headspace and made the lingering worries feel smaller.
+              <h1 className="text-4xl font-extrabold tracking-tight lg:text-6xl">
+                Privacy-first mood tracker and daily journal.
+              </h1>
+              <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto lg:mx-0">
+                Designed for effortless self-hosting. Your data, your server, your rules.
+                No ads, no subscriptions, and absolutely no data mining.
               </p>
-              <div className="landing__timeline">
-                <span className="landing__dot landing__dot--active" aria-hidden="true"></span>
-                <span className="landing__dot" aria-hidden="true"></span>
-                <span className="landing__dot" aria-hidden="true"></span>
+              <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
+                <Button size="lg" asChild className="rounded-full px-8 h-12 text-base">
+                  <Link to="/dashboard">Get started for free</Link>
+                </Button>
+                <Button variant="outline" size="lg" asChild className="rounded-full px-8 h-12 text-base">
+                  <a href="https://github.com/shirsakm/twilightio">View on GitHub</a>
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex-1 w-full max-w-md lg:max-w-full relative">
+              <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-tr from-primary/30 to-[color:var(--accent-bg)] blur-3xl rounded-full opacity-20 -z-10 animate-pulse" />
+              <div className="bg-card border rounded-2xl shadow-2xl p-6 relative z-10">
+                <div className="flex items-center justify-between mb-6 border-b pb-4">
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tonight</span>
+                  <span className="text-xs font-mono text-muted-foreground">10:36 PM</span>
+                </div>
+
+                <div className="flex items-start gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-full bg-[color:var(--accent-bg-soft)] text-[color:var(--accent-600)] flex items-center justify-center text-2xl shrink-0">
+                    <span role="img" aria-label="moon">🌙</span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">Feeling grounded</h3>
+                    <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-[color:var(--warning-soft)] text-[color:var(--warning)]">
+                        🔥 2 day streak
+                      </span>
+                      <span>• Gratitude</span>
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-muted-foreground leading-relaxed text-sm mb-6 border-l-2 pl-4 italic">
+                  "Wrapped up the day with a quiet walk. Noticed how the cool air reset my headspace and made the lingering worries feel smaller."
+                </p>
+
+                <div className="flex gap-2 justify-center">
+                  <div className="w-2 h-2 rounded-full bg-primary" />
+                  <div className="w-2 h-2 rounded-full bg-muted" />
+                  <div className="w-2 h-2 rounded-full bg-muted" />
+                </div>
               </div>
             </div>
           </div>
         </div>
       </header>
 
-      <section id="why-twilightio" className="landing__section landing__section--alt">
-        <h2>Designed for mindful nights and focused mornings</h2>
-        <div className="landing__grid">
-          {highlights.map((item) => (
-            <article key={item.title} className="landing__tile">
-              <h3>{item.title}</h3>
-              <p>{item.description}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section id="features" className="landing__section">
-        <h2>Everything you need to capture your story</h2>
-        <div className="landing__feature-columns">
-          {featureBlocks.map((block) => (
-            <div key={block.title} className="landing__feature">
-              <h3>{block.title}</h3>
-              <ul>
-                {block.items.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section id="cta" className="landing__section landing__section--cta">
-        <div className="landing__cta">
-          <div>
-            <h2>Take the weight off your mind.</h2>
-            <p>Get up and running in minutes with a single Docker command. Self-host with confidence.</p>
-          </div>
-          <div className="landing__cta-buttons">
-            <Link className="landing__button landing__button--primary" to="/dashboard">Open the app</Link>
-            <a className="landing__button landing__button--ghost" href="https://github.com/shirsakm/twilightio" target="_blank" rel="noreferrer">View on GitHub</a>
+      <section className="py-24 bg-muted/30">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center max-w-4xl">
+          <h2 className="text-3xl font-bold tracking-tight mb-16">Designed for mindful nights and focused mornings</h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            {highlights.map((item) => (
+              <div key={item.title} className="bg-card p-8 rounded-2xl border shadow-sm hover:shadow-md transition-shadow">
+                <h3 className="text-xl font-semibold mb-4">{item.title}</h3>
+                <p className="text-muted-foreground leading-relaxed">{item.description}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      <footer className="landing__footer">
-        <p className="landing__footer-note">© 2025 Twilightio. Open source and privacy-first.</p>
-        <div className="landing__footer-links">
-          <Link to="/privacy">Privacy</Link>
-          <Link to="/terms">Terms</Link>
-          <a href="mailto:hello@twilightio.com">Contact</a>
+      <section id="features" className="py-24">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-bold tracking-tight text-center mb-16">Everything you need to capture your story</h2>
+          <div className="grid md:grid-cols-3 gap-12">
+            {featureBlocks.map((block) => (
+              <div key={block.title} className="space-y-6">
+                <h3 className="text-xl font-bold border-b pb-2">{block.title}</h3>
+                <ul className="space-y-4">
+                  {block.items.map((item) => (
+                    <li key={item} className="flex items-start gap-3 text-muted-foreground">
+                      <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-24 bg-primary text-primary-foreground">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl font-bold mb-6">Take the weight off your mind.</h2>
+          <p className="text-xl opacity-90 mb-10 max-w-2xl mx-auto">
+            Get up and running in minutes with a single Docker command. Self-host with confidence.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center gap-4 justify-center">
+            <Button size="lg" variant="secondary" asChild className="rounded-full px-8 h-12 text-base text-primary">
+              <Link to="/dashboard">Open the app</Link>
+            </Button>
+            <Button size="lg" variant="outline" asChild className="rounded-full px-8 h-12 text-base bg-transparent border-primary-foreground/30 hover:bg-primary-foreground/10 text-primary-foreground">
+              <a href="https://github.com/shirsakm/twilightio" target="_blank" rel="noreferrer">View on GitHub</a>
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      <footer className="py-12 border-t bg-muted/10">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
+          <p className="text-sm text-muted-foreground">© 2025 Twilightio. Open source and privacy-first.</p>
+          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+            <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
+            <Link to="/terms" className="hover:text-foreground">Terms</Link>
+            <a href="mailto:hello@twilightio.com" className="hover:text-foreground">Contact</a>
+          </div>
         </div>
       </footer>
     </div>

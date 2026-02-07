@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import {
   LineChart,
   Line,
@@ -53,9 +54,10 @@ const ScaleTrendChart = ({ data, scales }: ScaleTrendChartProps) => {
             key={scale.id}
             type="monotone"
             dataKey={scale.name}
-            stroke={scale.color_hex || '#8884d8'}
-            strokeWidth={2}
-            dot={{ r: 4 }}
+            stroke={scale.color_hex || 'var(--primary)'}
+            strokeWidth={3}
+            dot={{ r: 5, fill: scale.color_hex || 'var(--primary)', strokeWidth: 2, stroke: 'var(--card)' }}
+            activeDot={{ r: 7, fill: scale.color_hex || 'var(--primary)' }}
             connectNulls
           />
         ))}
@@ -64,4 +66,4 @@ const ScaleTrendChart = ({ data, scales }: ScaleTrendChartProps) => {
   );
 };
 
-export default ScaleTrendChart;
+export default memo(ScaleTrendChart);

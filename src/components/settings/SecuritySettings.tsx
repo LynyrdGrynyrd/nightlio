@@ -1,9 +1,18 @@
-import { useState, useEffect, ChangeEvent } from 'react';
+import { useState, useEffect } from 'react';
 import { useLock } from '../../contexts/LockContext';
 import apiService from '../../services/api';
 import PinPad from '../auth/PinPad';
 import { Shield, Lock, Unlock, Clock, AlertCircle } from 'lucide-react';
 import { useToast } from '../ui/ToastProvider';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
+import { Button } from '../ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
 
 // ========== Types ==========
 
@@ -70,8 +79,8 @@ const SecuritySettings = () => {
     }
   };
 
-  const handleTimeoutChange = async (e: ChangeEvent<HTMLSelectElement>) => {
-    const seconds = parseInt(e.target.value);
+  const handleTimeoutChange = async (value: string) => {
+    const seconds = parseInt(value);
     try {
       await apiService.updateLockTimeout(seconds);
       await refreshSettings();
@@ -93,12 +102,13 @@ const SecuritySettings = () => {
           error={error}
           length={4}
         />
-        <button
+        <Button
+          variant="link"
           onClick={() => setMode('view')}
-          className="block mx-auto mt-8 text-[var(--accent-500)] text-sm font-medium hover:underline"
+          className="block mx-auto mt-8"
         >
           Cancel
-        </button>
+        </Button>
       </div>
     );
   }
@@ -112,98 +122,108 @@ const SecuritySettings = () => {
           error={error}
           length={4}
         />
-        <button
+        <Button
+          variant="link"
           onClick={() => setMode('view')}
-          className="block mx-auto mt-8 text-[var(--accent-500)] text-sm font-medium hover:underline"
+          className="block mx-auto mt-8"
         >
           Cancel
-        </button>
+        </Button>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6">
-        <div className="flex items-start justify-between">
-          <div className="flex gap-4">
-            <div className={`p-3 rounded-full ${hasPin ? 'bg-green-100 text-green-600 dark:bg-green-900/30' : 'bg-gray-100 text-gray-500 dark:bg-gray-800'}`}>
-              {hasPin ? <Lock size={24} /> : <Unlock size={24} />}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-start justify-between">
+            <div className="flex gap-4">
+              <div className={`p-3 rounded-full ${hasPin ? 'bg-[color:var(--success-soft)] text-[color:var(--success)]' : 'bg-muted text-muted-foreground'}`}>
+                {hasPin ? <Lock size={24} /> : <Unlock size={24} />}
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">App Lock</h3>
+                <p className="text-muted-foreground text-sm mt-1">
+                  {hasPin
+                    ? 'Your journal is protected with a PIN.'
+                    : 'Secure your journal with a 4-digit PIN.'}
+                </p>
+              </div>
+            </div>
+
+            <Button
+              variant={hasPin ? "destructive" : "default"}
+              onClick={() => setMode(hasPin ? 'remove' : 'setup')}
+            >
+              {hasPin ? 'Disable Lock' : 'Enable Lock'}
+            </Button>
+          </div>
+
+          {hasPin && userSettings && (
+            <div className="mt-6 pt-6 border-t">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Clock size={20} className="text-muted-foreground" />
+                  <span className="font-medium">Auto-lock timeout</span>
+                </div>
+                <Select
+                  value={String(userSettings.lock_timeout_seconds)}
+                  onValueChange={handleTimeoutChange}
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Immediately</SelectItem>
+                    <SelectItem value="30">30 seconds</SelectItem>
+                    <SelectItem value="60">1 minute</SelectItem>
+                    <SelectItem value="300">5 minutes</SelectItem>
+                    <SelectItem value="600">10 minutes</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="opacity-60 pointer-events-none grayscale">
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-full bg-muted text-muted-foreground">
+              <Shield size={24} />
             </div>
             <div>
-              <h3 className="font-semibold text-lg text-[var(--text)]">App Lock</h3>
-              <p className="text-[var(--text-muted)] text-sm mt-1">
-                {hasPin
-                  ? 'Your journal is protected with a PIN.'
-                  : 'Secure your journal with a 4-digit PIN.'}
+              <h3 className="font-semibold text-lg">Biometric Unlock</h3>
+              <p className="text-muted-foreground text-sm mt-1">
+                Browser support coming soon.
               </p>
             </div>
           </div>
+        </CardContent>
+      </Card>
 
-          <button
-            onClick={() => setMode(hasPin ? 'remove' : 'setup')}
-            className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${hasPin
-              ? 'bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20'
-              : 'bg-[var(--accent-bg)] text-white hover:opacity-90'
-              }`}
-          >
-            {hasPin ? 'Disable Lock' : 'Enable Lock'}
-          </button>
-        </div>
-
-        {hasPin && userSettings && (
-          <div className="mt-6 pt-6 border-t border-[var(--border)]">
-            <label className="flex items-center justify-between cursor-pointer">
-              <div className="flex items-center gap-3">
-                <Clock size={20} className="text-[var(--text-muted)]" />
-                <span className="text-[var(--text)] font-medium">Auto-lock timeout</span>
-              </div>
-              <select
-                value={userSettings.lock_timeout_seconds}
-                onChange={handleTimeoutChange}
-                className="bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg px-3 py-1.5 text-sm text-[var(--text)] focus:border-[var(--accent-500)] outline-none"
-              >
-                <option value={0}>Immediately</option>
-                <option value={30}>30 seconds</option>
-                <option value={60}>1 minute</option>
-                <option value={300}>5 minutes</option>
-                <option value={600}>10 minutes</option>
-              </select>
-            </label>
+      <Card className="border-destructive/50 bg-destructive/5">
+        <CardHeader>
+          <CardTitle className="text-destructive flex items-center gap-2">
+            <AlertCircle size={20} /> Danger Zone
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <CardDescription className="text-destructive/80">
+              Permanently delete your account and all data. This action cannot be undone.
+            </CardDescription>
+            <Button
+              variant="destructive"
+              onClick={() => setMode('delete_confirm')}
+            >
+              Delete Account
+            </Button>
           </div>
-        )}
-      </div>
-
-      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 opacity-60 pointer-events-none grayscale">
-        <div className="flex items-center gap-4">
-          <div className="p-3 rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800">
-            <Shield size={24} />
-          </div>
-          <div>
-            <h3 className="font-semibold text-lg text-[var(--text)]">Biometric Unlock</h3>
-            <p className="text-[var(--text-muted)] text-sm mt-1">
-              Browser support coming soon.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 rounded-2xl p-6">
-        <h3 className="text-red-600 dark:text-red-400 font-bold mb-4 flex items-center gap-2">
-          <AlertCircle size={20} /> Danger Zone
-        </h3>
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <p className="text-sm text-red-700 dark:text-red-300">
-            Permanently delete your account and all data. This action cannot be undone.
-          </p>
-          <button
-            onClick={() => setMode('delete_confirm')}
-            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition py-2"
-          >
-            Delete Account
-          </button>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

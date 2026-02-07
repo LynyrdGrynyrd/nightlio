@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useState, useMemo, useCallback, ReactNode } from 'react';
 import apiService from '../services/api';
 
 interface MoodDefinition {
@@ -28,7 +28,7 @@ export const MoodDefinitionsProvider = ({ children }: MoodDefinitionsProviderPro
   const [definitions, setDefinitions] = useState<MoodDefinition[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const refreshDefinitions = async () => {
+  const refreshDefinitions = useCallback(async () => {
     try {
       const data: MoodDefinition[] = await apiService.getMoodDefinitions();
       setDefinitions(data);
@@ -37,25 +37,32 @@ export const MoodDefinitionsProvider = ({ children }: MoodDefinitionsProviderPro
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     refreshDefinitions();
-  }, []);
+  }, [refreshDefinitions]);
 
-  // Update CSS variables when definitions change
-  useEffect(() => {
+  // Update CSS variables when definitions change (useLayoutEffect to avoid flash)
+  useLayoutEffect(() => {
     if (definitions.length > 0) {
+      const root = document.documentElement; // Cache once
       definitions.forEach(def => {
-        if (def.score >= 1 && def.score <= 5) {
-          document.documentElement.style.setProperty(`--mood-\${def.score}`, def.color_hex);
+        if (def.score >= 1 && def.score <= 5 && def.color_hex && def.color_hex !== 'undefined') {
+          root.style.setProperty(`--mood-${def.score}`, def.color_hex);
         }
       });
     }
   }, [definitions]);
 
+  const value = useMemo<MoodDefinitionsContextValue>(() => ({
+    definitions,
+    loading,
+    refreshDefinitions,
+  }), [definitions, loading, refreshDefinitions]);
+
   return (
-    <MoodDefinitionsContext.Provider value={{ definitions, loading, refreshDefinitions }}>
+    <MoodDefinitionsContext.Provider value={value}>
       {children}
     </MoodDefinitionsContext.Provider>
   );

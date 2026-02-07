@@ -21,7 +21,6 @@ try:  # pragma: no cover - fallback for script execution
     from .database_moods import MoodEntriesMixin, MoodDefinitionMixin
     from .database_scales import ScalesMixin
     from .database_schema import DatabaseSchemaMixin
-    from .database_schema import DatabaseSchemaMixin
     from .database_users import UsersMixin
     from .database_settings import SettingsMixin
 except ImportError:  # pragma: no cover - executed when run as a script module

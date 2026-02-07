@@ -47,14 +47,16 @@ class SQLQueries:
 
     # Goals queries
     GET_GOALS_BY_USER = (
-        "SELECT id, user_id, title, description, frequency_per_week, completed, "
-        "       streak, period_start, last_completed_date, created_at, updated_at "
+        "SELECT id, user_id, title, description, frequency_per_week, frequency_type, "
+        "       target_count, custom_days, completed, streak, period_start, "
+        "       last_completed_date, created_at, updated_at "
         "FROM goals WHERE user_id = ? ORDER BY created_at DESC"
     )
 
     GET_GOAL_BY_ID = (
-        "SELECT id, user_id, title, description, frequency_per_week, completed, "
-        "       streak, period_start, last_completed_date, created_at, updated_at "
+        "SELECT id, user_id, title, description, frequency_per_week, frequency_type, "
+        "       target_count, custom_days, completed, streak, period_start, "
+        "       last_completed_date, created_at, updated_at "
         "FROM goals WHERE id = ? AND user_id = ?"
     )
 
@@ -81,10 +83,13 @@ class DatabaseConnectionMixin:
     db_path: str
 
     def _connect(self) -> sqlite3.Connection:
-        """Create a SQLite connection with safe defaults."""
+        """Create a SQLite connection with safe defaults and timeout."""
         try:
-            conn = sqlite3.connect(self.db_path)
+            # Add connection timeout to prevent indefinite blocking
+            conn = sqlite3.connect(self.db_path, timeout=30.0)
             conn.execute("PRAGMA foreign_keys=ON")
+            # Set busy timeout for when database is locked by another process
+            conn.execute("PRAGMA busy_timeout=30000")
             return conn
         except sqlite3.Error as exc:  # pragma: no cover - rare failure
             logger.error("Failed to connect to database: %s", exc)

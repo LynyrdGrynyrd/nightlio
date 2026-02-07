@@ -286,13 +286,10 @@ class AchievementsMixin(DatabaseConnectionMixin):
             
             # New achievements
             ("complex_person", unique_moods_count >= 5),  # All 5 mood levels used
-            ("century", total_entries >= 100),  # 100 entries
             ("devoted", current_streak >= 365),  # 1 year streak
             ("photographer", photo_count >= 50),  # 50 photos
             ("goal_crusher", goal_completions >= 10),  # 10 goals completed
             ("half_year", current_streak >= 180),  # 6 month streak
-            ("early_adopter", total_entries >= 1),  # First entry (same as first but clearer)
-            ("wordsmith", False),  # Checked separately - 1000+ chars in entry
             ("comeback_king", longest_streak > current_streak and current_streak >= 7),
             
             # Milestone achievements
@@ -352,7 +349,6 @@ class AchievementsMixin(DatabaseConnectionMixin):
             
             # New achievements
             "complex_person": {"current": clamp(unique_moods, 5), "max": 5},
-            "century": {"current": clamp(total_entries, 100), "max": 100},
             "devoted": {"current": clamp(current_streak, 365), "max": 365},
             "photographer": {"current": clamp(photo_count, 50), "max": 50},
             "goal_crusher": {"current": clamp(goal_completions, 10), "max": 10},

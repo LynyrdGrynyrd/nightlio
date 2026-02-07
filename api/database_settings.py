@@ -60,12 +60,13 @@ class SettingsMixin(DatabaseConnectionMixin):
             self._ensure_settings_exist(conn, user_id)
             conn.execute(
                 """
-                UPDATE user_settings 
-                SET pin_hash = ?, updated_at = CURRENT_TIMESTAMP 
+                UPDATE user_settings
+                SET pin_hash = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE user_id = ?
                 """,
                 (pin_hash, user_id),
             )
+            conn.commit()
 
     def verify_user_pin(self, user_id: int, pin: str) -> bool:
         """Verify the PIN."""
@@ -81,19 +82,22 @@ class SettingsMixin(DatabaseConnectionMixin):
     def remove_user_pin(self, user_id: int) -> None:
         with self._connect() as conn:
             conn.execute(
-                "UPDATE user_settings SET pin_hash = NULL WHERE user_id = ?", 
+                "UPDATE user_settings SET pin_hash = NULL WHERE user_id = ?",
                 (user_id,)
             )
+            conn.commit()
 
     def update_lock_timeout(self, user_id: int, seconds: int) -> None:
         with self._connect() as conn:
-             self._ensure_settings_exist(conn, user_id)
-             conn.execute(
-                 "UPDATE user_settings SET lock_timeout_seconds = ? WHERE user_id = ?",
-                 (seconds, user_id)
-             )
+            self._ensure_settings_exist(conn, user_id)
+            conn.execute(
+                "UPDATE user_settings SET lock_timeout_seconds = ? WHERE user_id = ?",
+                (seconds, user_id)
+            )
+            conn.commit()
 
     def _ensure_settings_exist(self, conn, user_id):
         cursor = conn.execute("SELECT 1 FROM user_settings WHERE user_id = ?", (user_id,))
         if not cursor.fetchone():
-             conn.execute("INSERT INTO user_settings (user_id) VALUES (?)", (user_id,))
+            conn.execute("INSERT INTO user_settings (user_id) VALUES (?)", (user_id,))
+            # Note: commit is handled by caller

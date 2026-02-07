@@ -1,11 +1,15 @@
-import { useState, useEffect, useRef, ReactNode, ChangeEvent } from 'react';
-import { Search, X, Calendar, Filter } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo, ReactNode, memo } from 'react';
+import { Search, Calendar, Filter, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { MOOD_CONFIG, TIMEOUTS } from '../../constants/appConstants';
-import './SearchModal.css';
-
-// ========== Types ==========
+import { Dialog, DialogContent } from '../ui/dialog';
+import { Input } from '../ui/input';
+import { ScrollArea } from '../ui/scroll-area';
+import { Badge } from '../ui/badge';
+import { useToast } from '../ui/ToastProvider';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 
 interface SearchEntry {
   id: number;
@@ -19,8 +23,6 @@ interface SearchModalProps {
   onClose: () => void;
 }
 
-// ========== Utilities ==========
-
 const highlightText = (text: string, query: string): ReactNode => {
   if (!query || !text) return text;
 
@@ -29,53 +31,27 @@ const highlightText = (text: string, query: string): ReactNode => {
 
   return parts.map((part, i) =>
     part.toLowerCase() === query.toLowerCase()
-      ? <mark key={i} className="search-highlight">{part}</mark>
+      ? <mark key={i} className="bg-[color:var(--warning-soft)] text-foreground rounded-sm px-0.5">{part}</mark>
       : part
   );
 };
 
-// ========== Component ==========
-
-const SearchModal = ({ isOpen, onClose }: SearchModalProps) => {
+const SearchModal = memo(({ isOpen, onClose }: SearchModalProps) => {
   const [query, setQuery] = useState('');
   const [selectedMoods, setSelectedMoods] = useState<number[]>([]);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [results, setResults] = useState<SearchEntry[]>([]);
   const [loading, setLoading] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { show } = useToast();
   useAuth();
 
-  useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 50);
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => { document.body.style.overflow = ''; };
-  }, [isOpen]);
+  // Cache token in ref to avoid repeated localStorage access
+  const tokenRef = useRef(localStorage.getItem('twilightio_token'));
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    const handleClickOutside = (e: MouseEvent) => {
-      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-    if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen, onClose]);
+  // Create a Set for O(1) includes() lookups
+  const selectedMoodsSet = useMemo(() => new Set(selectedMoods), [selectedMoods]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -95,7 +71,7 @@ const SearchModal = ({ isOpen, onClose }: SearchModalProps) => {
         if (endDate) params.append('end_date', endDate);
 
         const res = await fetch(`/api/search?${params.toString()}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('twilightio_token')}` }
+          headers: { 'Authorization': `Bearer ${tokenRef.current}` }
         });
         if (res.ok) {
           const data = await res.json();
@@ -103,6 +79,7 @@ const SearchModal = ({ isOpen, onClose }: SearchModalProps) => {
         }
       } catch (err) {
         console.error("Search failed", err);
+        show('Search failed. Please try again.', 'error');
       } finally {
         setLoading(false);
       }
@@ -122,88 +99,144 @@ const SearchModal = ({ isOpen, onClose }: SearchModalProps) => {
     navigate('/dashboard/entry', { state: { entry, mood: entry.mood } });
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="search-modal-overlay">
-      <div className="search-modal" ref={modalRef}>
-        <div className="search-header">
-          <div className="search-input-wrapper">
-            <Search className="search-icon" size={20} />
-            <input
-              ref={inputRef}
-              type="text"
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[600px] h-[80vh] flex flex-col gap-0 p-0 overflow-hidden">
+        {/* Header */}
+        <div className="p-4 border-b space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" aria-hidden="true" />
+            <Input
               placeholder="Search your journal..."
+              name="search"
+              autoComplete="off"
               value={query}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)}
-              className="search-input"
+              onChange={(e) => setQuery(e.target.value)}
+              className="pl-9 bg-muted/50 border-0 focus-visible:ring-1"
+              autoFocus
             />
-            {query && (
-              <button onClick={() => setQuery('')} className="clear-btn">
-                <X size={16} />
-              </button>
-            )}
           </div>
-          <button onClick={onClose} className="close-btn">Done</button>
-        </div>
 
-        <div className="search-filters">
-          <div className="filter-group">
-            <span className="filter-label"><Filter size={14} /> Mood</span>
-            <div className="mood-filters">
-              {MOOD_CONFIG.map(m => (
-                <button
-                  key={m.value}
-                  onClick={() => toggleMood(m.value)}
-                  className={`mood-chip ${selectedMoods.includes(m.value) ? 'active' : ''}`}
-                  style={{
-                    '--chip-color': m.color,
-                    backgroundColor: selectedMoods.includes(m.value) ? m.color : 'transparent',
-                    color: selectedMoods.includes(m.value) ? '#000' : 'var(--text-muted)'
-                  } as React.CSSProperties}
-                >
-                  {m.label}
-                </button>
-              ))}
+          <div className="flex flex-col gap-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                <Filter size={12} aria-hidden="true" />
+                <span>Filter by Mood</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {MOOD_CONFIG.map(m => {
+                  const isSelected = selectedMoodsSet.has(m.value);
+                  return (
+                    <Badge
+                      key={m.value}
+                      variant={isSelected ? "default" : "outline"}
+                      className={cn(
+                        "cursor-pointer transition-all hover:opacity-80",
+                        isSelected ? "" : "opacity-50 hover:opacity-100"
+                      )}
+                      style={isSelected ? { backgroundColor: m.color } : undefined}
+                      onClick={() => toggleMood(m.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleMood(m.value);
+                        }
+                      }}
+                      role="checkbox"
+                      aria-checked={isSelected}
+                      aria-label={`Filter by ${m.label} mood`}
+                      tabIndex={0}
+                    >
+                      {m.label}
+                    </Badge>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                <Calendar size={12} aria-hidden="true" />
+                <span id="date-range-label">Date Range</span>
+              </div>
+              <div className="flex items-center gap-2" role="group" aria-labelledby="date-range-label">
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="h-8 text-xs w-auto"
+                  aria-label="Start date"
+                />
+                <span className="text-xs text-muted-foreground" aria-hidden="true">to</span>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="h-8 text-xs w-auto"
+                  aria-label="End date"
+                />
+              </div>
             </div>
           </div>
-
-          <div className="filter-group border-l pl-4 ml-4">
-            <span className="filter-label"><Calendar size={14} /> Range</span>
-            <div className="date-filters">
-              <input type="date" value={startDate} onChange={(e: ChangeEvent<HTMLInputElement>) => setStartDate(e.target.value)} />
-              <span>to</span>
-              <input type="date" value={endDate} onChange={(e: ChangeEvent<HTMLInputElement>) => setEndDate(e.target.value)} />
-            </div>
-          </div>
         </div>
 
-        <div className="search-results">
-          {loading && <div className="loading-state">Searching...</div>}
-
-          {!loading && results.length === 0 && (query || selectedMoods.length > 0) && (
-            <div className="empty-state">No matching entries found.</div>
+        {/* Results */}
+        <ScrollArea className="flex-1 p-4 bg-muted/10">
+          {loading && (
+            <div
+              className="flex items-center justify-center py-8 text-muted-foreground"
+              role="status"
+              aria-live="polite"
+            >
+              <Loader2 className="h-6 w-6 animate-spin mr-2" aria-hidden="true" />
+              Searching…
+            </div>
           )}
 
-          <div className="results-list">
+          {!loading && results.length === 0 && (query || selectedMoods.length > 0) && (
+            <div className="text-center py-8 text-muted-foreground text-sm">
+              No matching entries found.
+            </div>
+          )}
+
+          <div className="space-y-3">
             {results.map(entry => (
-              <div key={entry.id} className="result-item" onClick={() => handleEntryClick(entry)}>
-                <div className="result-date">
-                  <span className="day">{new Date(entry.date).getDate()}</span>
-                  <span className="month">{new Date(entry.date).toLocaleString('default', { month: 'short' })}</span>
-                  <span className="year">{new Date(entry.date).getFullYear()}</span>
+              <div
+                key={entry.id}
+                onClick={() => handleEntryClick(entry)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleEntryClick(entry);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label={`View entry from ${format(new Date(entry.date), 'MMM d, yyyy')}`}
+                className="group flex flex-col gap-2 p-3 rounded-lg border bg-card hover:bg-accent/50 hover:border-accent cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: `var(--mood-${entry.mood})` }}
+                    />
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {format(new Date(entry.date), 'MMM d, yyyy')}
+                    </span>
+                  </div>
                 </div>
-                <div className="result-content">
-                  <div className="mood-indicator" style={{ backgroundColor: `var(--mood-${entry.mood})` }}></div>
-                  <p className="entry-truncate">{highlightText(entry.content, query)}</p>
-                </div>
+                <p className="text-sm line-clamp-2 leading-relaxed text-muted-foreground group-hover:text-foreground transition-colors">
+                  {highlightText(entry.content, query)}
+                </p>
               </div>
             ))}
           </div>
-        </div>
-      </div>
-    </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
   );
-};
+});
 
+SearchModal.displayName = 'SearchModal';
 export default SearchModal;

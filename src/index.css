@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap&font-display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -15,8 +15,8 @@
   /* cards, panels */
   --text: #1F2937;
   /* gray-800 */
-  --text-muted: #667085;
-  /* gray-600 */
+  --text-muted: #525f70;
+  /* improved contrast ~5.8:1 */
   --border: #E6E8EC;
   /* subtle dividers */
   --border-soft: #F0F2F5;
@@ -77,7 +77,13 @@
   --radius-4: 24px;
   --radius-pill: 9999px;
 
-  /* Shadows */
+  /* Shadows - Elevation levels:
+   * Level 0: none (flat elements)
+   * Level 1: shadow-sm (cards, inputs)
+   * Level 2: shadow-md (dropdowns, tooltips)
+   * Level 3: shadow-lg (modals, dialogs)
+   * Level 4: shadow-xl (FAB, floating elements)
+   */
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 1.5px rgba(16, 24, 40, 0.03);
   --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08), 0 2px 4px rgba(16, 24, 40, 0.06);
   --shadow-lg: 0 10px 30px rgba(16, 24, 40, 0.10), 0 3px 6px rgba(16, 24, 40, 0.08);
@@ -105,6 +111,11 @@
   /* green */
   --mood-5: #3b82f6;
   /* blue */
+  --warning: var(--mood-2);
+  --success-soft: color-mix(in oklab, var(--success) 16%, transparent);
+  --warning-soft: color-mix(in oklab, var(--warning) 16%, transparent);
+  --destructive-soft: color-mix(in oklab, var(--danger) 16%, transparent);
+  --overlay-foreground: #ffffff;
   /* Overlays and skeleton shimmer */
   --overlay: rgba(16, 24, 40, 0.45);
   --skeleton-a: rgba(0, 0, 0, 0.06);
@@ -189,12 +200,25 @@ body {
   color: var(--fg-body);
 }
 
+/* Typography Scale:
+ * h1: text-3xl font-bold (30px)
+ * h2: text-2xl font-semibold (24px)
+ * h3: text-xl font-semibold (20px)
+ * h4: text-lg font-semibold (18px)
+ * body: text-base (16px)
+ * small: text-sm (14px)
+ * caption: text-xs (12px)
+ */
+
 /* Headings */
 h1,
 h2,
-h3 {
-  color: var(--text);
-  margin: 0 0 var(--space-2);
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+  color: inherit;
   line-height: 1.25;
   letter-spacing: -0.01em;
 }
@@ -214,27 +238,8 @@ h3 {
   font-weight: 600;
 }
 
-h1 {
-  font-size: 2rem;
-  line-height: 1.2;
-}
-
 button {
-  border-radius: var(--radius-sm);
-  border: 1px solid transparent;
-  padding: 10px 16px;
-  font-size: 1em;
-  font-weight: var(--fw-semibold);
-  font-family: var(--font-family);
-  background-color: var(--surface);
-  color: var(--text);
-  cursor: pointer;
-  transition: transform 180ms cubic-bezier(.2, .6, .2, 1), box-shadow 180ms cubic-bezier(.2, .6, .2, 1), background-color 180ms cubic-bezier(.2, .6, .2, 1);
-}
-
-button:hover {
-  background-color: #f8fafc;
-  box-shadow: var(--shadow-sm);
+  font: inherit;
 }
 
 button:focus-visible {
@@ -335,12 +340,6 @@ html[data-theme="dark"] {
   color-scheme: dark;
 }
 
-/* Subtle hover in dark mode */
-html[data-theme="dark"] button:hover {
-  background-color: rgba(255, 255, 255, 0.04);
-  box-shadow: var(--shadow-sm);
-}
-
 /* ============================================
    THEME PRESETS
    ============================================ */
@@ -384,10 +383,6 @@ html[data-theme="ocean"] {
   color-scheme: dark;
 }
 
-html[data-theme="ocean"] button:hover {
-  background-color: rgba(255, 255, 255, 0.04);
-}
-
 /* Forest Theme - Natural greens */
 html[data-theme="forest"] {
   --bg: #0d1f14;
@@ -425,10 +420,6 @@ html[data-theme="forest"] {
   --skeleton-a: rgba(255, 255, 255, 0.06);
   --skeleton-b: rgba(255, 255, 255, 0.12);
   color-scheme: dark;
-}
-
-html[data-theme="forest"] button:hover {
-  background-color: rgba(255, 255, 255, 0.04);
 }
 
 /* Sunset Theme - Warm oranges and pinks */
@@ -470,10 +461,6 @@ html[data-theme="sunset"] {
   color-scheme: dark;
 }
 
-html[data-theme="sunset"] button:hover {
-  background-color: rgba(255, 255, 255, 0.04);
-}
-
 /* Lavender Theme - Soft purples */
 html[data-theme="lavender"] {
   --bg: #1a1625;
@@ -511,10 +498,6 @@ html[data-theme="lavender"] {
   --skeleton-a: rgba(255, 255, 255, 0.06);
   --skeleton-b: rgba(255, 255, 255, 0.12);
   color-scheme: dark;
-}
-
-html[data-theme="lavender"] button:hover {
-  background-color: rgba(255, 255, 255, 0.04);
 }
 
 /* Midnight Theme - Deep dark blues with subtle accent */
@@ -556,54 +539,119 @@ html[data-theme="midnight"] {
   color-scheme: dark;
 }
 
-html[data-theme="midnight"] button:hover {
-  background-color: #312e81;
-  /* slate 900 */
-}
-
 html[data-theme="oled"] {
-  /* True Black Background */
-  --bg-primary: #000000;
-  --bg-secondary: #000000;
-  --bg-tertiary: #121212;
-  --bg-card: #000000;
-  --bg-modal: #000000;
-
-  --text-primary: #ffffff;
-  --text-secondary: #a3a3a3;
-  --text-muted: #525252;
-
+  /* True Black Background - standard variables */
+  --bg: #000000;
+  --surface: #0a0a0a;
+  --text: #ffffff;
+  --text-muted: #a3a3a3;
   --border: #333333;
-  --border-light: #222222;
+  --bg-card: #000000;
+  --fg-body: #ffffff;
 
   /* High Contrast Accents */
   --accent-50: #fafafa;
   --accent-100: #f4f4f5;
   --accent-200: #e4e4e7;
-  --accent-300: #d4d4d8;
   --accent-400: #a1a1aa;
   --accent-500: #71717a;
   --accent-600: #ffffff;
-  /* White accent for max contrast */
-  --accent-700: #3f3f46;
-  --accent-800: #27272a;
-  --accent-900: #18181b;
+  --accent-700: #e4e4e7;
 
   --accent-bg: #ffffff;
   --accent-bg-2: #27272a;
   --accent-bg-soft: #121212;
-  --accent-text: #000000;
+  --accent-bg-softer: rgba(255, 255, 255, 0.08);
+  --accent-chip-bg: rgba(255, 255, 255, 0.12);
 
+  /* Shadows - minimal for OLED */
   --shadow-sm: none;
-  --shadow: none;
-  --shadow-md: 0 4px 6px -1px rgba(255, 255, 255, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(255, 255, 255, 0.1);
+  --shadow-md: 0 4px 6px -1px rgba(255, 255, 255, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(255, 255, 255, 0.05);
 
-  --ring: rgba(255, 255, 255, 0.5);
+  --ring: 0 0 0 3px rgba(255, 255, 255, 0.3);
+
+  /* Semantic status colors */
+  --success: #4ade80;
+  --danger: #f87171;
+
+  /* Mood scale - high contrast for OLED */
+  --mood-1: #ff6b6b;
+  --mood-2: #ffa94d;
+  --mood-3: #ffe066;
+  --mood-4: #69db7c;
+  --mood-5: #74c0fc;
+
+  /* shadcn/ui tokens for OLED */
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #0a0a0a;
+  --card-foreground: #ffffff;
+  --popover: #0a0a0a;
+  --popover-foreground: #ffffff;
+  --primary: #ffffff;
+  --primary-foreground: #000000;
+  --secondary: #1a1a1a;
+  --secondary-foreground: #ffffff;
+  --muted: #1a1a1a;
+  --muted-foreground: #a3a3a3;
+  --accent: #1a1a1a;
+  --accent-foreground: #ffffff;
+  --destructive: #f87171;
+  --destructive-foreground: #000000;
+  --input: #333333;
+  --ring-color: #ffffff;
 
   color-scheme: dark;
 }
 
 html[data-theme="oled"] .card {
   border: 1px solid #333333;
+}
+
+/* Auth shell */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2);
+  background: var(--gradient-background);
+}
+
+/* Login page utility class - resets #root styles for full-bleed layout */
+.login-page-active #root {
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  box-shadow: none;
+  border: none;
+  border-radius: 0;
+}
+
+/* Touch interaction improvements */
+button,
+a,
+[role="button"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Respect reduced motion preference */
+/* Tabular numbers for statistics and counts */
+.tabular-nums,
+[data-stat],
+.stat-value {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

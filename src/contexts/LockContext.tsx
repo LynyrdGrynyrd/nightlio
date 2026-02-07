@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, ReactNode } from 'react';
 import apiService from '../services/api';
 import { useAuth } from './AuthContext';
 
@@ -38,6 +38,12 @@ export const LockProvider = ({ children }: LockProviderProps) => {
 
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Use refs to avoid stale closures in callbacks
+  const hasPinRef = useRef(hasPin);
+  const isLockedRef = useRef(isLocked);
+  useEffect(() => { hasPinRef.current = hasPin; }, [hasPin]);
+  useEffect(() => { isLockedRef.current = isLocked; }, [isLocked]);
+
   // Fetch settings on mount/user change
   useEffect(() => {
     if (user) {
@@ -65,11 +71,11 @@ export const LockProvider = ({ children }: LockProviderProps) => {
   }, [user]);
 
   const lockApp = useCallback(() => {
-    if (hasPin && !isLocked) {
+    if (hasPinRef.current && !isLockedRef.current) {
       setIsLocked(true);
       sessionStorage.removeItem('twilightio_unlocked');
     }
-  }, [hasPin, isLocked]);
+  }, []);
 
   const unlockApp = useCallback(() => {
     setIsLocked(false);
@@ -115,13 +121,13 @@ export const LockProvider = ({ children }: LockProviderProps) => {
     setLockTimeout(settings.lock_timeout_seconds || 60);
   };
 
-  const value: LockContextValue = {
+  const value = useMemo<LockContextValue>(() => ({
     isLocked,
     hasPin,
     unlockApp,
-    lockApp, // Manual lock
-    refreshSettings
-  };
+    lockApp,
+    refreshSettings,
+  }), [isLocked, hasPin, unlockApp, lockApp, refreshSettings]);
 
   return (
     <LockContext.Provider value={value}>

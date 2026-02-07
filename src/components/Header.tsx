@@ -1,161 +1,121 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Flame, LogOut, Sun, Moon } from 'lucide-react';
-
 import { useAuth } from '../contexts/AuthContext';
 import { useConfig } from '../contexts/ConfigContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from './ui/ToastProvider';
+import useHotkeyManager from '../hooks/useHotkeyManager';
 import SearchPlaceholder from './search/SearchPlaceholder';
 import SearchModal from './search/SearchModal';
-
-import './Header.css';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Button } from './ui/button';
+import { Badge } from './ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu"
 
 interface HeaderProps {
   currentStreak: number;
 }
-
-const resolveShortcutElement = (target: EventTarget | null): Element | null => {
-  if (!target || typeof target !== 'object') {
-    return null;
-  }
-
-  if (typeof Node !== 'undefined' && target instanceof Node) {
-    if (target.nodeType === Node.TEXT_NODE) {
-      return target.parentElement || null;
-    }
-
-    if (target instanceof Element) {
-      return target;
-    }
-  }
-
-  return null;
-};
-
-const shouldSkipShortcut = (target: EventTarget | null): boolean => {
-  const element = resolveShortcutElement(target);
-  if (!element) {
-    return false;
-  }
-
-  const tagName = element.tagName || '';
-  if (/^(INPUT|TEXTAREA|SELECT)$/i.test(tagName)) {
-    return true;
-  }
-
-  if (element instanceof HTMLElement && element.isContentEditable) {
-    return true;
-  }
-
-  if (element.closest('[contenteditable="true"]')) {
-    return true;
-  }
-
-  const markdownContainer = element.closest('.mdx-editor');
-  if (markdownContainer) {
-    const editableSurface = markdownContainer.querySelector(
-      '[data-lexical-editor], [contenteditable="true"]'
-    );
-
-    if (editableSurface && editableSurface.contains(element)) {
-      return true;
-    }
-  }
-
-  return false;
-};
 
 const Header = ({ currentStreak }: HeaderProps) => {
   const { user, logout, isMockMode } = useAuth();
   useConfig();
   const { theme, cycle } = useTheme();
   useToast();
-  const [showAvatar, setShowAvatar] = useState(true);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  const handleSearchShortcut = useCallback(
-    (event: KeyboardEvent) => {
-      if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey) {
-        return;
-      }
+  // Use centralized hotkey manager for '/' search shortcut
+  const handleSearchShortcut = useCallback(() => {
+    setIsSearchOpen(true);
+  }, []);
 
-      if (shouldSkipShortcut(event.target)) {
-        return;
-      }
-
-      event.preventDefault();
-      setIsSearchOpen(true);
-    },
-    []
-  );
+  useHotkeyManager('/', handleSearchShortcut, [handleSearchShortcut]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return undefined;
-    }
-
-    window.addEventListener('keydown', handleSearchShortcut);
-    return () => window.removeEventListener('keydown', handleSearchShortcut);
-  }, [handleSearchShortcut]);
+    const openSearch = () => setIsSearchOpen(true);
+    window.addEventListener('twilightio:open-search', openSearch);
+    return () => window.removeEventListener('twilightio:open-search', openSearch);
+  }, []);
 
   return (
-    <header className="header">
+    <header className="h-16 border-b bg-card sticky top-0 z-20 px-3 sm:px-4 md:px-6 flex items-center gap-2 shadow-sm">
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
 
-      <div className="header__inner">
-        <div className="header__left">
-          {isMockMode && (
-            <div className="header__mockBadge" title="Mock Mode - Using local data only">
-              🎭 MOCK
-            </div>
-          )}
-          {currentStreak > 0 && (
-            <div className="header__streakBadge">
-              <Flame size={14} strokeWidth={2} />
-              <span>{currentStreak} Day Streak</span>
-            </div>
-          )}
-        </div>
-
-        <div className="header__search" onClick={() => setIsSearchOpen(true)}>
-          <SearchPlaceholder />
-        </div>
-
-        {user && (
-          <div className="header__right">
-            <button
-              type="button"
-              onClick={cycle}
-              className="header__button header__iconButton"
-              title={`Theme: ${theme}`}
-              aria-label="Toggle theme"
-            >
-              {theme === 'dark' ? <Sun size={14} strokeWidth={2} /> : <Moon size={14} strokeWidth={2} />}
-            </button>
-
-            <div className="header__profile">
-              {user.avatar_url && showAvatar && (
-                <img
-                  src={user.avatar_url}
-                  alt={user.name}
-                  className="header__avatar"
-                  onError={() => setShowAvatar(false)}
-                />
-              )}
-              <span className="header__profileName">{user.name}</span>
-            </div>
-
-            <button
-              type="button"
-              onClick={logout}
-              className="header__button"
-            >
-              <LogOut size={14} />
-              Logout
-            </button>
-          </div>
+      <div className="flex items-center gap-2 min-w-0 shrink-0">
+        {isMockMode && (
+          <Badge variant="secondary" className="bg-destructive/80 hover:bg-destructive text-destructive-foreground gap-1 animate-pulse">
+            🎭 MOCK
+          </Badge>
+        )}
+        {currentStreak > 0 && (
+          <Badge variant="secondary" className="gap-1.5 hidden sm:flex">
+            <Flame size={14} className="text-[color:var(--warning)] fill-[color:var(--warning)]" aria-hidden="true" />
+            <span>{currentStreak} Day Streak</span>
+          </Badge>
         )}
       </div>
+
+      <div
+        className="flex-1 min-w-0 max-w-xl lg:max-w-2xl xl:max-w-3xl mx-1 sm:mx-4 lg:mx-8 cursor-pointer"
+        onClick={() => setIsSearchOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setIsSearchOpen(true);
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        aria-label="Open search"
+      >
+        <SearchPlaceholder />
+      </div>
+
+      {user && (
+        <div className="flex items-center gap-1 shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={cycle}
+            aria-label={`Current theme: ${theme}. Click to change theme`}
+            className="hidden sm:inline-flex rounded-full"
+          >
+            {theme === 'dark' ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
+          </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="relative h-9 w-9 sm:h-10 sm:w-10 rounded-full">
+                <Avatar className="h-9 w-9 sm:h-10 sm:w-10">
+                  <AvatarImage src={user.avatar_url} alt={user.name || ''} />
+                  <AvatarFallback>{(user.name || user.email || 'U').charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">{user.name}</p>
+                  <p className="text-xs leading-none text-muted-foreground">
+                    {user.email}
+                  </p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={logout}>
+                <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
     </header>
   );
 };

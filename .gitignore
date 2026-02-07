@@ -42,3 +42,18 @@ data/
 
 # Pytest
 *.pytest_cache/
+
+# Playwright
+playwright-report/
+test-results/
+
+# Local key material / generated push config
+private_key.pem
+api/private_key.pem
+vapid_keys.json
+api/vapid_keys.json
+
+# Local scratch helper folders
+homarr/
+julianoneline/
+nightlio/

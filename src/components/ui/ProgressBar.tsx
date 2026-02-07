@@ -1,22 +1,34 @@
+/**
+ * ProgressBar - Backwards-compatible wrapper around shadcn Progress
+ * 
+ * This component maintains the existing ProgressBar API (value, max, label)
+ * while internally using shadcn/ui Progress primitives.
+ * 
+ * For new code, prefer using Progress directly:
+ * import { Progress } from '@/components/ui/progress';
+ */
+import { Progress } from './progress';
+import { cn } from '@/lib/utils';
+
 interface ProgressBarProps {
   value?: number;
   max?: number;
   label?: string;
+  className?: string;
 }
 
-const ProgressBar = ({ value = 0, max = 100, label }: ProgressBarProps) => {
+const ProgressBar = ({ value = 0, max = 100, label, className }: ProgressBarProps) => {
   const pct = Math.min(100, Math.max(0, (value / max) * 100));
+
   return (
-    <div style={{ width: '100%' }}>
+    <div className={cn("w-full", className)}>
       {label && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 12, color: 'var(--fg-muted)' }}>
+        <div className="flex justify-between mb-1.5 text-xs text-muted-foreground">
           <span>{label}</span>
           <span>{Math.round(pct)}%</span>
         </div>
       )}
-      <div style={{ height: 8, background: 'var(--border-soft)', borderRadius: 999 }}>
-        <div style={{ width: `${pct}%`, height: '100%', borderRadius: 999, background: 'var(--accent-bg)' }} />
-      </div>
+      <Progress value={pct} className="h-2" />
     </div>
   );
 };

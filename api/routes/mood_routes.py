@@ -4,6 +4,7 @@ import logging
 from api.services.mood_service import MoodService
 from api.utils.auth_middleware import require_auth, get_current_user_id
 from api.utils.secure_errors import secure_error_response
+from api.validators import ValidationError, MoodEntryCreate, MoodEntryUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -34,39 +35,38 @@ def create_mood_routes(mood_service: MoodService, media_service: Any = None):
             if user_id is None:
                 return jsonify({"error": "Unauthorized"}), 401
             data = request.get_json(silent=True) or {}
-            mood = data.get("mood")
-            date = data.get("date")
-            content = data.get("content")
-            time = data.get("time")
-            selected_options_raw = data.get("selected_options", [])
 
-            # Validate input
-            if not all([mood, date, content]):
-                return jsonify({"error": "Missing required fields"}), 400
-
-            raw_mood: Any = mood
+            # Validate input using schema
             try:
-                mood_value = int(raw_mood)
-            except (TypeError, ValueError):
-                return jsonify({"error": "Mood must be an integer"}), 400
-
-            date_value = str(date)
-            content_value = str(content)
-            time_value = str(time) if time else None
+                validated = MoodEntryCreate(
+                    date=data.get("date"),
+                    mood=int(data.get("mood")) if data.get("mood") is not None else None,
+                    content=data.get("content", ""),
+                    time=data.get("time") or data.get("timestamp"),
+                    selected_options=data.get("selected_options"),
+                    scale_values=data.get("scale_values"),
+                )
+            except (TypeError, ValueError) as e:
+                return jsonify({"error": str(e)}), 400
+            except ValidationError as e:
+                return jsonify({"error": e.message, "field": e.field}), 422
 
             try:
-                selected_options = _normalise_selected_options(selected_options_raw)
+                selected_options = _normalise_selected_options(validated.selected_options)
             except ValueError as exc:
                 return jsonify({"error": str(exc)}), 400
 
             result = mood_service.create_mood_entry(
                 user_id,
-                date_value,
-                mood_value,
-                content_value,
-                time_value,
+                validated.date,
+                validated.mood,
+                validated.content,
+                validated.time,
                 selected_options,
             )
+
+            # Note: Scale entries are saved via dedicated /entries/{id}/scales endpoint
+            # to avoid duplicate saves when frontend also calls saveEntryScales
 
             return (
                 jsonify(
@@ -80,6 +80,8 @@ def create_mood_routes(mood_service: MoodService, media_service: Any = None):
                 201,
             )
 
+        except ValidationError as e:
+            return jsonify({"error": e.message, "field": e.field}), 422
         except ValueError as e:
             # SECURITY: Log validation errors but return generic message
             logger.warning(f"Mood entry validation error: {e}")
@@ -97,9 +99,23 @@ def create_mood_routes(mood_service: MoodService, media_service: Any = None):
             start_date = request.args.get("start_date")
             end_date = request.args.get("end_date")
 
+            # Parse include parameter: ?include=selections,media,scales
+            include_param = request.args.get("include", "")
+            includes = set(i.strip().lower() for i in include_param.split(",") if i.strip())
+            include_selections = "selections" in includes
+            include_media = "media" in includes
+            include_scales = "scales" in includes
+
             if start_date and end_date:
                 entries = mood_service.get_entries_by_date_range(
                     user_id, start_date, end_date
+                )
+            elif include_selections or include_media or include_scales:
+                entries = mood_service.get_all_entries_hydrated(
+                    user_id,
+                    include_selections=include_selections,
+                    include_media=include_media,
+                    include_scales=include_scales
                 )
             else:
                 entries = mood_service.get_all_entries(user_id)
@@ -181,6 +197,9 @@ def create_mood_routes(mood_service: MoodService, media_service: Any = None):
 
             if updated_entry is None:
                 return jsonify({"error": "Entry not found or no changes made"}), 404
+
+            # Note: Scale entries are saved via dedicated /entries/{id}/scales endpoint
+            # to avoid duplicate saves when frontend also calls saveEntryScales
 
             return (
                 jsonify(

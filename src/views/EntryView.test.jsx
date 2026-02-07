@@ -10,6 +10,9 @@ vi.mock('../services/api', () => ({
         getEntryMedia: vi.fn().mockResolvedValue([]),
         uploadMedia: vi.fn(),
         deleteMedia: vi.fn(),
+        getScales: vi.fn().mockResolvedValue([]),
+        getEntryScales: vi.fn().mockResolvedValue([]),
+        saveEntryScales: vi.fn().mockResolvedValue({ success: true }),
     },
 }));
 
@@ -52,8 +55,28 @@ vi.mock('../components/groups/GroupManager', () => ({
     default: () => <div data-testid="group-manager">GroupManager</div>,
 }));
 
-vi.mock('../components/MarkdownArea.jsx', () => ({
-    default: () => <div data-testid="markdown-area">MarkdownArea</div>, // Simplified
+vi.mock('../components/MarkdownAreaLazy', () => ({
+    default: () => <div data-testid="markdown-area">MarkdownArea</div>,
+}));
+
+vi.mock('../components/scales/ScaleSection', () => ({
+    default: () => <div data-testid="scale-section">ScaleSection</div>,
+}));
+
+vi.mock('../components/media/PhotoPicker', () => ({
+    default: () => <div data-testid="photo-picker">PhotoPicker</div>,
+}));
+
+vi.mock('../components/entry/TemplateSelector', () => ({
+    default: () => <div data-testid="template-selector">TemplateSelector</div>,
+}));
+
+vi.mock('../components/entry/VoiceRecorder', () => ({
+    default: () => <div data-testid="voice-recorder">VoiceRecorder</div>,
+}));
+
+vi.mock('../components/entry/VoicePlayer', () => ({
+    default: () => <div data-testid="voice-player">VoicePlayer</div>,
 }));
 
 // We need to mock the ref implementation for MarkdownArea since EntryView uses it
@@ -78,7 +101,7 @@ describe('EntryView', () => {
     it('renders mood picker when no mood selected', () => {
         render(<EntryView {...defaultProps} />);
         expect(screen.getByTestId('mood-picker')).toBeInTheDocument();
-        expect(screen.getByText('Pick your mood to start an entry')).toBeInTheDocument();
+        expect(screen.getByText('How are you feeling right now?')).toBeInTheDocument();
     });
 
     it('calls onSelectMood when mood is selected', () => {
@@ -90,7 +113,7 @@ describe('EntryView', () => {
     it('renders entry form when mood is selected', () => {
         render(<EntryView {...defaultProps} selectedMood={4} />);
         expect(screen.getByTestId('mood-display')).toHaveTextContent('Mood: 4');
-        expect(screen.getByText('← Back to History')).toBeInTheDocument();
+        expect(screen.getByText('Back to History')).toBeInTheDocument();
         expect(screen.getByText('Save Entry')).toBeInTheDocument();
     });
 });

@@ -39,6 +39,17 @@ const config: Config = {
           DEFAULT: "var(--card)",
           foreground: "var(--card-foreground)",
         },
+        // Theme-aware custom tokens
+        surface: "var(--surface)",
+        "accent-bg": "var(--accent-bg)",
+        "accent-bg-2": "var(--accent-bg-2)",
+        mood: {
+          1: "var(--mood-1)",
+          2: "var(--mood-2)",
+          3: "var(--mood-3)",
+          4: "var(--mood-4)",
+          5: "var(--mood-5)",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
