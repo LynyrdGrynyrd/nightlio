@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Flame, LogOut, Sun, Moon } from 'lucide-react';
+import { Flame, LogOut, Sun, Moon, Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useConfig } from '../contexts/ConfigContext';
-import { useTheme } from '../contexts/ThemeContext';
+import { ThemeId, useTheme } from '../contexts/ThemeContext';
 import { useToast } from './ui/ToastProvider';
 import useHotkeyManager from '../hooks/useHotkeyManager';
 import SearchPlaceholder from './search/SearchPlaceholder';
@@ -23,10 +24,14 @@ interface HeaderProps {
   currentStreak: number;
 }
 
+const NIGHT_THEMES = new Set<ThemeId>(['night-journal', 'dark', 'ocean', 'forest', 'sunset', 'lavender', 'midnight', 'oled']);
+
 const Header = ({ currentStreak }: HeaderProps) => {
   const { user, logout, isMockMode } = useAuth();
   useConfig();
+  const navigate = useNavigate();
   const { theme, cycle } = useTheme();
+  const themeCycleIcon = NIGHT_THEMES.has(theme) ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />;
   useToast();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
@@ -44,7 +49,7 @@ const Header = ({ currentStreak }: HeaderProps) => {
   }, []);
 
   return (
-    <header className="h-16 border-b bg-card sticky top-0 z-20 px-3 sm:px-4 md:px-6 flex items-center gap-2 shadow-sm">
+    <header className="h-16 border-b border-border/70 bg-card/90 backdrop-blur sticky top-0 z-20 px-3 sm:px-4 md:px-6 flex items-center gap-2 shadow-sm">
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
 
       <div className="flex items-center gap-2 min-w-0 shrink-0">
@@ -56,7 +61,7 @@ const Header = ({ currentStreak }: HeaderProps) => {
         {currentStreak > 0 && (
           <Badge variant="secondary" className="gap-1.5 hidden sm:flex">
             <Flame size={14} className="text-[color:var(--warning)] fill-[color:var(--warning)]" aria-hidden="true" />
-            <span>{currentStreak} Day Streak</span>
+            <span>{currentStreak} day rhythm</span>
           </Badge>
         )}
       </div>
@@ -86,7 +91,7 @@ const Header = ({ currentStreak }: HeaderProps) => {
             aria-label={`Current theme: ${theme}. Click to change theme`}
             className="hidden sm:inline-flex rounded-full"
           >
-            {theme === 'dark' ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
+            {themeCycleIcon}
           </Button>
 
           <DropdownMenu>
@@ -108,6 +113,10 @@ const Header = ({ currentStreak }: HeaderProps) => {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate('/dashboard/settings')}>
+                <Settings className="mr-2 h-4 w-4" aria-hidden="true" />
+                <span>Settings</span>
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={logout}>
                 <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
                 <span>Log out</span>

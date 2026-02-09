@@ -19,6 +19,7 @@ export interface PublicConfig {
   google_client_id?: string;
   enable_google_oauth?: boolean;
   enable_registration?: boolean;
+  enable_local_login?: boolean;
   features?: string[];
 }
 

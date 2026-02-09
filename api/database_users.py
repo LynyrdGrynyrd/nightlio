@@ -5,10 +5,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Dict, Optional
 
-try:  # pragma: no cover - support script imports
-    from .database_common import DatabaseConnectionMixin, SQLQueries
-except ImportError:  # pragma: no cover
-    from database_common import DatabaseConnectionMixin, SQLQueries  # type: ignore
+from api.database_common import DatabaseConnectionMixin, SQLQueries
 
 
 class UsersMixin(DatabaseConnectionMixin):
@@ -21,39 +18,31 @@ class UsersMixin(DatabaseConnectionMixin):
         name: str,
         avatar_url: Optional[str] = None,
     ) -> int:
-        with self._connect() as conn:
-            cursor = conn.execute(
-                SQLQueries.CREATE_USER,
-                (google_id, email, name, avatar_url),
-            )
-            conn.commit()
-            return int(cursor.lastrowid or 0)
+        cursor = self._query(
+            SQLQueries.CREATE_USER,
+            (google_id, email, name, avatar_url),
+            commit=True,
+        )
+        return int(cursor.lastrowid or 0)
 
     def get_user_by_google_id(self, google_id: str) -> Optional[Dict]:
-        with self._connect() as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.execute(SQLQueries.GET_USER_BY_GOOGLE_ID, (google_id,))
-            row = cursor.fetchone()
-            return dict(row) if row else None
+        row = self._query(SQLQueries.GET_USER_BY_GOOGLE_ID, (google_id,)).fetchone()
+        return dict(row) if row else None
 
     def get_user_by_id(self, user_id: int) -> Optional[Dict]:
-        with self._connect() as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.execute(SQLQueries.GET_USER_BY_ID, (user_id,))
-            row = cursor.fetchone()
-            return dict(row) if row else None
+        row = self._query(SQLQueries.GET_USER_BY_ID, (user_id,)).fetchone()
+        return dict(row) if row else None
 
     def update_user_last_login(self, user_id: int) -> None:
-        with self._connect() as conn:
-            conn.execute(
-                """
-                UPDATE users
-                   SET last_login = CURRENT_TIMESTAMP
-                 WHERE id = ?
-                """,
-                (user_id,),
-            )
-            conn.commit()
+        self._query(
+            """
+            UPDATE users
+               SET last_login = CURRENT_TIMESTAMP
+             WHERE id = ?
+            """,
+            (user_id,),
+            commit=True,
+        )
 
     def upsert_user_by_google_id(
         self,
@@ -62,31 +51,24 @@ class UsersMixin(DatabaseConnectionMixin):
         name: Optional[str],
         avatar_url: Optional[str] = None,
     ) -> Optional[Dict]:
-        with self._connect() as conn:
-            conn.row_factory = sqlite3.Row
-            conn.execute("BEGIN IMMEDIATE")
+        with self._write_transaction() as conn:
             try:
-                try:
-                    cursor = conn.execute(
-                        SQLQueries.UPSERT_USER
-                        + " RETURNING id, google_id, email, name, avatar_url, created_at, last_login",
-                        (google_id, email, name, avatar_url),
-                    )
-                    row = cursor.fetchone()
-                except sqlite3.OperationalError:
-                    conn.execute(
-                        SQLQueries.UPSERT_USER,
-                        (google_id, email, name, avatar_url),
-                    )
-                    row = conn.execute(
-                        SQLQueries.GET_USER_BY_GOOGLE_ID,
-                        (google_id,),
-                    ).fetchone()
-                conn.commit()
-                return dict(row) if row else None
-            except Exception:
-                conn.rollback()
-                raise
+                cursor = conn.execute(
+                    SQLQueries.UPSERT_USER
+                    + " RETURNING id, google_id, email, name, avatar_url, created_at, last_login",
+                    (google_id, email, name, avatar_url),
+                )
+                row = cursor.fetchone()
+            except sqlite3.OperationalError:
+                conn.execute(
+                    SQLQueries.UPSERT_USER,
+                    (google_id, email, name, avatar_url),
+                )
+                row = conn.execute(
+                    SQLQueries.GET_USER_BY_GOOGLE_ID,
+                    (google_id,),
+                ).fetchone()
+            return dict(row) if row else None
 
     # Whitelist of tables that have a user_id column for safe deletion
     _USER_DATA_TABLES = frozenset({
@@ -102,10 +84,7 @@ class UsersMixin(DatabaseConnectionMixin):
 
     def delete_user_data(self, user_id: int) -> None:
         """Permanently delete all data for a user."""
-        with self._connect() as conn:
-            # Enable foreign keys just in case
-            conn.execute("PRAGMA foreign_keys = ON")
-
+        with self._write_transaction() as conn:
             # Delete from whitelisted tables only (prevents SQL injection)
             for table in self._USER_DATA_TABLES:
                 try:
@@ -117,46 +96,40 @@ class UsersMixin(DatabaseConnectionMixin):
 
             # Finally delete user
             conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
-            conn.commit()
 
     def get_user_by_username(self, username: str) -> Optional[Dict]:
         """Get user by username."""
-        with self._connect() as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.execute(
-                "SELECT * FROM users WHERE username = ?",
-                (username,),
-            )
-            row = cursor.fetchone()
-            return dict(row) if row else None
+        row = self._query(
+            "SELECT * FROM users WHERE username = ?",
+            (username,),
+        ).fetchone()
+        return dict(row) if row else None
 
     def create_user_with_password(
         self, username: str, password_hash: str, email: str, name: str
     ) -> int:
         """Create a new user with username and password."""
-        with self._connect() as conn:
-            cursor = conn.execute(
-                """
-                INSERT INTO users (username, password_hash, email, name)
-                VALUES (?, ?, ?, ?)
-                """,
-                (username, password_hash, email, name),
-            )
-            conn.commit()
-            return int(cursor.lastrowid or 0)
+        cursor = self._query(
+            """
+            INSERT INTO users (username, password_hash, email, name)
+            VALUES (?, ?, ?, ?)
+            """,
+            (username, password_hash, email, name),
+            commit=True,
+        )
+        return int(cursor.lastrowid or 0)
 
     def update_password(self, user_id: int, password_hash: str) -> None:
         """Update user password."""
-        with self._connect() as conn:
-            conn.execute(
-                """
-                UPDATE users
-                SET password_hash = ?
-                WHERE id = ?
-                """,
-                (password_hash, user_id),
-            )
-            conn.commit()
+        self._query(
+            """
+            UPDATE users
+            SET password_hash = ?
+            WHERE id = ?
+            """,
+            (password_hash, user_id),
+            commit=True,
+        )
 
 
 __all__ = ["UsersMixin"]

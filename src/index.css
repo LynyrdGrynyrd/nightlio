@@ -1,39 +1,51 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap&font-display=swap");
+@font-face {
+  font-family: "Cabinet Grotesk";
+  src: url("/fonts/cabinet-grotesk/CabinetGrotesk-Variable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Literata";
+  src: url("/fonts/literata/Literata-Latin-Variable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Literata";
+  src: url("/fonts/literata/Literata-Latin-VariableItalic.woff2") format("woff2");
+  font-style: italic;
+  font-weight: 200 900;
+  font-display: swap;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/*
-  Global design system — calming, modern palette and 8px spacing grid.
-  We keep some legacy tokens for compatibility (e.g. --shadow-1, --bg-card).
-*/
 :root {
-  /* Colors */
-  --bg: #F7F8FB;
-  /* app background */
-  --surface: #FFFFFF;
-  /* cards, panels */
-  --text: #1F2937;
-  /* gray-800 */
-  --text-muted: #525f70;
-  /* improved contrast ~5.8:1 */
-  --border: #E6E8EC;
-  /* subtle dividers */
-  --border-soft: #F0F2F5;
-  /* extra soft */
+  /* Wellness day (default) */
+  --bg: #f8f2e8;
+  --surface: #fffaf2;
+  --text: #3b312b;
+  --text-muted: #74655a;
+  --border: #e8ddd0;
+  --border-soft: #efe7dc;
 
-  /* Calming teal/blue accent */
-  --accent-50: #EEF7F8;
-  --accent-100: #D6EEF0;
-  --accent-200: #BFE5E7;
-  --accent-400: #4FA9B3;
-  --accent-500: #348F99;
-  --accent-600: #2F7E89;
-  /* primary */
-  --accent-700: #22626B;
+  --accent-50: #f8eee0;
+  --accent-100: #f0dfc8;
+  --accent-200: #e6caac;
+  --accent-400: #c99872;
+  --accent-500: #b8845d;
+  --accent-600: #a36d4c;
+  --accent-700: #875a3f;
 
-  /* Typography */
-  --font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --font-family-ui: "Cabinet Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+  --font-family-journal: "Literata", "Iowan Old Style", "Times New Roman", serif;
+  --font-family: var(--font-family-ui);
   --font-size-base: 16px;
   --line-height-base: 1.5;
   --fw-regular: 400;
@@ -57,67 +69,45 @@
   /* Layout gutters */
   --gutter-page: var(--space-3);
 
-  /* Semantic accent backgrounds (used only for backgrounds) */
   --accent-bg: var(--accent-600);
   --accent-bg-2: var(--accent-700);
-  --accent-bg-soft: var(--accent-50);
-  /* subtle background tints */
-  --accent-bg-softer: color-mix(in oklab, var(--accent-600) 10%, transparent);
-  --accent-chip-bg: color-mix(in oklab, var(--accent-600) 16%, transparent);
-  /* chips/pills */
+  --accent-bg-soft: color-mix(in oklab, var(--accent-500) 20%, transparent);
+  --accent-bg-softer: color-mix(in oklab, var(--accent-500) 12%, transparent);
+  --accent-chip-bg: color-mix(in oklab, var(--accent-500) 22%, transparent);
 
-  /* Radii */
-  --radius: 12px;
-  --radius-sm: 8px;
-  --radius-1: 8px;
-  /* compat */
-  --radius-2: 12px;
-  /* compat */
-  --radius-3: 16px;
-  --radius-4: 24px;
+  --radius: 18px;
+  --radius-sm: 12px;
+  --radius-1: 12px;
+  --radius-2: 18px;
+  --radius-3: 24px;
+  --radius-4: 30px;
   --radius-pill: 9999px;
 
-  /* Shadows - Elevation levels:
-   * Level 0: none (flat elements)
-   * Level 1: shadow-sm (cards, inputs)
-   * Level 2: shadow-md (dropdowns, tooltips)
-   * Level 3: shadow-lg (modals, dialogs)
-   * Level 4: shadow-xl (FAB, floating elements)
-   */
-  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 1.5px rgba(16, 24, 40, 0.03);
-  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08), 0 2px 4px rgba(16, 24, 40, 0.06);
-  --shadow-lg: 0 10px 30px rgba(16, 24, 40, 0.10), 0 3px 6px rgba(16, 24, 40, 0.08);
-  /* compat */
+  --shadow-sm: 0 1px 3px rgba(76, 57, 43, 0.08), 0 8px 24px rgba(76, 57, 43, 0.06);
+  --shadow-md: 0 6px 24px rgba(76, 57, 43, 0.09), 0 14px 36px rgba(76, 57, 43, 0.06);
+  --shadow-lg: 0 10px 34px rgba(76, 57, 43, 0.12), 0 20px 50px rgba(76, 57, 43, 0.08);
   --shadow-1: var(--shadow-md);
   --shadow-2: var(--shadow-lg);
-  --shadow-3: 0 20px 60px rgba(16, 24, 40, 0.14);
+  --shadow-3: 0 24px 64px rgba(76, 57, 43, 0.12);
 
-  /* Interaction */
-  --ring: 0 0 0 3px rgba(47, 126, 137, 0.28);
+  --ring: 0 0 0 3px color-mix(in oklab, var(--accent-600) 28%, transparent);
 
-  /* Semantic status colors */
-  --success: #16a34a;
-  /* emerald-600 */
-  --danger: #ef4444;
-  /* red-500 */
-  /* Mood scale (light theme defaults) */
-  --mood-1: #ef4444;
-  /* red */
-  --mood-2: #f59e0b;
-  /* orange */
-  --mood-3: #facc15;
-  /* yellow */
-  --mood-4: #22c55e;
-  /* green */
-  --mood-5: #3b82f6;
-  /* blue */
+  --success: #6c8f66;
+  --danger: #cc6f5f;
+  --info: #7195a5;
+
+  /* Organic mood scale */
+  --mood-1: #c96d61;
+  --mood-2: #d18b58;
+  --mood-3: #c8ab72;
+  --mood-4: #8aa67c;
+  --mood-5: #6f93a8;
   --warning: var(--mood-2);
   --success-soft: color-mix(in oklab, var(--success) 16%, transparent);
   --warning-soft: color-mix(in oklab, var(--warning) 16%, transparent);
   --destructive-soft: color-mix(in oklab, var(--danger) 16%, transparent);
-  --overlay-foreground: #ffffff;
-  /* Overlays and skeleton shimmer */
-  --overlay: rgba(16, 24, 40, 0.45);
+  --overlay-foreground: #fffaf2;
+  --overlay: rgba(27, 20, 16, 0.42);
   --skeleton-a: rgba(0, 0, 0, 0.06);
   --skeleton-b: rgba(0, 0, 0, 0.12);
 
@@ -131,7 +121,6 @@
   --brand: var(--accent-600);
   --brand-2: var(--accent-700);
 
-  /* shadcn/ui tokens mapped to existing theme values */
   --background: var(--bg);
   --foreground: var(--text);
   --card: var(--surface);
@@ -139,7 +128,7 @@
   --popover: var(--surface);
   --popover-foreground: var(--text);
   --primary: var(--accent-600);
-  --primary-foreground: #ffffff;
+  --primary-foreground: #fffaf2;
   --secondary: var(--accent-bg-soft);
   --secondary-foreground: var(--text);
   --muted: var(--border-soft);
@@ -147,14 +136,18 @@
   --accent: var(--accent-bg-soft);
   --accent-foreground: var(--text);
   --destructive: var(--danger);
-  --destructive-foreground: #ffffff;
+  --destructive-foreground: #fffaf2;
   --input: var(--border);
   --ring-color: var(--accent-600);
 
-  /* Shared background gradient */
-  --gradient-background: radial-gradient(circle at top, rgba(80, 94, 255, 0.18), transparent 55%),
-    radial-gradient(circle at 20% 30%, rgba(255, 194, 99, 0.12), transparent 40%),
-    linear-gradient(180deg, var(--bg) 0%, var(--surface) 100%);
+  --gradient-background: radial-gradient(circle at 12% 12%, color-mix(in oklab, var(--accent-200) 48%, transparent), transparent 42%),
+    radial-gradient(circle at 78% 2%, color-mix(in oklab, var(--mood-5) 22%, transparent), transparent 40%),
+    linear-gradient(180deg, color-mix(in oklab, var(--bg) 90%, var(--surface)) 0%, var(--surface) 60%, color-mix(in oklab, var(--surface) 76%, var(--bg)) 100%);
+  --grain: repeating-linear-gradient(
+      45deg,
+      color-mix(in oklab, var(--text) 3%, transparent) 0 1px,
+      transparent 1px 4px
+    );
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -189,28 +182,32 @@ a:hover {
 }
 
 body {
+  position: relative;
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
   background: var(--gradient-background);
   background-attachment: fixed;
-  font-family: var(--font-family);
+  font-family: var(--font-family-ui);
   font-size: var(--font-size-base);
   line-height: var(--line-height-base);
   color: var(--fg-body);
 }
 
-/* Typography Scale:
- * h1: text-3xl font-bold (30px)
- * h2: text-2xl font-semibold (24px)
- * h3: text-xl font-semibold (20px)
- * h4: text-lg font-semibold (18px)
- * body: text-base (16px)
- * small: text-sm (14px)
- * caption: text-xs (12px)
- */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: var(--grain);
+  opacity: 0.16;
+  pointer-events: none;
+  z-index: -1;
+}
 
-/* Headings */
+.font-journal {
+  font-family: var(--font-family-journal);
+}
+
 h1,
 h2,
 h3,
@@ -221,6 +218,7 @@ h6 {
   color: inherit;
   line-height: 1.25;
   letter-spacing: -0.01em;
+  font-family: var(--font-family-ui);
 }
 
 h1 {
@@ -249,7 +247,7 @@ button:focus-visible {
 
 /* Primary button variant */
 button.primary {
-  color: #fff;
+  color: var(--primary-foreground);
   background: var(--accent-bg);
   box-shadow: var(--shadow-sm);
 }
@@ -271,6 +269,59 @@ button.primary:disabled {
 }
 
 /* Theme overrides (optional). Keep accent consistent. */
+html[data-theme="wellness-day"] {
+  --bg: #f8f2e8;
+  --surface: #fffaf2;
+  --text: #3b312b;
+  --text-muted: #74655a;
+  --border: #e8ddd0;
+  --bg-card: var(--surface);
+  --fg-body: var(--text);
+  --gradient-background: radial-gradient(circle at 12% 12%, color-mix(in oklab, var(--accent-200) 48%, transparent), transparent 42%),
+    radial-gradient(circle at 78% 2%, color-mix(in oklab, var(--mood-5) 22%, transparent), transparent 40%),
+    linear-gradient(180deg, color-mix(in oklab, var(--bg) 90%, var(--surface)) 0%, var(--surface) 60%, color-mix(in oklab, var(--surface) 76%, var(--bg)) 100%);
+  color-scheme: light;
+}
+
+html[data-theme="night-journal"] {
+  --bg: #1f1713;
+  --surface: #2a211c;
+  --text: #f2dfc8;
+  --text-muted: #c4a788;
+  --border: #463428;
+  --bg-card: color-mix(in oklab, var(--surface) 92%, transparent);
+  --fg-body: var(--text);
+
+  --accent-50: #f2d7b3;
+  --accent-100: #e9c598;
+  --accent-200: #dfb57f;
+  --accent-400: #d2975f;
+  --accent-500: #bd7d4d;
+  --accent-600: #a96842;
+  --accent-700: #8a5235;
+
+  --accent-bg: color-mix(in oklab, var(--accent-500) 72%, #1b140f);
+  --accent-bg-2: color-mix(in oklab, var(--accent-700) 74%, #110c09);
+  --accent-bg-soft: color-mix(in oklab, var(--accent-400) 16%, transparent);
+  --accent-bg-softer: color-mix(in oklab, var(--accent-400) 10%, transparent);
+  --accent-chip-bg: color-mix(in oklab, var(--accent-500) 20%, transparent);
+
+  --mood-1: #cf7a68;
+  --mood-2: #cb9560;
+  --mood-3: #d0ae74;
+  --mood-4: #85a980;
+  --mood-5: #7fa0b5;
+
+  --overlay: rgba(9, 6, 4, 0.65);
+  --skeleton-a: rgba(255, 255, 255, 0.05);
+  --skeleton-b: rgba(255, 255, 255, 0.1);
+  --ring: 0 0 0 3px rgba(190, 124, 79, 0.35);
+  --gradient-background: radial-gradient(circle at 20% -8%, rgba(190, 124, 79, 0.18), transparent 40%),
+    radial-gradient(circle at 90% 0%, rgba(122, 93, 64, 0.22), transparent 45%),
+    linear-gradient(180deg, #1b1410 0%, #211813 35%, #2d221c 100%);
+  color-scheme: dark;
+}
+
 html[data-theme="light"] {
   --bg: #F7F8FB;
   --surface: #FFFFFF;
@@ -643,6 +694,38 @@ a,
 [data-stat],
 .stat-value {
   font-variant-numeric: tabular-nums;
+}
+
+@keyframes breathe-soft {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.88;
+  }
+
+  50% {
+    transform: scale(1.03);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-warm {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--mood-4) 0%, transparent);
+  }
+
+  40% {
+    box-shadow: 0 0 0 10px color-mix(in oklab, var(--mood-4) 18%, transparent);
+  }
+}
+
+.breathe-soft {
+  animation: breathe-soft 4.6s ease-in-out infinite;
+}
+
+.pulse-warm {
+  animation: pulse-warm 1.35s ease-out 2;
 }
 
 @media (prefers-reduced-motion: reduce) {

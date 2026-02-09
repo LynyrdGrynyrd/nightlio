@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiService, { Group, CreateGroupData, CreateGroupOptionData } from '../services/api';
+import { queryKeys } from '../lib/queryKeys';
 
 interface UseGroupsReturn {
   groups: Group[];
@@ -12,124 +14,150 @@ interface UseGroupsReturn {
   refreshGroups: () => Promise<void>;
 }
 
+const GROUPS_KEY = queryKeys.groups.list();
+
 export const useGroups = (): UseGroupsReturn => {
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  // Use ref to avoid stale closures in callbacks
-  const groupsRef = useRef(groups);
-  useEffect(() => { groupsRef.current = groups; }, [groups]);
+  const { data, isLoading, error: queryError } = useQuery({
+    queryKey: GROUPS_KEY,
+    queryFn: () => apiService.getGroups(),
+  });
 
-  const loadGroups = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const createGroupMutation = useMutation({
+    mutationFn: (name: string) => {
+      const groupData: CreateGroupData = { name };
+      return apiService.createGroup(groupData);
+    },
+    onSuccess: (newGroup) => {
+      queryClient.setQueryData<Group[]>(GROUPS_KEY, (prev) => [
+        ...(prev ?? []),
+        { ...newGroup, options: newGroup.options ?? [] },
+      ]);
+    },
+  });
 
-    try {
-      const data = await apiService.getGroups();
-      setGroups(data);
-    } catch (err) {
-      console.error('Failed to load groups:', err);
-      setError('Failed to load categories');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const createGroupOptionMutation = useMutation({
+    mutationFn: ({ groupId, name, icon }: { groupId: number; name: string; icon?: string }) => {
+      const optionData: CreateGroupOptionData = { name, icon };
+      return apiService.createGroupOption(groupId, optionData);
+    },
+    onSuccess: (newOption, { groupId }) => {
+      queryClient.setQueryData<Group[]>(GROUPS_KEY, (prev) =>
+        (prev ?? []).map((g) =>
+          g.id === groupId ? { ...g, options: [...g.options, newOption] } : g
+        ),
+      );
+    },
+  });
+
+  const deleteGroupMutation = useMutation({
+    mutationFn: (groupId: number) => apiService.deleteGroup(groupId),
+    onMutate: async (groupId) => {
+      await queryClient.cancelQueries({ queryKey: GROUPS_KEY });
+      const previous = queryClient.getQueryData<Group[]>(GROUPS_KEY);
+      queryClient.setQueryData<Group[]>(GROUPS_KEY, (prev) =>
+        (prev ?? []).filter((g) => g.id !== groupId),
+      );
+      return { previous };
+    },
+    onError: (_err, _groupId, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(GROUPS_KEY, context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.groups.all });
+    },
+  });
+
+  const moveGroupOptionMutation = useMutation({
+    mutationFn: ({ optionId, newGroupId }: { optionId: number; newGroupId: number }) =>
+      apiService.moveGroupOption(optionId, newGroupId),
+    onMutate: async ({ optionId, newGroupId }) => {
+      await queryClient.cancelQueries({ queryKey: GROUPS_KEY });
+      const previous = queryClient.getQueryData<Group[]>(GROUPS_KEY);
+      queryClient.setQueryData<Group[]>(GROUPS_KEY, (prev) => {
+        if (!prev) return prev;
+        let movedOption: Group['options'][0] | undefined;
+        const updated = prev.map((g) => {
+          const option = g.options.find((o) => o.id === optionId);
+          if (option) {
+            movedOption = option;
+            return { ...g, options: g.options.filter((o) => o.id !== optionId) };
+          }
+          return g;
+        });
+        if (movedOption) {
+          return updated.map((g) =>
+            g.id === newGroupId ? { ...g, options: [...g.options, movedOption!] } : g
+          );
+        }
+        return updated;
+      });
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(GROUPS_KEY, context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.groups.all });
+    },
+  });
 
   const createGroup = useCallback(async (name: string): Promise<boolean> => {
     try {
-      const groupData: CreateGroupData = { name };
-      const newGroup = await apiService.createGroup(groupData);
-      // Optimistic update: add the new group locally
-      setGroups(prev => [...prev, { ...newGroup, options: newGroup.options ?? [] }]);
+      await createGroupMutation.mutateAsync(name);
       return true;
-    } catch (err) {
-      console.error('Failed to create group:', err);
-      setError('Failed to create category');
+    } catch {
       return false;
     }
-  }, []);
+  }, [createGroupMutation]);
 
   const createGroupOption = useCallback(async (groupId: number, name: string, icon?: string): Promise<boolean> => {
     try {
-      const optionData: CreateGroupOptionData = { name, icon };
-      const newOption = await apiService.createGroupOption(groupId, optionData);
-      // Optimistic update: add option to the correct group locally
-      setGroups(prev => prev.map(g =>
-        g.id === groupId
-          ? { ...g, options: [...g.options, newOption] }
-          : g
-      ));
+      await createGroupOptionMutation.mutateAsync({ groupId, name, icon });
       return true;
-    } catch (err) {
-      console.error('Failed to create group option:', err);
-      setError('Failed to create option');
+    } catch {
       return false;
     }
-  }, []);
+  }, [createGroupOptionMutation]);
 
   const deleteGroup = useCallback(async (groupId: number): Promise<boolean> => {
-    const previousGroups = groupsRef.current;
-    // Optimistic update: remove group locally
-    setGroups(prev => prev.filter(g => g.id !== groupId));
     try {
-      await apiService.deleteGroup(groupId);
+      await deleteGroupMutation.mutateAsync(groupId);
       return true;
-    } catch (err) {
-      console.error('Failed to delete group:', err);
-      setError('Failed to delete category');
-      // Revert on failure
-      setGroups(previousGroups);
+    } catch {
       return false;
     }
-  }, []);
+  }, [deleteGroupMutation]);
 
   const moveGroupOption = useCallback(async (optionId: number, newGroupId: number): Promise<boolean> => {
-    const previousGroups = groupsRef.current;
-    // Optimistic update: move option between groups locally
-    setGroups(prev => {
-      let movedOption: typeof prev[0]['options'][0] | undefined;
-      const updated = prev.map(g => {
-        const option = g.options.find(o => o.id === optionId);
-        if (option) {
-          movedOption = option;
-          return { ...g, options: g.options.filter(o => o.id !== optionId) };
-        }
-        return g;
-      });
-      if (movedOption) {
-        return updated.map(g =>
-          g.id === newGroupId
-            ? { ...g, options: [...g.options, movedOption!] }
-            : g
-        );
-      }
-      return updated;
-    });
     try {
-      await apiService.moveGroupOption(optionId, newGroupId);
+      await moveGroupOptionMutation.mutateAsync({ optionId, newGroupId });
       return true;
-    } catch (err) {
-      console.error('Failed to move option:', err);
-      setError('Failed to move option');
-      // Revert on failure
-      setGroups(previousGroups);
+    } catch {
       return false;
     }
-  }, []);
+  }, [moveGroupOptionMutation]);
 
-  useEffect(() => {
-    loadGroups();
-  }, [loadGroups]);
+  const refreshGroups = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.groups.all });
+  }, [queryClient]);
+
+  const mutationError = createGroupMutation.error || createGroupOptionMutation.error
+    || deleteGroupMutation.error || moveGroupOptionMutation.error;
 
   return useMemo(() => ({
-    groups,
-    loading,
-    error,
+    groups: data ?? [],
+    loading: isLoading,
+    error: queryError ? 'Failed to load categories' : mutationError ? 'Operation failed' : null,
     createGroup,
     createGroupOption,
     deleteGroup,
     moveGroupOption,
-    refreshGroups: loadGroups,
-  }), [groups, loading, error, createGroup, createGroupOption, deleteGroup, moveGroupOption, loadGroups]);
+    refreshGroups,
+  }), [data, isLoading, queryError, mutationError, createGroup, createGroupOption, deleteGroup, moveGroupOption, refreshGroups]);
 };

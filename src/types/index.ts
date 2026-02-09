@@ -20,3 +20,6 @@ export * from './goals';
 
 // Media types
 export * from './media';
+
+// Mood circumplex sandbox types
+export * from './moodPlane';

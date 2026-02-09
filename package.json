@@ -26,7 +26,10 @@
   "scripts": {
     "dev": "vite",
     "build": "NODE_OPTIONS='--max-old-space-size=768' vite build",
+    "build:analyze": "ANALYZE=true NODE_OPTIONS='--max-old-space-size=768' vite build",
+    "check:bundle-size": "node ./scripts/check-bundle-size.mjs",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "lint:ui-colors": "./scripts/check-ui-color-consistency.sh",
     "preview": "vite preview",
     "api": "cd api && python3 -m venv venv && venv/bin/pip install -r requirements.txt && venv/bin/flask run --no-debugger",
@@ -38,11 +41,12 @@
     "setup": "./setup.sh",
     "test": "./test.sh",
     "test:ui": "vitest run",
-    "test:visual": "playwright test -c playwright.visual.config.ts"
+    "test:visual": "playwright test -c playwright.visual.config.ts",
+    "ci:bundle": "npm run build && npm run check:bundle-size"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
-    "@mdxeditor/editor": "^3.11.6",
+    "@mdxeditor/editor": "^3.52.3",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-aspect-ratio": "^1.1.8",
     "@radix-ui/react-avatar": "^1.1.11",
@@ -77,7 +81,7 @@
     "react-dom": "^19.1.1",
     "react-hook-form": "^7.71.1",
     "react-markdown": "^9.0.1",
-    "react-router-dom": "^7.9.6",
+    "react-router-dom": "^7.13.0",
     "recharts": "^2.12.7",
     "tailwind-merge": "^2.6.0",
     "zod": "^4.3.6"
@@ -103,7 +107,8 @@
     "rollup-plugin-visualizer": "^6.0.5",
     "tailwindcss": "^3.4.11",
     "tailwindcss-animate": "^1.0.7",
-    "vite": "^7.1.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
     "vite-plugin-pwa": "^1.2.0",
     "vitest": "^4.0.16"
   }

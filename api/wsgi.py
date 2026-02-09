@@ -29,23 +29,15 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
 
     if env == "production":
+        gunicorn_config = str(Path(__file__).with_name("gunicorn.conf.py"))
         cmd = [
             "gunicorn",
-            "--bind",
-            f"[::]:{port}",
-            "--workers",
-            "4",
-            "--timeout",
-            "120",
-            "--worker-class",
-            "sync",
-            "--access-logfile",
-            "-",
-            "--error-logfile",
-            "-",
+            "-c",
+            gunicorn_config,
             "wsgi:application",
         ]
         print(f"Starting Twilightio API with Gunicorn on port {port}")
+        print(f"Gunicorn config: {gunicorn_config}")
         print(f"Environment: {env}")
         print(
             f"Google Client ID: {'Set' if app.config.get('GOOGLE_CLIENT_ID') else 'Missing'}"

@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import apiService, { MoodEntry, GroupOption, Media } from '../services/api';
 import { ScaleEntryDisplay } from '../types/entry';
+import { queryKeys } from '../lib/queryKeys';
 
 export interface HydratedMoodEntry extends MoodEntry {
   selections: GroupOption[];
@@ -20,39 +22,32 @@ interface UseMoodDataReturn {
   refreshHistory: () => Promise<void>;
 }
 
+const MOOD_LIST_KEY = queryKeys.moods.list(['selections', 'media']);
+
 export const useMoodData = (): UseMoodDataReturn => {
-  const [pastEntries, setPastEntries] = useState<HydratedMoodEntry[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const loadHistory = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const { data, isLoading, error: queryError } = useQuery({
+    queryKey: MOOD_LIST_KEY,
+    queryFn: () => apiService.getMoodEntries({ include: ['selections', 'media'] }) as Promise<HydratedMoodEntry[]>,
+  });
 
-    try {
-      // Single API call with inline data (was 1 + N×2 calls before)
-      const hydratedEntries = await apiService.getMoodEntries({
-        include: ['selections', 'media']
-      }) as HydratedMoodEntry[];
+  const setPastEntries: React.Dispatch<React.SetStateAction<HydratedMoodEntry[]>> = useCallback((action) => {
+    queryClient.setQueryData<HydratedMoodEntry[]>(MOOD_LIST_KEY, (prev) => {
+      const current = prev ?? [];
+      return typeof action === 'function' ? action(current) : action;
+    });
+  }, [queryClient]);
 
-      setPastEntries(hydratedEntries);
-    } catch (err) {
-      console.error('Failed to load history:', err);
-      setError('Failed to load mood history');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadHistory();
-  }, [loadHistory]);
+  const refreshHistory = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.moods.all });
+  }, [queryClient]);
 
   return useMemo(() => ({
-    pastEntries,
+    pastEntries: data ?? [],
     setPastEntries,
-    loading,
-    error,
-    refreshHistory: loadHistory,
-  }), [pastEntries, setPastEntries, loading, error, loadHistory]);
+    loading: isLoading,
+    error: queryError ? 'Failed to load mood history' : null,
+    refreshHistory,
+  }), [data, setPastEntries, isLoading, queryError, refreshHistory]);
 };

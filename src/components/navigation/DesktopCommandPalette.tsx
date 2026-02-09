@@ -1,5 +1,5 @@
 import { type ComponentType, useMemo } from 'react';
-import { BarChart3, CalendarPlus2, CheckCircle2, Home, Search, Target, Trophy } from 'lucide-react';
+import { BookOpen, CalendarPlus2, CheckCircle2, Compass, Search, Settings, Sun } from 'lucide-react';
 import {
   CommandDialog,
   CommandEmpty,
@@ -14,12 +14,12 @@ import {
 interface DesktopCommandPaletteProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onOpenDashboard: () => void;
+  onOpenToday: () => void;
   onOpenSearch: () => void;
   onOpenEntry: () => void;
-  onOpenGoals: () => void;
-  onOpenStats: () => void;
-  onOpenAchievements: () => void;
+  onOpenJournal: () => void;
+  onOpenDiscover: () => void;
+  onOpenSettings: () => void;
   onCompleteGoal: () => void;
 }
 
@@ -37,25 +37,25 @@ interface CommandAction {
 const DesktopCommandPalette = ({
   open,
   onOpenChange,
-  onOpenDashboard,
+  onOpenToday,
   onOpenSearch,
   onOpenEntry,
-  onOpenGoals,
-  onOpenStats,
-  onOpenAchievements,
+  onOpenJournal,
+  onOpenDiscover,
+  onOpenSettings,
   onCompleteGoal,
 }: DesktopCommandPaletteProps) => {
   const actions = useMemo<CommandAction[]>(
     () => [
       {
-        id: 'nav-dashboard',
+        id: 'nav-today',
         group: 'Navigation',
-        label: 'Go to Dashboard',
+        label: 'Go to Today',
         hint: 'Return to your daily home view',
-        keywords: 'home dashboard overview',
+        keywords: 'home dashboard today overview',
         shortcut: '⌘K',
-        icon: Home,
-        onSelect: onOpenDashboard,
+        icon: Sun,
+        onSelect: onOpenToday,
       },
       {
         id: 'nav-search',
@@ -68,14 +68,24 @@ const DesktopCommandPalette = ({
         onSelect: onOpenSearch,
       },
       {
-        id: 'nav-achievements',
+        id: 'nav-journal',
         group: 'Navigation',
-        label: 'Go to Achievements',
-        hint: 'Review progress and rewards',
-        keywords: 'achievements awards rewards unlocks',
-        shortcut: 'A',
-        icon: Trophy,
-        onSelect: onOpenAchievements,
+        label: 'Go to Journal',
+        hint: 'Browse all entries and photos',
+        keywords: 'journal history entries browse photos gallery',
+        shortcut: 'J',
+        icon: BookOpen,
+        onSelect: onOpenJournal,
+      },
+      {
+        id: 'nav-discover',
+        group: 'Navigation',
+        label: 'Go to Discover',
+        hint: 'Analytics, insights, and achievements',
+        keywords: 'discover stats analytics trends charts achievements rewards',
+        shortcut: 'D',
+        icon: Compass,
+        onSelect: onOpenDiscover,
       },
       {
         id: 'entry-new',
@@ -88,16 +98,6 @@ const DesktopCommandPalette = ({
         onSelect: onOpenEntry,
       },
       {
-        id: 'goal-open',
-        group: 'Actions',
-        label: 'Open Goals',
-        hint: 'View and manage active goals',
-        keywords: 'goals habits tasks',
-        shortcut: 'G',
-        icon: Target,
-        onSelect: onOpenGoals,
-      },
-      {
         id: 'goal-complete',
         group: 'Actions',
         label: 'Complete Priority Goal',
@@ -108,24 +108,24 @@ const DesktopCommandPalette = ({
         onSelect: onCompleteGoal,
       },
       {
-        id: 'stats-open',
+        id: 'nav-settings',
         group: 'Actions',
-        label: 'Open Statistics',
-        hint: 'Review trends and analytics',
-        keywords: 'stats analytics trends charts',
-        shortcut: 'S',
-        icon: BarChart3,
-        onSelect: onOpenStats,
+        label: 'Settings',
+        hint: 'Manage your preferences',
+        keywords: 'settings preferences config theme',
+        shortcut: '',
+        icon: Settings,
+        onSelect: onOpenSettings,
       },
     ],
     [
       onCompleteGoal,
-      onOpenAchievements,
-      onOpenDashboard,
+      onOpenDiscover,
       onOpenEntry,
-      onOpenGoals,
+      onOpenJournal,
       onOpenSearch,
-      onOpenStats,
+      onOpenSettings,
+      onOpenToday,
     ]
   );
 
@@ -159,7 +159,7 @@ const DesktopCommandPalette = ({
                   <span className="text-sm font-medium leading-tight">{action.label}</span>
                   <span className="text-xs text-muted-foreground leading-tight">{action.hint}</span>
                 </div>
-                <CommandShortcut>{action.shortcut}</CommandShortcut>
+                {action.shortcut && <CommandShortcut>{action.shortcut}</CommandShortcut>}
               </CommandItem>
             );
           })}
@@ -183,7 +183,7 @@ const DesktopCommandPalette = ({
                   <span className="text-sm font-medium leading-tight">{action.label}</span>
                   <span className="text-xs text-muted-foreground leading-tight">{action.hint}</span>
                 </div>
-                <CommandShortcut>{action.shortcut}</CommandShortcut>
+                {action.shortcut && <CommandShortcut>{action.shortcut}</CommandShortcut>}
               </CommandItem>
             );
           })}

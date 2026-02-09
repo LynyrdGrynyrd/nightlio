@@ -1,5 +1,6 @@
 import { LucideIcon, PlusCircle, Sparkles, FolderOpen, List, Camera, Target, Calendar, Heart } from 'lucide-react';
 import { Button } from './button';
+import WellnessIllustration, { WellnessIllustrationVariant } from './WellnessIllustration';
 
 type IconName = 'sparkles' | 'folder' | 'list' | 'plus' | 'camera' | 'target' | 'calendar' | 'heart';
 type EmptyStateVariant = 'default' | 'firstEntry' | 'noEntriesThisWeek' | 'noPhotos' | 'noGoals' | 'noHistory' | 'noStats' | 'emptyFolder';
@@ -8,6 +9,7 @@ interface EmptyStateVariantConfig {
   title: string;
   message: string;
   icon: LucideIcon;
+  illustration: WellnessIllustrationVariant;
 }
 
 interface EmptyStateProps {
@@ -21,44 +23,52 @@ interface EmptyStateProps {
 
 const EMPTY_STATE_VARIANTS: Record<EmptyStateVariant, EmptyStateVariantConfig> = {
   default: {
-    title: "Nothing here yet",
-    message: "Time to start something new! ✨",
-    icon: Sparkles
+    title: "A quiet space for something new",
+    message: "When you are ready, begin with one small check-in.",
+    icon: Sparkles,
+    illustration: 'sparkles',
   },
   firstEntry: {
-    title: "Your first entry!",
-    message: "Let's make some history! This is where your journey begins. 🌟",
-    icon: Sparkles
+    title: "Your first entry is waiting",
+    message: "Capture today in a few words and your story begins from here.",
+    icon: Sparkles,
+    illustration: 'journey',
   },
   noEntriesThisWeek: {
-    title: "A fresh week awaits",
-    message: "What will you feel first? Every moment is a new beginning. 🌱",
-    icon: Calendar
+    title: "A fresh week to listen inward",
+    message: "One entry is enough to re-open your rhythm.",
+    icon: Calendar,
+    illustration: 'calendar',
   },
   noPhotos: {
-    title: "Gallery is empty",
-    message: "Capture a moment today! Photos bring entries to life. 📸",
-    icon: Camera
+    title: "No photos yet",
+    message: "Add a small visual memory when a moment feels meaningful.",
+    icon: Camera,
+    illustration: 'photos',
   },
   noGoals: {
-    title: "No goals yet",
-    message: "Set an intention for tomorrow! Small steps lead to big changes. 🎯",
-    icon: Target
+    title: "No intentions set yet",
+    message: "Set one gentle goal to support tomorrow's mood.",
+    icon: Target,
+    illustration: 'goals',
   },
   noHistory: {
-    title: "Your story starts here",
-    message: "Every great journey begins with a single step. Start logging! 📖",
-    icon: Heart
+    title: "Your journal opens here",
+    message: "A short reflection today can become a meaningful pattern over time.",
+    icon: Heart,
+    illustration: 'journey',
   },
   noStats: {
-    title: "Not enough data yet",
-    message: "Keep journaling! Insights appear after a few entries. 📊",
-    icon: List
+    title: "Insights need a little more time",
+    message: "Keep checking in and your mood landscape will begin to take shape.",
+    icon: List,
+    illustration: 'insights',
   },
   emptyFolder: {
     title: "This folder is empty",
     message: "Add some items to get started!",
-    icon: FolderOpen
+    icon: FolderOpen,
+    illustration: 'folder',
   }
 };
 
@@ -92,9 +102,10 @@ const EmptyState = ({
   const IconComponent = getIcon();
 
   return (
-    <div className="flex flex-col items-center justify-center p-8 text-center rounded-2xl bg-muted/50 border border-dashed border-border w-full min-h-[200px] animate-in fade-in duration-300">
-      <div className="w-16 h-16 mb-4 rounded-full bg-accent flex items-center justify-center text-accent-foreground">
-        <IconComponent size={32} />
+    <div className="flex flex-col items-center justify-center p-8 text-center rounded-[calc(var(--radius)+6px)] bg-muted/40 border border-dashed border-border w-full min-h-[240px] animate-in fade-in duration-300">
+      <WellnessIllustration variant={variantConfig.illustration} className="mb-5" />
+      <div className="w-12 h-12 mb-3 rounded-full bg-accent/60 flex items-center justify-center text-accent-foreground border border-border/60 shadow-sm">
+        <IconComponent size={20} />
       </div>
 
       <h3 className="text-xl font-bold text-foreground mb-2">

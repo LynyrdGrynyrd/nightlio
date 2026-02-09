@@ -1,7 +1,5 @@
 from flask import Blueprint, request, jsonify, current_app
 import os
-from authlib.integrations.requests_client import OAuth2Session
-from authlib.common.errors import AuthlibBaseError
 import requests
 from jose import jwt, JWTError
 from datetime import datetime, timedelta, timezone
@@ -25,18 +23,11 @@ def create_auth_routes(user_service: UserService, login_attempt_service: LoginAt
             data = request.json
             google_token = data.get("token")
 
-            current_app.logger.info(
-                f"Received Google auth request with token: {google_token[:50] if google_token else 'None'}..."
-            )
-
             if not google_token:
                 return jsonify({"error": "Google token is required"}), 400
 
             # Verify Google token
             google_user_info = verify_google_token(google_token)
-            current_app.logger.info(
-                f"Google token verification result: {google_user_info}"
-            )
 
             if not google_user_info:
                 return jsonify({"error": "Invalid Google token"}), 401
@@ -111,6 +102,12 @@ def create_auth_routes(user_service: UserService, login_attempt_service: LoginAt
         """Local self-host login: ensure a single default user and issue JWT."""
         try:
             cfg = get_config()
+            local_login_enabled = bool(
+                current_app.config.get("ENABLE_LOCAL_LOGIN", cfg.ENABLE_LOCAL_LOGIN)
+            )
+            if not local_login_enabled:
+                return jsonify({"error": "Local login is disabled"}), 403
+
             default_user_id = cfg.DEFAULT_SELF_HOST_ID
 
             # Use friendlier display for the self-hosted user
@@ -123,22 +120,7 @@ def create_auth_routes(user_service: UserService, login_attempt_service: LoginAt
                 default_user_id, default_name, default_email
             )
 
-            # Prefer typed JWT secret; fallback to legacy config
-            jwt_secret = cfg.JWT_SECRET or current_app.config.get("JWT_SECRET_KEY")
-            if not jwt_secret:
-                return jsonify({"error": "JWT not configured"}), 500
-
-            from jose import jwt as jose_jwt
-            from datetime import datetime, timedelta
-
-            payload = {
-                "user_id": user["id"],
-                "exp": datetime.now(timezone.utc)
-                + timedelta(seconds=current_app.config["JWT_ACCESS_TOKEN_EXPIRES"]),
-                "iat": datetime.now(timezone.utc),
-            }
-
-            token = jose_jwt.encode(payload, jwt_secret, algorithm="HS256")
+            token = generate_jwt_token(user["id"])
 
             return (
                 jsonify(
@@ -362,17 +344,10 @@ def create_auth_routes(user_service: UserService, login_attempt_service: LoginAt
     def verify_google_token(token: str) -> dict:
         """Verify Google OAuth token and return user info"""
         try:
-            current_app.logger.info(f"Verifying Google token with Google API...")
-
             # Verify token with Google
             response = requests.get(
                 f"https://oauth2.googleapis.com/tokeninfo?id_token={token}", timeout=10
             )
-
-            current_app.logger.info(
-                f"Google API response status: {response.status_code}"
-            )
-            current_app.logger.info(f"Google API response: {response.text}")
 
             if response.status_code != 200:
                 current_app.logger.error(
@@ -381,19 +356,13 @@ def create_auth_routes(user_service: UserService, login_attempt_service: LoginAt
                 return None
 
             user_info = response.json()
-            current_app.logger.info(f"Google user info: {user_info}")
 
             # Verify the token is for our app
             expected_client_id = current_app.config["GOOGLE_CLIENT_ID"]
             actual_client_id = user_info.get("aud")
 
-            current_app.logger.info(f"Expected client ID: {expected_client_id}")
-            current_app.logger.info(f"Actual client ID: {actual_client_id}")
-
             if actual_client_id != expected_client_id:
-                current_app.logger.error(
-                    f"Client ID mismatch: expected {expected_client_id}, got {actual_client_id}"
-                )
+                current_app.logger.warning("Google token audience mismatch")
                 return None
 
             return user_info

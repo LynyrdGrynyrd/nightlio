@@ -4,7 +4,6 @@
  */
 
 import { ApiClient, API_BASE_URL } from './apiClient';
-import { ResponseCache, responseCache } from './cache';
 import {
   createAuthEndpoints,
   createMoodEndpoints,
@@ -40,8 +39,8 @@ class ApiService {
   private importantDays: ReturnType<typeof createImportantDaysEndpoints>;
   private settings: ReturnType<typeof createSettingsEndpoints>;
 
-  constructor(cache: ResponseCache = responseCache) {
-    this.client = new ApiClient(cache);
+  constructor() {
+    this.client = new ApiClient();
     this.auth = createAuthEndpoints(this.client);
     this.moods = createMoodEndpoints(this.client);
     this.statistics = createStatisticsEndpoints(this.client);
@@ -57,11 +56,6 @@ class ApiService {
   // ========== Auth Token Management ==========
   setAuthToken(token: string): void {
     this.client.setAuthToken(token);
-  }
-
-  // ========== Cache Management ==========
-  invalidateCache(pattern?: string): void {
-    this.client.invalidateCache(pattern);
   }
 
   // ========== Public Config ==========
@@ -90,6 +84,7 @@ class ApiService {
     score: number,
     updates: Parameters<typeof this.moods.updateMoodDefinition>[1]
   ) => this.moods.updateMoodDefinition(score, updates);
+  getJournalStats = () => this.moods.getJournalStats();
 
   // ========== Statistics ==========
   getStatistics = () => this.statistics.getStatistics();

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import logging
 import sqlite3
-import time
-from typing import Any, Dict, Iterable, Optional, Sequence
+import threading
+from contextlib import contextmanager
+from typing import Any, Dict, Generator, Iterable, Optional, Sequence
 
 # Configure logging once for all database modules
 logging.basicConfig(level=logging.INFO)
@@ -77,6 +78,12 @@ class SQLQueries:
     )
 
 
+# Module-level write lock shared across all instances within a process.
+# Serializes write transactions to prevent intra-process contention
+# (e.g. DaylioImportService's ThreadPoolExecutor running alongside requests).
+_write_lock = threading.Lock()
+
+
 class DatabaseConnectionMixin:
     """Provides connection helpers shared across database mixins."""
 
@@ -90,44 +97,64 @@ class DatabaseConnectionMixin:
             conn.execute("PRAGMA foreign_keys=ON")
             # Set busy timeout for when database is locked by another process
             conn.execute("PRAGMA busy_timeout=30000")
+            # WAL allows concurrent reads while a write is in progress
+            conn.execute("PRAGMA journal_mode=WAL")
             return conn
         except sqlite3.Error as exc:  # pragma: no cover - rare failure
             logger.error("Failed to connect to database: %s", exc)
             raise DatabaseError(f"Database connection failed: {exc}") from exc
 
-    def _execute_with_retry(
-        self,
-        query: str,
-        params: Sequence[Any] | Iterable[Any] = (),
-        retries: int = 3,
-    ) -> sqlite3.Cursor:
-        """Execute a statement with basic retry handling for database locks."""
-        for attempt in range(retries):
-            try:
-                conn = self._connect()
-                try:
-                    cursor = conn.execute(query, tuple(params))
-                    conn.commit()
-                    return cursor
-                finally:
-                    conn.close()
-            except sqlite3.OperationalError as exc:
-                if "database is locked" in str(exc) and attempt < retries - 1:
-                    delay = 0.1 * (attempt + 1)
-                    logger.warning(
-                        "Database locked (attempt %s). Retrying in %.2fs...",
-                        attempt + 1,
-                        delay,
-                    )
-                    time.sleep(delay)
-                    continue
-                logger.error("Database operation failed: %s", exc)
-                raise DatabaseError(f"Database operation failed: {exc}") from exc
-            except sqlite3.Error as exc:
-                logger.error("Database error: %s", exc)
-                raise DatabaseError(f"Database error: {exc}") from exc
+    @contextmanager
+    def _conn(self) -> Generator[sqlite3.Connection, None, None]:
+        """Context manager providing a connection with row_factory pre-set."""
+        with self._connect() as conn:
+            conn.row_factory = sqlite3.Row
+            yield conn
 
-        raise DatabaseError("Database operation failed after all retries")
+    def _query(
+        self,
+        sql: str,
+        params: Sequence[Any] = (),
+        *,
+        commit: bool = False,
+    ) -> sqlite3.Cursor:
+        """Execute SQL and return the cursor.
+
+        Automatically sets ``row_factory = sqlite3.Row`` on the connection so
+        that rows are returned as dict-like ``sqlite3.Row`` objects.
+
+        Args:
+            sql: The SQL statement to execute.
+            params: Positional bind parameters.
+            commit: When ``True`` the transaction is committed after execution.
+        """
+        with self._connect() as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(sql, params)
+            if commit:
+                conn.commit()
+            return cursor
+
+    @contextmanager
+    def _write_transaction(self) -> Generator[sqlite3.Connection, None, None]:
+        """Context manager for serialized write transactions.
+
+        Acquires the module-level write lock, then opens a connection with
+        ``BEGIN IMMEDIATE`` so SQLite's reserved lock is taken upfront.
+        Commits on clean exit, rolls back on exception.
+        """
+        with _write_lock:
+            conn = self._connect()
+            conn.row_factory = sqlite3.Row
+            try:
+                conn.execute("BEGIN IMMEDIATE")
+                yield conn
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+            finally:
+                conn.close()
 
 
 __all__ = [

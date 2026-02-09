@@ -76,9 +76,9 @@ const HistoryList = memo(({ entries, loading, error, onDelete, onEdit }: History
     <div className="space-y-6 py-4">
       <ResponsiveGrid minCardWidth="17rem" maxColumns={5} gapToken="normal">
         <AddEntryCard />
-        {visibleEntries.map(entry => (
+        {visibleEntries.map((entry, index) => (
           <HistoryEntryCard
-            key={entry.id || entry.date}
+            key={entry.id ? `entry-${entry.id}` : `${entry.date}-${index}`}
             entry={entry}
             onDelete={onDelete}
             onEdit={onEdit}

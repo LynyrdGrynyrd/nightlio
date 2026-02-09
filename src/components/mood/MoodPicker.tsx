@@ -29,11 +29,11 @@ const MoodPicker = ({ onMoodSelect, selectedMood }: MoodPickerProps) => {
         const motionProps = prefersReducedMotion
           ? {}
           : {
-            whileHover: { scale: 1.1 },
-            whileTap: { scale: 0.95 },
+            whileHover: { scale: 1.08 },
+            whileTap: { scale: 0.96 },
             initial: { scale: 1 },
             animate: {
-              scale: isSelected ? 1.15 : 1,
+              scale: isSelected ? 1.13 : 1,
               opacity: isMuted ? 0.3 : 1,
             },
           };
@@ -43,9 +43,9 @@ const MoodPicker = ({ onMoodSelect, selectedMood }: MoodPickerProps) => {
             key={mood.value}
             onClick={() => onMoodSelect(mood.value)}
             className={cn(
-              "group flex flex-col items-center justify-center p-3 rounded-2xl outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+              "group flex flex-col items-center justify-center p-3 rounded-[calc(var(--radius)+2px)] outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-colors",
               moodTextClass[mood.value],
-              isSelected ? "bg-accent/10 shadow-inner" : "hover:bg-accent/5",
+              isSelected ? "bg-accent/15 shadow-inner pulse-warm" : "hover:bg-accent/5",
               isMuted && "grayscale opacity-40 hover:opacity-100 hover:grayscale-0"
             )}
             style={{ backgroundColor: isSelected ? 'var(--accent-bg-softer)' : 'transparent' }}

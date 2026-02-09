@@ -1,8 +1,9 @@
-import { useState, ChangeEvent } from 'react';
-import { Sliders, Plus, Trash2, RefreshCw, Pencil, X, Check } from 'lucide-react';
+import { useState, ChangeEvent, Dispatch, SetStateAction, ReactElement } from 'react';
+import { Sliders, Plus, Trash2, RefreshCw, Pencil, Check } from 'lucide-react';
 import { useScales } from '../../hooks/useScales';
 import { Scale, CreateScaleData } from '../../services/api';
 import { SCALE_DEFAULTS } from '../../constants/scaleConstants';
+import { normalizeColorValue } from '../../utils/colorUtils';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -67,22 +68,187 @@ const defaultFormData: ScaleFormData = {
   color_hex: SCALE_DEFAULTS.DEFAULT_COLOR,
 };
 
-const resolveColorToken = (value: string): string => {
-  if (typeof window === 'undefined') return value;
-  if (!value.startsWith('var(')) return value;
-  const varName = value.slice(4, -1);
-  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || value;
-};
+// --- ScaleFormDialog ---
 
-const normalizeColorValue = (value: string): string => {
-  const resolved = resolveColorToken(value);
-  if (typeof window === 'undefined') return resolved;
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return resolved;
-  ctx.fillStyle = resolved;
-  return ctx.fillStyle;
-};
+interface ScaleFormDialogProps {
+  mode: 'create' | 'edit';
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  formData: ScaleFormData;
+  setFormData: Dispatch<SetStateAction<ScaleFormData>>;
+  onSave: () => void;
+  saving: boolean;
+}
+
+function ScaleFormDialog({
+  mode,
+  open,
+  onOpenChange,
+  formData,
+  setFormData,
+  onSave,
+  saving,
+}: ScaleFormDialogProps): ReactElement {
+  const isCreate = mode === 'create';
+  const idPrefix = isCreate ? '' : 'edit-';
+
+  const handleInputChange = (field: keyof ScaleFormData) => (e: ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, [field]: e.target.value }));
+  };
+
+  const handleQuickSuggestion = (suggestion: typeof QUICK_SUGGESTIONS[0]) => {
+    setFormData(prev => ({
+      ...prev,
+      name: suggestion.name,
+      min_label: suggestion.min_label,
+      max_label: suggestion.max_label,
+      color_hex: normalizeColorValue(suggestion.colorToken),
+    }));
+  };
+
+  const handleColorPreset = (color: string) => {
+    setFormData(prev => ({ ...prev, color_hex: normalizeColorValue(color) }));
+  };
+
+  const handleCustomColor = (e: ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, color_hex: e.target.value }));
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{isCreate ? 'Create New Scale' : 'Edit Scale'}</DialogTitle>
+          <DialogDescription>
+            {isCreate
+              ? 'Add a custom scale to track alongside your mood entries'
+              : 'Update your scale settings'}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          {isCreate && (
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Quick start</Label>
+              <div className="flex flex-wrap gap-2">
+                {QUICK_SUGGESTIONS.map(suggestion => (
+                  <button
+                    key={suggestion.name}
+                    onClick={() => handleQuickSuggestion(suggestion)}
+                    className="px-2.5 py-1 text-xs rounded-full border hover:bg-muted transition-colors"
+                    style={{
+                      borderColor: suggestion.colorToken,
+                      color: formData.name === suggestion.name ? 'var(--primary-foreground)' : suggestion.colorToken,
+                      backgroundColor: formData.name === suggestion.name ? suggestion.colorToken : 'transparent',
+                    }}
+                  >
+                    {suggestion.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor={`${idPrefix}scale-name`}>Name</Label>
+            <Input
+              id={`${idPrefix}scale-name`}
+              value={formData.name}
+              onChange={handleInputChange('name')}
+              placeholder={isCreate ? 'e.g., Sleep Quality' : undefined}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor={`${idPrefix}min-label`}>Min Label</Label>
+              <Input
+                id={`${idPrefix}min-label`}
+                value={formData.min_label}
+                onChange={handleInputChange('min_label')}
+                placeholder={isCreate ? 'e.g., Poor' : undefined}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`${idPrefix}max-label`}>Max Label</Label>
+              <Input
+                id={`${idPrefix}max-label`}
+                value={formData.max_label}
+                onChange={handleInputChange('max_label')}
+                placeholder={isCreate ? 'e.g., Excellent' : undefined}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Color</Label>
+            <div className="flex flex-wrap gap-2">
+              {COLOR_PRESETS.map(color => (
+                <button
+                  key={color}
+                  onClick={() => handleColorPreset(color)}
+                  className="w-7 h-7 rounded-full transition-transform hover:scale-110"
+                  style={{
+                    backgroundColor: color,
+                    boxShadow: formData.color_hex === normalizeColorValue(color)
+                      ? `0 0 0 2px var(--background), 0 0 0 4px ${color}`
+                      : undefined,
+                  }}
+                />
+              ))}
+              <input
+                type="color"
+                value={normalizeColorValue(formData.color_hex)}
+                onChange={handleCustomColor}
+                className="w-7 h-7 rounded-full cursor-pointer"
+                title="Custom color"
+              />
+            </div>
+          </div>
+
+          {isCreate && formData.name && (
+            <div className="p-3 rounded-lg border bg-muted/30">
+              <p className="text-xs text-muted-foreground mb-2">Preview</p>
+              <div
+                className="p-3 rounded-lg border"
+                style={{ borderLeftWidth: '4px', borderLeftColor: formData.color_hex }}
+              >
+                <span className="font-medium" style={{ color: formData.color_hex }}>
+                  {formData.name}
+                </span>
+                <Slider
+                  value={[5]}
+                  min={formData.min_value}
+                  max={formData.max_value}
+                  disabled
+                  className="mt-2 w-full"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                  <span>{formData.min_label || formData.min_value}</span>
+                  <span>{formData.max_label || formData.max_value}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={onSave} disabled={!formData.name.trim() || saving}>
+            {saving
+              ? <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+              : <Check className="w-4 h-4 mr-2" />}
+            {isCreate ? 'Create Scale' : 'Save Changes'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// --- ScaleManager ---
 
 const ScaleManager = () => {
   const { scales, loading, error, createScale, updateScale, deleteScale } = useScales();
@@ -107,16 +273,6 @@ const ScaleManager = () => {
       color_hex: scale.color_hex || normalizeColorValue(SCALE_DEFAULTS.DEFAULT_COLOR),
     });
     setEditingScale(scale);
-  };
-
-  const handleQuickSuggestion = (suggestion: typeof QUICK_SUGGESTIONS[0]) => {
-    setFormData(prev => ({
-      ...prev,
-      name: suggestion.name,
-      min_label: suggestion.min_label,
-      max_label: suggestion.max_label,
-      color_hex: normalizeColorValue(suggestion.colorToken),
-    }));
   };
 
   const handleSaveCreate = async () => {
@@ -160,10 +316,6 @@ const ScaleManager = () => {
     if (success) {
       setDeleteConfirmScale(null);
     }
-  };
-
-  const handleInputChange = (field: keyof ScaleFormData) => (e: ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, [field]: e.target.value }));
   };
 
   if (loading) {
@@ -255,7 +407,6 @@ const ScaleManager = () => {
                 </div>
               </div>
 
-              {/* Preview slider */}
               <div className="mt-3">
                 <Slider
                   value={[Math.round(((scale.min_value ?? 1) + (scale.max_value ?? 10)) / 2)]}
@@ -270,213 +421,26 @@ const ScaleManager = () => {
         </div>
       )}
 
-      {/* Create Dialog */}
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Create New Scale</DialogTitle>
-            <DialogDescription>
-              Add a custom scale to track alongside your mood entries
-            </DialogDescription>
-          </DialogHeader>
+      <ScaleFormDialog
+        mode="create"
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        formData={formData}
+        setFormData={setFormData}
+        onSave={handleSaveCreate}
+        saving={saving}
+      />
 
-          <div className="space-y-4 py-4">
-            {/* Quick suggestions */}
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Quick start</Label>
-              <div className="flex flex-wrap gap-2">
-                {QUICK_SUGGESTIONS.map(suggestion => (
-                  <button
-                    key={suggestion.name}
-                    onClick={() => handleQuickSuggestion(suggestion)}
-                    className="px-2.5 py-1 text-xs rounded-full border hover:bg-muted transition-colors"
-                    style={{
-                      borderColor: suggestion.colorToken,
-                      color: formData.name === suggestion.name ? 'var(--primary-foreground)' : suggestion.colorToken,
-                      backgroundColor: formData.name === suggestion.name ? suggestion.colorToken : 'transparent',
-                    }}
-                  >
-                    {suggestion.name}
-                  </button>
-                ))}
-              </div>
-            </div>
+      <ScaleFormDialog
+        mode="edit"
+        open={!!editingScale}
+        onOpenChange={() => setEditingScale(null)}
+        formData={formData}
+        setFormData={setFormData}
+        onSave={handleSaveEdit}
+        saving={saving}
+      />
 
-            <div className="space-y-2">
-              <Label htmlFor="scale-name">Name</Label>
-              <Input
-                id="scale-name"
-                value={formData.name}
-                onChange={handleInputChange('name')}
-                placeholder="e.g., Sleep Quality"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="min-label">Min Label</Label>
-                <Input
-                  id="min-label"
-                  value={formData.min_label}
-                  onChange={handleInputChange('min_label')}
-                  placeholder="e.g., Poor"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="max-label">Max Label</Label>
-                <Input
-                  id="max-label"
-                  value={formData.max_label}
-                  onChange={handleInputChange('max_label')}
-                  placeholder="e.g., Excellent"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Color</Label>
-              <div className="flex flex-wrap gap-2">
-                {COLOR_PRESETS.map(color => (
-                  <button
-                    key={color}
-                    onClick={() => setFormData(prev => ({ ...prev, color_hex: normalizeColorValue(color) }))}
-                    className="w-7 h-7 rounded-full transition-transform hover:scale-110"
-                    style={{
-                      backgroundColor: color,
-                      boxShadow: formData.color_hex === normalizeColorValue(color)
-                        ? `0 0 0 2px var(--background), 0 0 0 4px ${color}`
-                        : undefined,
-                    }}
-                  />
-                ))}
-                <input
-                  type="color"
-                  value={normalizeColorValue(formData.color_hex)}
-                  onChange={(e) => setFormData(prev => ({ ...prev, color_hex: e.target.value }))}
-                  className="w-7 h-7 rounded-full cursor-pointer"
-                  title="Custom color"
-                />
-              </div>
-            </div>
-
-            {/* Preview */}
-            {formData.name && (
-              <div className="p-3 rounded-lg border bg-muted/30">
-                <p className="text-xs text-muted-foreground mb-2">Preview</p>
-                <div
-                  className="p-3 rounded-lg border"
-                  style={{ borderLeftWidth: '4px', borderLeftColor: formData.color_hex }}
-                >
-                  <span className="font-medium" style={{ color: formData.color_hex }}>
-                    {formData.name}
-                  </span>
-                  <Slider
-                    value={[5]}
-                    min={formData.min_value}
-                    max={formData.max_value}
-                    disabled
-                    className="mt-2 w-full"
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                    <span>{formData.min_label || formData.min_value}</span>
-                    <span>{formData.max_label || formData.max_value}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveCreate} disabled={!formData.name.trim() || saving}>
-              {saving ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
-              Create Scale
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Dialog */}
-      <Dialog open={!!editingScale} onOpenChange={() => setEditingScale(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Edit Scale</DialogTitle>
-            <DialogDescription>
-              Update your scale settings
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-scale-name">Name</Label>
-              <Input
-                id="edit-scale-name"
-                value={formData.name}
-                onChange={handleInputChange('name')}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-min-label">Min Label</Label>
-                <Input
-                  id="edit-min-label"
-                  value={formData.min_label}
-                  onChange={handleInputChange('min_label')}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-max-label">Max Label</Label>
-                <Input
-                  id="edit-max-label"
-                  value={formData.max_label}
-                  onChange={handleInputChange('max_label')}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Color</Label>
-              <div className="flex flex-wrap gap-2">
-                {COLOR_PRESETS.map(color => (
-                  <button
-                    key={color}
-                    onClick={() => setFormData(prev => ({ ...prev, color_hex: normalizeColorValue(color) }))}
-                    className="w-7 h-7 rounded-full transition-transform hover:scale-110"
-                    style={{
-                      backgroundColor: color,
-                      boxShadow: formData.color_hex === normalizeColorValue(color)
-                        ? `0 0 0 2px var(--background), 0 0 0 4px ${color}`
-                        : undefined,
-                    }}
-                  />
-                ))}
-                <input
-                  type="color"
-                  value={normalizeColorValue(formData.color_hex)}
-                  onChange={(e) => setFormData(prev => ({ ...prev, color_hex: e.target.value }))}
-                  className="w-7 h-7 rounded-full cursor-pointer"
-                  title="Custom color"
-                />
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingScale(null)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveEdit} disabled={!formData.name.trim() || saving}>
-              {saving ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation */}
       <AlertDialog open={!!deleteConfirmScale} onOpenChange={() => setDeleteConfirmScale(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

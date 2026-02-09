@@ -1,19 +1,23 @@
 import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
+import { STORAGE_KEYS } from '@/constants/storageKeys';
 
 // ========== Types ==========
 
 export interface Theme {
-  id: string;
+  id: ThemeId;
   name: string;
   icon: string;
+  section: ThemeSection;
 }
 
 export interface ThemeContextValue {
-  theme: string;
-  setTheme: (theme: string) => void;
+  theme: ThemeId;
+  setTheme: (theme: ThemeId) => void;
   customColor: string;
   setCustomColor: (color: string) => void;
   themes: Theme[];
+  primaryThemes: Theme[];
+  legacyThemes: Theme[];
   cycle: () => void;
 }
 
@@ -23,16 +27,74 @@ interface ThemeProviderProps {
 
 // ========== Constants ==========
 
+export type ThemeSection = 'primary' | 'legacy';
+
+export type ThemeId =
+  | 'wellness-day'
+  | 'night-journal'
+  | 'oled'
+  | 'light'
+  | 'dark'
+  | 'ocean'
+  | 'forest'
+  | 'sunset'
+  | 'lavender'
+  | 'midnight'
+  | 'custom';
+
+const DEFAULT_THEME: ThemeId = 'wellness-day';
+export const THEME_MIGRATION_V2 = 'wellness-day-hard-reset';
+
 const THEMES: Theme[] = [
-  { id: 'light', name: 'Light', icon: '☀️' },
-  { id: 'dark', name: 'Dark', icon: '🌙' },
-  { id: 'ocean', name: 'Ocean', icon: '🌊' },
-  { id: 'forest', name: 'Forest', icon: '🌲' },
-  { id: 'sunset', name: 'Sunset', icon: '🌅' },
-  { id: 'lavender', name: 'Lavender', icon: '💜' },
-  { id: 'midnight', name: 'Midnight', icon: '🌌' },
-  { id: 'oled', name: 'OLED', icon: '🖤' },
+  { id: 'wellness-day', name: 'Wellness Day', icon: '🌤️', section: 'primary' },
+  { id: 'night-journal', name: 'Night Journal', icon: '🕯️', section: 'primary' },
+  { id: 'oled', name: 'OLED', icon: '🖤', section: 'primary' },
+  { id: 'light', name: 'Light', icon: '☀️', section: 'legacy' },
+  { id: 'dark', name: 'Dark', icon: '🌙', section: 'legacy' },
+  { id: 'ocean', name: 'Ocean', icon: '🌊', section: 'legacy' },
+  { id: 'forest', name: 'Forest', icon: '🌲', section: 'legacy' },
+  { id: 'sunset', name: 'Sunset', icon: '🌅', section: 'legacy' },
+  { id: 'lavender', name: 'Lavender', icon: '💜', section: 'legacy' },
+  { id: 'midnight', name: 'Midnight', icon: '🌌', section: 'legacy' },
 ];
+
+const THEME_IDS = new Set<ThemeId>([
+  'wellness-day',
+  'night-journal',
+  'oled',
+  'light',
+  'dark',
+  'ocean',
+  'forest',
+  'sunset',
+  'lavender',
+  'midnight',
+  'custom',
+]);
+
+function isThemeId(value: string | null): value is ThemeId {
+  return value !== null && THEME_IDS.has(value as ThemeId);
+}
+
+function resolveInitialTheme(): ThemeId {
+  try {
+    const migrationVersion = localStorage.getItem(STORAGE_KEYS.THEME_MIGRATION_V2);
+    if (migrationVersion !== THEME_MIGRATION_V2) {
+      localStorage.setItem(STORAGE_KEYS.THEME_MIGRATION_V2, THEME_MIGRATION_V2);
+      localStorage.setItem(STORAGE_KEYS.THEME, DEFAULT_THEME);
+      return DEFAULT_THEME;
+    }
+
+    const storedTheme = localStorage.getItem(STORAGE_KEYS.THEME);
+    if (isThemeId(storedTheme)) {
+      return storedTheme;
+    }
+  } catch {
+    // Ignore storage access errors in privacy mode.
+  }
+
+  return DEFAULT_THEME;
+}
 
 // ========== Context ==========
 
@@ -41,19 +103,13 @@ const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 // ========== Provider ==========
 
 export const ThemeProvider = ({ children }: ThemeProviderProps) => {
-  const [theme, setTheme] = useState<string>(() => {
-    try {
-      return localStorage.getItem('twilightio:theme') || 'dark';
-    } catch {
-      return 'dark';
-    }
-  });
+  const [theme, setTheme] = useState<ThemeId>(resolveInitialTheme);
 
   const [customColor, setCustomColor] = useState<string>(() => {
     try {
-      return localStorage.getItem('twilightio:customColor') || '#3b82f6';
+      return localStorage.getItem(STORAGE_KEYS.CUSTOM_COLOR) || '#8a6f58';
     } catch {
-      return '#3b82f6';
+      return '#8a6f58';
     }
   });
 
@@ -61,7 +117,8 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
     const root = document.documentElement;
 
     if (theme === 'custom') {
-      root.setAttribute('data-theme', 'dark'); // Use dark as base
+      // Custom uses wellness-day as its tonal baseline.
+      root.setAttribute('data-theme', DEFAULT_THEME);
       // Inject custom colors using CSS color-mix for dynamic palette
       root.style.setProperty('--accent-50', `color-mix(in srgb, ${customColor}, white 95%)`);
       root.style.setProperty('--accent-100', `color-mix(in srgb, ${customColor}, white 90%)`);
@@ -93,10 +150,13 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
     }
 
     try {
-      localStorage.setItem('twilightio:theme', theme);
-      localStorage.setItem('twilightio:customColor', customColor);
+      localStorage.setItem(STORAGE_KEYS.THEME, theme);
+      localStorage.setItem(STORAGE_KEYS.CUSTOM_COLOR, customColor);
     } catch { /* ignore */ }
   }, [theme, customColor]);
+
+  const primaryThemes = useMemo(() => THEMES.filter((themeItem) => themeItem.section === 'primary'), []);
+  const legacyThemes = useMemo(() => THEMES.filter((themeItem) => themeItem.section === 'legacy'), []);
 
   const value = useMemo<ThemeContextValue>(() => ({
     theme,
@@ -104,12 +164,14 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
     customColor,
     setCustomColor,
     themes: THEMES,
+    primaryThemes,
+    legacyThemes,
     cycle: () => {
       const currentIndex = THEMES.findIndex(t => t.id === theme);
       const nextIndex = (currentIndex + 1) % THEMES.length;
       setTheme(THEMES[nextIndex].id);
     },
-  }), [theme, customColor]);
+  }), [theme, customColor, primaryThemes, legacyThemes]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 };

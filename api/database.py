@@ -5,42 +5,23 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-try:  # pragma: no cover - fallback for script execution
-    from .database_achievements import AchievementsMixin
-    from .database_analytics import AnalyticsMixin
-    from .database_common import (
-        DatabaseConnectionMixin,
-        DatabaseError,
-        SQLQueries,
-        logger,
-    )
-    from .database_goals import GoalsMixin
-    from .database_groups import GroupsMixin
-    from .database_important_days import ImportantDaysMixin
-    from .database_media import MediaMixin
-    from .database_moods import MoodEntriesMixin, MoodDefinitionMixin
-    from .database_scales import ScalesMixin
-    from .database_schema import DatabaseSchemaMixin
-    from .database_users import UsersMixin
-    from .database_settings import SettingsMixin
-except ImportError:  # pragma: no cover - executed when run as a script module
-    from database_achievements import AchievementsMixin  # type: ignore
-    from database_analytics import AnalyticsMixin  # type: ignore
-    from database_common import (  # type: ignore
-        DatabaseConnectionMixin,
-        DatabaseError,
-        SQLQueries,
-        logger,
-    )
-    from database_goals import GoalsMixin  # type: ignore
-    from database_groups import GroupsMixin  # type: ignore
-    from database_important_days import ImportantDaysMixin  # type: ignore
-    from database_media import MediaMixin  # type: ignore
-    from database_moods import MoodEntriesMixin, MoodDefinitionMixin  # type: ignore
-    from database_scales import ScalesMixin  # type: ignore
-    from database_schema import DatabaseSchemaMixin  # type: ignore
-    from database_users import UsersMixin  # type: ignore
-    from database_settings import SettingsMixin  # type: ignore
+from api.database_achievements import AchievementsMixin
+from api.database_analytics import AnalyticsMixin
+from api.database_common import (
+    DatabaseConnectionMixin,
+    DatabaseError,
+    SQLQueries,
+    logger,
+)
+from api.database_goals import GoalsMixin
+from api.database_groups import GroupsMixin
+from api.database_important_days import ImportantDaysMixin
+from api.database_media import MediaMixin
+from api.database_moods import MoodEntriesMixin, MoodDefinitionMixin
+from api.database_scales import ScalesMixin
+from api.database_schema import DatabaseSchemaMixin
+from api.database_users import UsersMixin
+from api.database_settings import SettingsMixin
 
 
 class MoodDatabase(

@@ -32,6 +32,12 @@
 - Use validators for request data: `validated = MoodEntryCreate(**data)`
 - Use response utilities: `return success_response(data=result)`
 
+### Database Concurrency
+- WAL mode enabled on all connections for concurrent reads during writes
+- Multi-statement writes use `_write_transaction()` (acquires lock + BEGIN IMMEDIATE)
+- Single-statement writes via `_query(commit=True)` are fine as-is (already atomic)
+- Read operations use `_conn()` or `_query()` as normal
+
 ## Frontend Conventions
 
 ### TypeScript

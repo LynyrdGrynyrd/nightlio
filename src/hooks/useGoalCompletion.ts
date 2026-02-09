@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback } from 'react';
 import apiService, { Goal } from '../services/api';
 import { getTodayISO } from '../utils/dateUtils';
 import {
@@ -6,138 +6,20 @@ import {
   setGoalCompletionDate,
   removeGoalCompletionDate,
 } from '../utils/browserUtils';
+import { isGoalDoneToday, mapGoalToExtras } from '../utils/goalUtils';
+import type { GoalWithExtras, GoalToggleResult } from '../types/goals';
 
-/**
- * Extended goal type with display properties
- */
-export interface GoalWithExtras extends Goal {
-  frequency: string;
-  completed: number;
-  total: number;
-  streak: number;
-  last_completed_date?: string | null;
-  _doneToday?: boolean;
-}
-
-interface GoalToggleResult {
-  id: number;
-  completed?: number;
-  frequency_per_week?: number;
-  streak?: number;
-  last_completed_date?: string | null;
-  already_completed_today?: boolean;
-  is_completed?: boolean;
-  blocked_by_schedule?: boolean;
-}
+export type { GoalWithExtras, GoalToggleResult };
+export { isGoalDoneToday, mapGoalToExtras };
 
 interface UseGoalCompletionOptions {
   onSuccess?: (message: string) => void;
   onError?: (message: string) => void;
 }
 
-/**
- * Determine if a goal is done today based on multiple sources
- */
-export const isGoalDoneToday = (
-  goal: Pick<Goal, 'id' | 'already_completed_today' | 'last_completed_date'>,
-  today: string = getTodayISO()
-): boolean => {
-  const localVal = getGoalCompletionDate(goal.id);
-  return (
-    localVal === today ||
-    goal.already_completed_today === true ||
-    goal.last_completed_date === today
-  );
-};
-
-const parseCustomDays = (value: Goal['custom_days']): number[] => {
-  if (Array.isArray(value)) {
-    return value
-      .map((day) => Number(day))
-      .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6)
-      .sort((a, b) => a - b);
-  }
-
-  if (typeof value === 'string' && value.trim().length > 0) {
-    try {
-      const parsed = JSON.parse(value);
-      if (Array.isArray(parsed)) {
-        return parsed
-          .map((day) => Number(day))
-          .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6)
-          .sort((a, b) => a - b);
-      }
-    } catch {
-      return [];
-    }
-  }
-
-  return [];
-};
-
-const getGoalTargetCount = (goal: Goal): number => {
-  const frequencyType = (goal.frequency_type || 'weekly') as Goal['frequency_type'];
-  const weeklyTarget = Number(goal.frequency_per_week || 1);
-  const explicitTarget = Number(goal.target_count || weeklyTarget || 1);
-
-  if (frequencyType === 'weekly') {
-    return Math.max(1, weeklyTarget || explicitTarget || 1);
-  }
-
-  if (frequencyType === 'custom') {
-    const customDays = parseCustomDays(goal.custom_days);
-    if (customDays.length > 0) {
-      return customDays.length;
-    }
-  }
-
-  return Math.max(1, explicitTarget || weeklyTarget || 1);
-};
-
-const formatGoalFrequency = (goal: Goal): string => {
-  const frequencyType = (goal.frequency_type || 'weekly') as Goal['frequency_type'];
-  const target = getGoalTargetCount(goal);
-
-  if (frequencyType === 'daily') {
-    return target === 1 ? 'Once daily' : `${target}x daily`;
-  }
-  if (frequencyType === 'monthly') {
-    return target === 1 ? 'Once monthly' : `${target}x monthly`;
-  }
-  if (frequencyType === 'custom') {
-    const customDays = parseCustomDays(goal.custom_days);
-    const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    if (customDays.length > 0 && customDays.length <= 4) {
-      return customDays.map((day) => labels[day] || '').filter(Boolean).join(', ');
-    }
-    return `${target} custom day${target === 1 ? '' : 's'} weekly`;
-  }
-  return `${target} day${target === 1 ? '' : 's'} a week`;
-};
-
-/**
- * Map API goal response to GoalWithExtras
- */
-export const mapGoalToExtras = (goal: Goal, today: string = getTodayISO()): GoalWithExtras => ({
-  ...goal,
-  frequency: formatGoalFrequency(goal),
-  completed: goal.completed ?? 0,
-  total: getGoalTargetCount(goal),
-  streak: goal.streak ?? 0,
-  last_completed_date: goal.last_completed_date || null,
-  _doneToday: isGoalDoneToday(goal, today),
-});
-
-/**
- * Hook for managing goal completion toggling with optimistic updates
- */
-export const useGoalCompletion = (options: UseGoalCompletionOptions = {}) => {
+function useGoalCompletion(options: UseGoalCompletionOptions = {}) {
   const { onSuccess, onError } = options;
 
-  /**
-   * Toggle goal completion for a specific date
-   * Handles optimistic updates, localStorage sync, API calls, and rollback on error
-   */
   const toggleGoalCompletion = useCallback(
     async (
       goalId: number,
@@ -154,7 +36,6 @@ export const useGoalCompletion = (options: UseGoalCompletionOptions = {}) => {
       const wasDoneToday =
         isTargetToday && (target._doneToday || target.last_completed_date === today);
 
-      // Optimistic localStorage update (only for today)
       if (isTargetToday) {
         if (wasDoneToday) {
           removeGoalCompletionDate(goalId);
@@ -162,7 +43,6 @@ export const useGoalCompletion = (options: UseGoalCompletionOptions = {}) => {
           setGoalCompletionDate(goalId, today);
         }
 
-        // Optimistic state update
         setGoals((prev) =>
           prev.map((g) =>
             g.id === goalId
@@ -183,7 +63,6 @@ export const useGoalCompletion = (options: UseGoalCompletionOptions = {}) => {
         const result = await apiService.toggleGoalCompletion(goalId, targetDate);
 
         if (result) {
-          // Update state with server response
           setGoals((prev) =>
             prev.map((g) => {
               if (g.id !== goalId) return g;
@@ -223,8 +102,6 @@ export const useGoalCompletion = (options: UseGoalCompletionOptions = {}) => {
 
         return null;
       } catch (error) {
-        // Rollback on error (only for today)
-        // Use fresh lookup from goals to avoid stale closure
         if (isTargetToday) {
           if (wasDoneToday) {
             setGoalCompletionDate(goalId, today);
@@ -233,7 +110,6 @@ export const useGoalCompletion = (options: UseGoalCompletionOptions = {}) => {
           }
 
           setGoals((prev) => {
-            // Re-find target from current state to get accurate values for rollback
             const currentTarget = prev.find((g) => g.id === goalId);
             return prev.map((g) =>
               g.id === goalId
@@ -258,9 +134,6 @@ export const useGoalCompletion = (options: UseGoalCompletionOptions = {}) => {
     [onSuccess, onError]
   );
 
-  /**
-   * Increment goal progress (mark as done for today, no toggle)
-   */
   const incrementProgress = useCallback(
     async (
       goalId: number,
@@ -271,10 +144,8 @@ export const useGoalCompletion = (options: UseGoalCompletionOptions = {}) => {
       const target = goals.find((g) => g.id === goalId);
       if (!target) return;
 
-      // Already done today - skip
       if (target.last_completed_date === today || target._doneToday) return;
 
-      // Optimistic update
       setGoalCompletionDate(goalId, today);
       setGoals((prev) =>
         prev.map((g) =>
@@ -329,7 +200,6 @@ export const useGoalCompletion = (options: UseGoalCompletionOptions = {}) => {
           })
         );
       } catch {
-        // Rollback
         const existing = getGoalCompletionDate(goalId);
         if (existing === today) {
           removeGoalCompletionDate(goalId);
@@ -350,9 +220,6 @@ export const useGoalCompletion = (options: UseGoalCompletionOptions = {}) => {
     [onError]
   );
 
-  /**
-   * Update goals state from server response
-   */
   const handleGoalUpdated = useCallback(
     (
       updatedGoal: Goal,
@@ -382,6 +249,7 @@ export const useGoalCompletion = (options: UseGoalCompletionOptions = {}) => {
     isGoalDoneToday,
     mapGoalToExtras,
   };
-};
+}
 
+export { useGoalCompletion };
 export default useGoalCompletion;

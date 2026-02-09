@@ -82,7 +82,7 @@ const HistoryEntry = memo(function HistoryEntry({ entry, onDelete, onEdit }: His
     <>
       <Card
         className={cn(
-          "group cursor-pointer transition-colors hover:border-primary/50 outline-none",
+          "group cursor-pointer transition-[border-color,box-shadow,transform] hover:border-primary/40 hover:shadow-md outline-none rounded-[calc(var(--radius)+2px)]",
           isDeleting && "opacity-50 pointer-events-none"
         )}
         onClick={openPreview}
@@ -95,7 +95,7 @@ const HistoryEntry = memo(function HistoryEntry({ entry, onDelete, onEdit }: His
           {/* Header */}
           <div className="flex items-center gap-3 mb-3">
             <div
-              className="flex items-center justify-center w-8 h-8 rounded-full border shadow-sm shrink-0"
+              className="flex items-center justify-center w-8 h-8 rounded-full border border-border/70 shadow-sm shrink-0"
               style={{
                 backgroundColor: 'var(--accent-bg-softer)',
                 color: color
@@ -117,10 +117,10 @@ const HistoryEntry = memo(function HistoryEntry({ entry, onDelete, onEdit }: His
           {/* Content */}
           <div className="space-y-2 mb-3">
             <h3 className="font-semibold text-base leading-snug text-foreground/90">
-              {title || 'Daily Entry'}
+              {title || 'Daily Reflection'}
             </h3>
             {excerpt && (
-              <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
+              <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed font-journal">
                 {excerpt}
               </p>
             )}
@@ -129,8 +129,8 @@ const HistoryEntry = memo(function HistoryEntry({ entry, onDelete, onEdit }: His
           {/* Media Preview */}
           {entry.media && entry.media.length > 0 && (
             <div className="flex gap-2 mb-4 overflow-hidden">
-              {entry.media.slice(0, 4).map(media => (
-                <div key={media.id} className="w-12 h-12 rounded-md overflow-hidden border shrink-0">
+              {entry.media.slice(0, 4).map((media, index) => (
+                <div key={`${media.id ?? 'media'}-${index}`} className="w-12 h-12 rounded-md overflow-hidden border shrink-0">
                   <img
                     src={`/api/media/${media.file_path}`}
                     alt="attachment"
@@ -152,11 +152,11 @@ const HistoryEntry = memo(function HistoryEntry({ entry, onDelete, onEdit }: His
           {/* Tags */}
           {entry.selections && entry.selections.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-auto">
-              {entry.selections.slice(0, 5).map(selection => {
+              {entry.selections.slice(0, 5).map((selection, index) => {
                 const Icon = getIconComponent(selection.icon || '');
                 return (
                   <Badge
-                    key={selection.id}
+                    key={`${selection.id ?? 'selection'}-${index}`}
                     variant="secondary"
                     className="px-2 py-0.5 text-xs font-normal gap-1 bg-muted/50 hover:bg-muted"
                   >
@@ -176,9 +176,9 @@ const HistoryEntry = memo(function HistoryEntry({ entry, onDelete, onEdit }: His
           {/* Scale Entries */}
           {entry.scale_entries && entry.scale_entries.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-2">
-              {entry.scale_entries.slice(0, 4).map(scale => (
+              {entry.scale_entries.slice(0, 4).map((scale, index) => (
                 <Badge
-                  key={scale.scale_id}
+                  key={`${scale.scale_id ?? 'scale'}-${index}`}
                   variant="outline"
                   className="px-2 py-0.5 text-xs font-normal gap-1"
                   style={{

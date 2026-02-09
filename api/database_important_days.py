@@ -2,14 +2,10 @@
 
 from __future__ import annotations
 
-import sqlite3
 from datetime import datetime, date, timedelta
 from typing import Dict, List, Optional
 
-try:
-    from .database_common import DatabaseConnectionMixin, logger
-except ImportError:
-    from database_common import DatabaseConnectionMixin, logger  # type: ignore
+from api.database_common import DatabaseConnectionMixin, logger
 
 
 class ImportantDaysMixin(DatabaseConnectionMixin):
@@ -27,65 +23,59 @@ class ImportantDaysMixin(DatabaseConnectionMixin):
         notes: Optional[str] = None,
     ) -> int:
         """Create a new important day."""
-        with self._connect() as conn:
-            cursor = conn.execute(
-                """
-                INSERT INTO important_days 
-                (user_id, title, date, category, icon, recurring_type, remind_days_before, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (user_id, title, target_date, category, icon, recurring_type, remind_days_before, notes),
-            )
-            conn.commit()
-            return cursor.lastrowid or 0
+        cursor = self._query(
+            """
+            INSERT INTO important_days
+            (user_id, title, date, category, icon, recurring_type, remind_days_before, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (user_id, title, target_date, category, icon, recurring_type, remind_days_before, notes),
+            commit=True,
+        )
+        return cursor.lastrowid or 0
 
     def get_important_days(self, user_id: int) -> List[Dict]:
         """Get all important days for a user with calculated countdowns."""
-        with self._connect() as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.execute(
-                """
-                SELECT id, title, date, category, icon, recurring_type, 
-                       remind_days_before, notes, is_active, created_at
-                FROM important_days
-                WHERE user_id = ? AND is_active = 1
-                ORDER BY date ASC
-                """,
-                (user_id,),
-            )
-            rows = cursor.fetchall()
-            
-            result = []
-            for row in rows:
-                item = dict(row)
-                countdown = self._calculate_countdown(item["date"], item["recurring_type"])
-                item.update(countdown)
-                result.append(item)
-            
-            # Sort by days_until (upcoming first)
-            result.sort(key=lambda x: x.get("days_until", 9999))
-            return result
+        cursor = self._query(
+            """
+            SELECT id, title, date, category, icon, recurring_type,
+                   remind_days_before, notes, is_active, created_at
+            FROM important_days
+            WHERE user_id = ? AND is_active = 1
+            ORDER BY date ASC
+            """,
+            (user_id,),
+        )
+        rows = cursor.fetchall()
+
+        result = []
+        for row in rows:
+            item = dict(row)
+            countdown = self._calculate_countdown(item["date"], item["recurring_type"])
+            item.update(countdown)
+            result.append(item)
+
+        # Sort by days_until (upcoming first)
+        result.sort(key=lambda x: x.get("days_until", 9999))
+        return result
 
     def get_important_day_by_id(self, user_id: int, day_id: int) -> Optional[Dict]:
         """Get a specific important day by ID."""
-        with self._connect() as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.execute(
-                """
-                SELECT id, title, date, category, icon, recurring_type,
-                       remind_days_before, notes, is_active, created_at
-                FROM important_days
-                WHERE id = ? AND user_id = ?
-                """,
-                (day_id, user_id),
-            )
-            row = cursor.fetchone()
-            if row:
-                item = dict(row)
-                countdown = self._calculate_countdown(item["date"], item["recurring_type"])
-                item.update(countdown)
-                return item
-            return None
+        row = self._query(
+            """
+            SELECT id, title, date, category, icon, recurring_type,
+                   remind_days_before, notes, is_active, created_at
+            FROM important_days
+            WHERE id = ? AND user_id = ?
+            """,
+            (day_id, user_id),
+        ).fetchone()
+        if row:
+            item = dict(row)
+            countdown = self._calculate_countdown(item["date"], item["recurring_type"])
+            item.update(countdown)
+            return item
+        return None
 
     # Whitelist of columns allowed for dynamic UPDATE in important_days
     _IMPORTANT_DAY_UPDATE_COLUMNS = frozenset({
@@ -128,24 +118,22 @@ class ImportantDaysMixin(DatabaseConnectionMixin):
 
         params.extend([day_id, user_id])
 
-        with self._connect() as conn:
-            # Column names are from hardcoded whitelist, safe for query
-            cursor = conn.execute(
-                f"UPDATE important_days SET {', '.join(updates)} WHERE id = ? AND user_id = ?",
-                params,
-            )
-            conn.commit()
-            return cursor.rowcount > 0
+        # Column names are from hardcoded whitelist, safe for query
+        cursor = self._query(
+            f"UPDATE important_days SET {', '.join(updates)} WHERE id = ? AND user_id = ?",
+            params,
+            commit=True,
+        )
+        return cursor.rowcount > 0
 
     def delete_important_day(self, user_id: int, day_id: int) -> bool:
         """Delete an important day."""
-        with self._connect() as conn:
-            cursor = conn.execute(
-                "DELETE FROM important_days WHERE id = ? AND user_id = ?",
-                (day_id, user_id),
-            )
-            conn.commit()
-            return cursor.rowcount > 0
+        cursor = self._query(
+            "DELETE FROM important_days WHERE id = ? AND user_id = ?",
+            (day_id, user_id),
+            commit=True,
+        )
+        return cursor.rowcount > 0
 
     def get_upcoming_important_days(self, user_id: int, days_ahead: int = 30) -> List[Dict]:
         """Get important days occurring in the next N days."""

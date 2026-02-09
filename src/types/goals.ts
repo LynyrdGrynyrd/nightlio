@@ -73,4 +73,5 @@ export interface GoalToggleResult {
   last_completed_date?: string | null;
   already_completed_today?: boolean;
   is_completed?: boolean;
+  blocked_by_schedule?: boolean;
 }

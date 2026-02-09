@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import apiService, { Statistics, Streak } from '../services/api';
+import { queryKeys } from '../lib/queryKeys';
 
 interface UseStatisticsReturn {
   statistics: Statistics | null;
@@ -11,46 +13,37 @@ interface UseStatisticsReturn {
 }
 
 export const useStatistics = (): UseStatisticsReturn => {
-  const [statistics, setStatistics] = useState<Statistics | null>(null);
-  const [currentStreak, setCurrentStreak] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const statsQuery = useQuery({
+    queryKey: queryKeys.statistics.summary(),
+    queryFn: () => apiService.getStatistics(),
+    enabled: false, // loaded on demand via loadStatistics()
+  });
+
+  const streakQuery = useQuery({
+    queryKey: queryKeys.streak.current(),
+    queryFn: async () => {
+      const data: Streak = await apiService.getCurrentStreak();
+      return data.current;
+    },
+    initialData: 0,
+  });
 
   const loadStatistics = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    await statsQuery.refetch();
+  }, [statsQuery]);
 
-    try {
-      const data = await apiService.getStatistics();
-      setStatistics(data);
-    } catch (err) {
-      console.error('Failed to load statistics:', err);
-      setError('Failed to load statistics');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const loadStreak = useCallback(async () => {
-    try {
-      const data: Streak = await apiService.getCurrentStreak();
-      setCurrentStreak(data.current);
-    } catch (err) {
-      console.error('Failed to load streak:', err);
-      setCurrentStreak(0);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadStreak();
-  }, [loadStreak]);
+  const refreshStreak = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.streak.all });
+  }, [queryClient]);
 
   return useMemo(() => ({
-    statistics,
-    currentStreak,
-    loading,
-    error,
+    statistics: statsQuery.data ?? null,
+    currentStreak: streakQuery.data ?? 0,
+    loading: statsQuery.isLoading || statsQuery.isFetching,
+    error: statsQuery.error ? 'Failed to load statistics' : null,
     loadStatistics,
-    refreshStreak: loadStreak,
-  }), [statistics, currentStreak, loading, error, loadStatistics, loadStreak]);
+    refreshStreak,
+  }), [statsQuery.data, statsQuery.isLoading, statsQuery.isFetching, statsQuery.error, streakQuery.data, loadStatistics, refreshStreak]);
 };

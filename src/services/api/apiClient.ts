@@ -1,9 +1,8 @@
 /**
- * Base API client with request handling, retry logic, and auth token management
+ * Base API client with request handling and auth token management
  */
 
 import { ApiError, RequestOptions } from './types';
-import { ResponseCache } from './cache';
 
 /**
  * Normalize the base URL from environment variables
@@ -33,12 +32,9 @@ export const API_BASE_URL = normalizeBaseUrl(
  */
 export class ApiClient {
   private token: string | null;
-  private inFlightRequests: Map<string, Promise<unknown>> = new Map();
-  private responseCache: ResponseCache;
 
-  constructor(cache: ResponseCache) {
+  constructor() {
     this.token = typeof localStorage !== 'undefined' ? localStorage.getItem('twilightio_token') : null;
-    this.responseCache = cache;
   }
 
   /**
@@ -53,40 +49,6 @@ export class ApiClient {
    */
   getAuthToken(): string | null {
     return this.token;
-  }
-
-  /**
-   * Invalidate cache entries
-   */
-  invalidateCache(pattern?: string): void {
-    this.responseCache.invalidate(pattern);
-  }
-
-  /**
-   * Fetch with retry logic for transient failures
-   */
-  private async fetchWithRetry(
-    url: string,
-    config: RequestInit,
-    retries: number = 3,
-    backoff: number = 1000
-  ): Promise<Response> {
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      try {
-        const response = await fetch(url, config);
-        // Only retry on server errors (5xx)
-        if (response.status >= 500 && attempt < retries) {
-          await new Promise(r => setTimeout(r, backoff * Math.pow(2, attempt)));
-          continue;
-        }
-        return response;
-      } catch (err) {
-        // Network error - retry
-        if (attempt === retries) throw err;
-        await new Promise(r => setTimeout(r, backoff * Math.pow(2, attempt)));
-      }
-    }
-    throw new Error('Max retries exceeded');
   }
 
   /**
@@ -142,78 +104,37 @@ export class ApiClient {
       };
     }
 
-    // Request deduplication for GET requests
-    const method = (options.method || 'GET').toUpperCase();
-    const cacheKey = method === 'GET' ? `${method}:${url}` : null;
+    try {
+      const response = await fetch(url, config);
 
-    // Check response cache first for GET requests
-    if (cacheKey) {
-      const cached = this.responseCache.get<T>(cacheKey);
-      if (cached !== null) {
-        return cached;
-      }
-    }
-
-    // Return existing in-flight request if same request is already pending
-    if (cacheKey && this.inFlightRequests.has(cacheKey)) {
-      return this.inFlightRequests.get(cacheKey) as Promise<T>;
-    }
-
-    const requestPromise = (async () => {
-      try {
-        const response = await this.fetchWithRetry(url, config);
-
-        if (!response.ok) {
-          let errorMessage = `HTTP error! status: ${response.status}`;
-          const ct = response.headers.get('content-type') || '';
-
-          if (ct.includes('application/json')) {
-            const errorData = await response.json().catch(() => ({})) as ApiError;
-            if (errorData && (errorData.error || errorData.message)) {
-              errorMessage = errorData.error || errorData.message || errorMessage;
-            }
-          } else {
-            const text = await response.text().catch(() => '');
-            if (text) errorMessage += ` | body: ${text.slice(0, 200)}`;
-          }
-
-          throw new Error(errorMessage);
-        }
-
-        // Parse JSON safely
+      if (!response.ok) {
+        let errorMessage = `HTTP error! status: ${response.status}`;
         const ct = response.headers.get('content-type') || '';
-        if (!ct.includes('application/json')) {
-          const text = await response.text();
-          throw new Error(`Expected JSON but received: ${ct || 'unknown'} | body: ${text.slice(0, 200)}`);
-        }
 
-        const result = await response.json();
-
-        // Cache the result for GET requests
-        if (cacheKey) {
-          const ttl = this.responseCache.getTTL(endpoint);
-          if (ttl > 0) {
-            this.responseCache.set(cacheKey, result, ttl);
+        if (ct.includes('application/json')) {
+          const errorData = await response.json().catch(() => ({})) as ApiError;
+          if (errorData && (errorData.error || errorData.message)) {
+            errorMessage = errorData.error || errorData.message || errorMessage;
           }
+        } else {
+          const text = await response.text().catch(() => '');
+          if (text) errorMessage += ` | body: ${text.slice(0, 200)}`;
         }
 
-        return result;
-      } catch (error) {
-        console.error('API request failed:', error);
-        throw error;
-      } finally {
-        // Remove from in-flight cache when complete
-        if (cacheKey) {
-          this.inFlightRequests.delete(cacheKey);
-        }
+        throw new Error(errorMessage);
       }
-    })();
 
-    // Store in-flight request for deduplication
-    if (cacheKey) {
-      this.inFlightRequests.set(cacheKey, requestPromise);
+      // Parse JSON safely
+      const ct = response.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) {
+        const text = await response.text();
+        throw new Error(`Expected JSON but received: ${ct || 'unknown'} | body: ${text.slice(0, 200)}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('API request failed:', error);
+      throw error;
     }
-
-    return requestPromise;
   }
 }

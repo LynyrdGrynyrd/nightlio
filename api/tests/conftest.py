@@ -3,11 +3,22 @@ import sys
 from pathlib import Path
 
 import pytest
+import api.config as config_module
 
 root = Path(__file__).resolve().parent.parent
 api_dir = root / "api"
 if str(api_dir) not in sys.path:
     sys.path.insert(0, str(api_dir))
+
+
+@pytest.fixture(autouse=True)
+def _test_auth_env(monkeypatch):
+    # Keep local-login tests deterministic unless explicitly overridden in a test.
+    monkeypatch.setenv("ENABLE_LOCAL_LOGIN", "1")
+    monkeypatch.setenv("JWT_SECRET", "twilightio-test-jwt-secret")
+    config_module._CONFIG_SINGLETON = None
+    yield
+    config_module._CONFIG_SINGLETON = None
 
 
 @pytest.fixture

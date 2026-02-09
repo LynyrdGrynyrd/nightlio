@@ -56,6 +56,10 @@ GOOGLE_CLIENT_SECRET=your-google-client-secret
 GOOGLE_CALLBACK_URL=https://yourdomain.com/auth/callback
 ```
 
+> [!IMPORTANT]
+> Keep `CORS_ORIGINS` as an explicit allowlist of frontend origins only.
+> Do not use `*`, and do not include backend internal URLs unless browsers must access them directly.
+
 ### Generating Secure Secrets
 
 ```bash
@@ -285,15 +289,15 @@ docker image prune -f
 
 ### Database Optimization
 
-```bash
-# Enable WAL mode for better concurrency
-docker-compose exec api python -c "
-import sqlite3
-conn = sqlite3.connect('/app/data/twilightio.db')
-conn.execute('PRAGMA journal_mode=WAL;')
-conn.close()
-"
-```
+WAL (Write-Ahead Logging) mode is enabled automatically on all database connections.
+This allows concurrent reads while writes are in progress. No manual setup is needed.
+
+> **Backups**: Before backing up the database, checkpoint the WAL file first:
+> ```bash
+> sqlite3 data/twilightio.db "PRAGMA wal_checkpoint(TRUNCATE)"
+> ```
+> Then back up the `.db` file. The `-wal` and `-shm` sidecar files are not needed
+> in the backup after a successful checkpoint.
 
 ### Nginx Caching
 

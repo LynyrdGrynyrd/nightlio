@@ -3,13 +3,10 @@
 from __future__ import annotations
 
 import sqlite3
-from typing import Dict, Optional
+from typing import Dict
 from werkzeug.security import generate_password_hash, check_password_hash
 
-try:  # pragma: no cover
-    from .database_common import DatabaseConnectionMixin, logger
-except ImportError:  # pragma: no cover
-    from database_common import DatabaseConnectionMixin, logger  # type: ignore
+from api.database_common import DatabaseConnectionMixin, logger
 
 
 class SettingsMixin(DatabaseConnectionMixin):
@@ -36,8 +33,7 @@ class SettingsMixin(DatabaseConnectionMixin):
 
     def get_user_settings(self, user_id: int) -> Dict:
         """Get settings for a user. Create defaults if not exists."""
-        with self._connect() as conn:
-            conn.row_factory = sqlite3.Row
+        with self._conn() as conn:
             cursor = conn.execute(
                 "SELECT * FROM user_settings WHERE user_id = ?", (user_id,)
             )
@@ -50,7 +46,7 @@ class SettingsMixin(DatabaseConnectionMixin):
                 conn.commit()
                 # recursive call to get new row
                 return self.get_user_settings(user_id)
-            
+
             return dict(row)
 
     def set_user_pin(self, user_id: int, pin: str) -> None:
@@ -70,22 +66,19 @@ class SettingsMixin(DatabaseConnectionMixin):
 
     def verify_user_pin(self, user_id: int, pin: str) -> bool:
         """Verify the PIN."""
-        with self._connect() as conn:
-            cursor = conn.execute(
-                "SELECT pin_hash FROM user_settings WHERE user_id = ?", (user_id,)
-            )
-            row = cursor.fetchone()
-            if not row or not row[0]:
-                return False
-            return check_password_hash(row[0], pin)
-            
+        row = self._query(
+            "SELECT pin_hash FROM user_settings WHERE user_id = ?", (user_id,)
+        ).fetchone()
+        if not row or not row[0]:
+            return False
+        return check_password_hash(row[0], pin)
+
     def remove_user_pin(self, user_id: int) -> None:
-        with self._connect() as conn:
-            conn.execute(
-                "UPDATE user_settings SET pin_hash = NULL WHERE user_id = ?",
-                (user_id,)
-            )
-            conn.commit()
+        self._query(
+            "UPDATE user_settings SET pin_hash = NULL WHERE user_id = ?",
+            (user_id,),
+            commit=True,
+        )
 
     def update_lock_timeout(self, user_id: int, seconds: int) -> None:
         with self._connect() as conn:

@@ -6,11 +6,9 @@ import Skeleton from '../components/ui/Skeleton';
 import apiService, { Goal } from '../services/api';
 import ResponsiveGrid from '../components/layout/ResponsiveGrid';
 import { getTodayISO } from '../utils/dateUtils';
-import {
-  useGoalCompletion,
-  GoalWithExtras,
-  mapGoalToExtras,
-} from '../hooks/useGoalCompletion';
+import { useGoalCompletion } from '../hooks/useGoalCompletion';
+import { mapGoalToExtras } from '../utils/goalUtils';
+import type { GoalWithExtras } from '../types/goals';
 import { GoalFormHandle, GoalFormData, GoalSuggestion } from '../types/goals';
 
 const GoalsView = () => {
@@ -81,6 +79,21 @@ const GoalsView = () => {
         ? Math.min(7, weeklyTarget)
         : Math.min(7, resolvedTargetCount);
 
+    const baseGoal: Goal = {
+      id: Date.now(),
+      user_id: 0,
+      title: newGoal.title,
+      description: newGoal.description,
+      frequency_per_week: safeFrequencyPerWeek,
+      frequency_type: frequencyType,
+      target_count: resolvedTargetCount,
+      custom_days: frequencyType === 'custom' ? customDays : undefined,
+      completed: 0,
+      streak: 0,
+      created_at: new Date().toISOString(),
+      is_archived: false,
+    };
+
     try {
       const resp = await apiService.createGoal({
         frequency: safeFrequencyPerWeek.toString(),
@@ -91,58 +104,14 @@ const GoalsView = () => {
         target_count: resolvedTargetCount,
         custom_days: frequencyType === 'custom' ? customDays : undefined,
       });
-      const id = resp?.id ?? Date.now();
-      const displayFrequency =
-        frequencyType === 'daily'
-          ? `${resolvedTargetCount}x daily`
-          : frequencyType === 'monthly'
-            ? `${resolvedTargetCount}x monthly`
-            : frequencyType === 'custom'
-              ? `${resolvedTargetCount} custom day${resolvedTargetCount === 1 ? '' : 's'} weekly`
-              : `${safeFrequencyPerWeek} day${safeFrequencyPerWeek === 1 ? '' : 's'} a week`;
-      const goal: GoalWithExtras = {
-        id,
+      const goal = mapGoalToExtras({
+        ...baseGoal,
+        id: resp?.id ?? baseGoal.id,
         user_id: resp?.user_id ?? 0,
-        title: newGoal.title,
-        description: newGoal.description,
-        frequency_per_week: safeFrequencyPerWeek,
-        frequency_type: frequencyType,
-        target_count: resolvedTargetCount,
-        custom_days: frequencyType === 'custom' ? customDays : undefined,
-        frequency: displayFrequency,
-        completed: 0,
-        total: resolvedTargetCount,
-        streak: 0,
-        created_at: new Date().toISOString(),
-        is_archived: false,
-      };
+      });
       setGoals((prev) => [goal, ...prev]);
     } catch {
-      // optimistic add on failure
-      const displayFrequency =
-        frequencyType === 'daily'
-          ? `${resolvedTargetCount}x daily`
-          : frequencyType === 'monthly'
-            ? `${resolvedTargetCount}x monthly`
-            : frequencyType === 'custom'
-              ? `${resolvedTargetCount} custom day${resolvedTargetCount === 1 ? '' : 's'} weekly`
-              : `${safeFrequencyPerWeek} day${safeFrequencyPerWeek === 1 ? '' : 's'} a week`;
-      const goal: GoalWithExtras = {
-        id: Date.now(),
-        user_id: 0,
-        title: newGoal.title,
-        description: newGoal.description,
-        frequency_per_week: safeFrequencyPerWeek,
-        frequency_type: frequencyType,
-        target_count: resolvedTargetCount,
-        custom_days: frequencyType === 'custom' ? customDays : undefined,
-        frequency: displayFrequency,
-        completed: 0,
-        total: resolvedTargetCount,
-        streak: 0,
-        created_at: new Date().toISOString(),
-        is_archived: false,
-      };
+      const goal = mapGoalToExtras(baseGoal);
       setGoals((prev) => [goal, ...prev]);
     } finally {
       setShowForm(false);

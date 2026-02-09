@@ -17,8 +17,6 @@ def create_goal_routes(goal_service: GoalService):
     def list_goals():
         try:
             user_id = get_current_user_id()
-            if not isinstance(user_id, int):
-                return jsonify({"error": "Unauthorized"}), 401
             goals = goal_service.list_goals(user_id)
             return jsonify(goals)
         except Exception as e:
@@ -29,8 +27,6 @@ def create_goal_routes(goal_service: GoalService):
     def create_goal():
         try:
             user_id = get_current_user_id()
-            if not isinstance(user_id, int):
-                return jsonify({"error": "Unauthorized"}), 401
             data = request.json or {}
 
             try:
@@ -76,8 +72,6 @@ def create_goal_routes(goal_service: GoalService):
     def get_goal(goal_id: int):
         try:
             user_id = get_current_user_id()
-            if not isinstance(user_id, int):
-                return jsonify({"error": "Unauthorized"}), 401
             goal = goal_service.get_goal(user_id, goal_id)
             if not goal:
                 return jsonify({"error": "Not found"}), 404
@@ -90,8 +84,6 @@ def create_goal_routes(goal_service: GoalService):
     def update_goal(goal_id: int):
         try:
             user_id = get_current_user_id()
-            if not isinstance(user_id, int):
-                return jsonify({"error": "Unauthorized"}), 401
             data = request.json or {}
 
             frequency = data.get("frequency_per_week")
@@ -143,8 +135,6 @@ def create_goal_routes(goal_service: GoalService):
     def delete_goal(goal_id: int):
         try:
             user_id = get_current_user_id()
-            if not isinstance(user_id, int):
-                return jsonify({"error": "Unauthorized"}), 401
             success = goal_service.delete_goal(user_id, goal_id)
             if not success:
                 return jsonify({"error": "Not found"}), 404
@@ -157,8 +147,6 @@ def create_goal_routes(goal_service: GoalService):
     def increment_progress(goal_id: int):
         try:
             user_id = get_current_user_id()
-            if not isinstance(user_id, int):
-                return jsonify({"error": "Unauthorized"}), 401
             updated = goal_service.increment_progress(user_id, goal_id)
             if not updated:
                 return jsonify({"error": "Not found"}), 404
@@ -171,8 +159,6 @@ def create_goal_routes(goal_service: GoalService):
     def toggle_completion(goal_id: int):
         try:
             user_id = get_current_user_id()
-            if not isinstance(user_id, int):
-                return jsonify({"error": "Unauthorized"}), 401
             data = request.json or {}
             date_str = data.get("date")
             if not date_str:
@@ -203,8 +189,6 @@ def create_goal_routes(goal_service: GoalService):
     def get_completions(goal_id: int):
         try:
             user_id = get_current_user_id()
-            if not isinstance(user_id, int):
-                return jsonify({"error": "Unauthorized"}), 401
             start_date = request.args.get("start")
             end_date = request.args.get("end")
             rows = goal_service.get_completions(user_id, goal_id, start_date, end_date)

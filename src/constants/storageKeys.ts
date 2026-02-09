@@ -10,6 +10,7 @@ export const STORAGE_KEYS = {
   // Theme
   THEME: 'twilightio:theme',
   CUSTOM_COLOR: 'twilightio:customColor',
+  THEME_MIGRATION_V2: 'twilightio:themeMigration:v2',
 
   // Lock/Session
   UNLOCKED: 'twilightio_unlocked',
@@ -18,6 +19,9 @@ export const STORAGE_KEYS = {
   MOCK_ENTRIES: 'twilightio_mock_entries',
   MOCK_GROUPS: 'twilightio_mock_groups',
   MOCK_GOALS: 'twilightio_mock_goals',
+
+  // Journal prompts
+  LAST_SHOWN_PROMPTS: 'twilightio:lastShownPrompts',
 } as const;
 
 export const EVENT_NAMES = {

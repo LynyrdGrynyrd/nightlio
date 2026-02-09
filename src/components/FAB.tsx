@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Plus, CalendarPlus, ArrowLeft, Calendar, Target, Star, LucideIcon } from 'lucide-react';
+import { Plus, CalendarPlus, ArrowLeft, Calendar, Star, LucideIcon } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
@@ -12,7 +12,7 @@ interface FABOption {
   color?: string;
 }
 
-type FABContext = 'dashboard' | 'stats' | 'goals';
+type FABContext = 'today' | 'journal' | 'discover';
 
 interface SmartFABProps {
   onCreateEntry?: () => void;
@@ -45,9 +45,9 @@ const SmartFAB = ({ onCreateEntry, onCreateEntryForDate }: SmartFABProps) => {
 
   const getContext = (): FABContext => {
     const path = location.pathname;
-    if (path.includes('/stats')) return 'stats';
-    if (path.includes('/goals')) return 'goals';
-    return 'dashboard';
+    if (path.includes('/discover')) return 'discover';
+    if (path.includes('/journal')) return 'journal';
+    return 'today';
   };
 
   const context = getContext();
@@ -59,12 +59,12 @@ const SmartFAB = ({ onCreateEntry, onCreateEntryForDate }: SmartFABProps) => {
   };
 
   const options: Record<FABContext, FABOption[]> = {
-    dashboard: [
+    today: [
       {
         label: 'Other day',
         icon: CalendarPlus,
         action: () => {
-          navigate('/dashboard/stats');
+          navigate('/dashboard/discover');
           setExpanded(false);
         }
       },
@@ -86,20 +86,12 @@ const SmartFAB = ({ onCreateEntry, onCreateEntryForDate }: SmartFABProps) => {
         color: 'bg-primary text-primary-foreground'
       },
     ],
-    stats: [
-      {
-        label: 'New Goal',
-        icon: Target,
-        action: () => {
-          navigate('/dashboard/goals');
-          setExpanded(false);
-        }
-      },
+    discover: [
       {
         label: 'Important Day',
         icon: Star,
         action: () => {
-          navigate('/dashboard/stats', { state: { openImportantDayForm: true } });
+          navigate('/dashboard/discover', { state: { openImportantDayForm: true } });
           setExpanded(false);
         }
       },
@@ -113,7 +105,7 @@ const SmartFAB = ({ onCreateEntry, onCreateEntryForDate }: SmartFABProps) => {
         color: 'bg-primary text-primary-foreground'
       },
     ],
-    goals: [
+    journal: [
       {
         label: 'New Entry',
         icon: Plus,

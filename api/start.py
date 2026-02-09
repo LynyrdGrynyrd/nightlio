@@ -5,6 +5,7 @@ Railway startup script for Twilightio API
 import os
 import sys
 import subprocess
+from pathlib import Path
 
 # Ensure project root is on sys.path so `import api.app` works when cwd=api/
 api_dir = os.path.dirname(os.path.abspath(__file__))
@@ -32,23 +33,14 @@ if __name__ == "__main__":
     )
 
     if env == "production":
+        gunicorn_config = str(Path(__file__).with_name("gunicorn.conf.py"))
         cmd = [
             "gunicorn",
-            "--bind",
-            f"[::]:{port}",
-            "--workers",
-            "4",
-            "--timeout",
-            "120",
-            "--worker-class",
-            "sync",
-            "--access-logfile",
-            "-",
-            "--error-logfile",
-            "-",
+            "-c",
+            gunicorn_config,
             "wsgi:application",
         ]
-        print("Using Gunicorn")
+        print(f"Using Gunicorn config: {gunicorn_config}")
         subprocess.run(cmd)
     else:
         print("Using Flask development server")
