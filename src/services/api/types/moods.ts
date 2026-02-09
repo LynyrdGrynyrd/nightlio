@@ -36,6 +36,13 @@ export interface UpdateMoodEntryData {
   scale_entries?: Record<number, number>;
 }
 
+export interface SearchEntry {
+  id: number;
+  date: string;
+  mood: number;
+  content: string;
+}
+
 export interface MoodDefinition {
   score: number;
   label: string;

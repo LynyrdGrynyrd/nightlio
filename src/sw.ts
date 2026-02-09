@@ -56,23 +56,26 @@ self.addEventListener('push', (event: PushEvent) => {
 });
 
 // Notification Click Handler
+// "log" action deep-links to the entry view; default tap opens the dashboard.
 self.addEventListener('notificationclick', (event: NotificationEvent) => {
     event.notification.close();
 
     if (event.action === 'close') return;
 
-    // Open the app
+    const targetPath = event.action === 'log' ? '/dashboard/entry' : '/dashboard';
+
     event.waitUntil(
         self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-            // Check if there is already a window open and focus it
+            // Focus an existing window and navigate it
             for (const client of windowClients) {
-                if (client.url.includes('/') && 'focus' in client) {
+                if ('focus' in client) {
+                    (client as WindowClient).navigate(targetPath);
                     return (client as WindowClient).focus();
                 }
             }
-            // Otherwise open a new window
+            // Otherwise open a new window at the target path
             if (self.clients.openWindow) {
-                return self.clients.openWindow('/');
+                return self.clients.openWindow(targetPath);
             }
         })
     );

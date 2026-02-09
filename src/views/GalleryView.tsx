@@ -28,24 +28,17 @@ const GalleryView = ({ onEntryClick }: GalleryViewProps) => {
   const [dateRange, setDateRange] = useState<DateRange>({ start: '', end: '' });
   const LIMIT = 24;
 
-  const fetchPhotos = useCallback(async (reset = false) => {
+  const loadMorePhotos = useCallback(async () => {
     setLoading(true);
     try {
-      const currentOffset = reset ? 0 : offset;
       const result: GalleryResponse = await apiService.getGalleryPhotos({
         limit: LIMIT,
-        offset: currentOffset,
+        offset,
         startDate: dateRange.start || undefined,
-        endDate: dateRange.end || undefined
+        endDate: dateRange.end || undefined,
       });
-
-      if (reset) {
-        setPhotos(result.photos);
-        setOffset(LIMIT);
-      } else {
-        setPhotos(prev => [...prev, ...result.photos]);
-        setOffset(prev => prev + LIMIT);
-      }
+      setPhotos(prev => [...prev, ...result.photos]);
+      setOffset(prev => prev + LIMIT);
       setHasMore(result.has_more);
       setTotal(result.total);
     } catch (err) {
@@ -55,13 +48,30 @@ const GalleryView = ({ onEntryClick }: GalleryViewProps) => {
     }
   }, [offset, dateRange]);
 
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      fetchPhotos(true);
-    }, 300);
-    return () => clearTimeout(timeoutId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const resetPhotos = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result: GalleryResponse = await apiService.getGalleryPhotos({
+        limit: LIMIT,
+        offset: 0,
+        startDate: dateRange.start || undefined,
+        endDate: dateRange.end || undefined,
+      });
+      setPhotos(result.photos);
+      setOffset(LIMIT);
+      setHasMore(result.has_more);
+      setTotal(result.total);
+    } catch (err) {
+      console.error('Failed to fetch gallery:', err);
+    } finally {
+      setLoading(false);
+    }
   }, [dateRange.start, dateRange.end]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => resetPhotos(), 300);
+    return () => clearTimeout(timeoutId);
+  }, [resetPhotos]);
 
   const handlePhotoClick = (photo: GalleryPhoto) => {
     if (onEntryClick) {
@@ -155,7 +165,7 @@ const GalleryView = ({ onEntryClick }: GalleryViewProps) => {
           {hasMore && (
             <div className="flex justify-center pt-8 pb-12">
               <Button
-                onClick={() => fetchPhotos(false)}
+                onClick={loadMorePhotos}
                 disabled={loading}
                 variant="outline"
                 size="lg"

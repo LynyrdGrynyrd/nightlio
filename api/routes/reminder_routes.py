@@ -69,8 +69,8 @@ def create_reminder_routes(scheduler_service, push_service):
                 goal_id=goal_id,
                 is_active=is_active,
             )
-        except ValueError as exc:
-            return jsonify({"error": str(exc)}), 400
+        except ValueError:
+            return jsonify({"error": "Invalid reminder parameters"}), 400
         return jsonify({"status": "created", "id": reminder_id}), 201
 
     @bp.route('/reminders/<int:reminder_id>', methods=['PUT'])
@@ -101,8 +101,8 @@ def create_reminder_routes(scheduler_service, push_service):
                 reminder_id,
                 **update_kwargs,
             )
-        except ValueError as exc:
-            return jsonify({"error": str(exc)}), 400
+        except ValueError:
+            return jsonify({"error": "Invalid reminder parameters"}), 400
         if not success:
             return jsonify({"error": "Reminder not found or no changes applied"}), 404
         return jsonify({"status": "updated"})

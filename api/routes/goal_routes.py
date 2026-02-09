@@ -43,8 +43,8 @@ def create_goal_routes(goal_service: GoalService):
                         else data.get("custom_days")
                     ),
                 )
-            except (TypeError, ValueError) as e:
-                return jsonify({"error": str(e)}), 400
+            except (TypeError, ValueError):
+                return jsonify({"error": "Invalid input"}), 400
             except ValidationError as e:
                 return jsonify({"error": e.message, "field": e.field}), 422
 
@@ -104,8 +104,8 @@ def create_goal_routes(goal_service: GoalService):
                         else data.get("custom_days")
                     ),
                 )
-            except (TypeError, ValueError) as e:
-                return jsonify({"error": str(e)}), 400
+            except (TypeError, ValueError):
+                return jsonify({"error": "Invalid input"}), 400
             except ValidationError as e:
                 return jsonify({"error": e.message, "field": e.field}), 422
 
