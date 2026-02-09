@@ -30,13 +30,43 @@ def _safe_int(value: Any) -> Optional[int]:
 class DaylioImportService:
     """Async Daylio backup import service with in-memory job tracking."""
 
+    MAX_IMPORT_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
+    _JOB_TTL_SECONDS = 3600  # Completed jobs kept for 1 hour
+
     def __init__(self, db: MoodDatabase, max_workers: int = 2):
         self.db = db
         self._executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="daylio-import")
         self._jobs: Dict[str, Dict[str, Any]] = {}
         self._lock = threading.Lock()
 
+    def _purge_stale_jobs(self) -> None:
+        """Remove completed/failed jobs older than _JOB_TTL_SECONDS (called under lock)."""
+        now = datetime.now(timezone.utc)
+        stale = []
+        for jid, job in self._jobs.items():
+            if job.get("status") not in ("completed", "failed"):
+                continue
+            finished = job.get("finished_at")
+            if not finished:
+                continue
+            try:
+                finished_dt = datetime.fromisoformat(finished)
+                if (now - finished_dt).total_seconds() > self._JOB_TTL_SECONDS:
+                    stale.append(jid)
+            except (ValueError, TypeError):
+                stale.append(jid)
+        for jid in stale:
+            del self._jobs[jid]
+
     def start_import(self, user_id: int, file_bytes: bytes, filename: str, dry_run: bool = False) -> str:
+        if len(file_bytes) > self.MAX_IMPORT_FILE_SIZE:
+            raise ValueError(
+                f"File too large ({len(file_bytes)} bytes). "
+                f"Maximum allowed size is {self.MAX_IMPORT_FILE_SIZE} bytes."
+            )
+        with self._lock:
+            self._purge_stale_jobs()
+
         job_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
         initial = {

@@ -24,7 +24,10 @@ def _env_bool(name: str, default: bool = False) -> bool:
 
 
 bind = os.getenv("GUNICORN_BIND", f"[::]:{os.getenv('PORT', '5000')}")
-workers = _env_int("WORKERS", 4)
+# Default to 1 worker: the in-process rate limiter and SQLite write lock
+# are not shared across OS processes.  Scale via WORKERS env var only after
+# moving rate-limiting state to Redis or nginx.
+workers = _env_int("WORKERS", 1)
 worker_class = os.getenv("GUNICORN_WORKER_CLASS", "sync")
 timeout = _env_int("TIMEOUT", 120)
 graceful_timeout = _env_int("GUNICORN_GRACEFUL_TIMEOUT", 30)

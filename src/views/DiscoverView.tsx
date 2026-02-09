@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
+import ErrorBoundary from '../components/ErrorBoundary';
 import type { EntryWithSelections } from '../types/entry';
 
 const StatisticsView = lazy(() => import('../components/stats/StatisticsView'));
@@ -53,22 +54,26 @@ const DiscoverView = ({
         </TabsList>
 
         <TabsContent value="analytics" className="mt-6">
-          <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading insights...</div>}>
-            <StatisticsView
-              statistics={statistics}
-              pastEntries={pastEntries}
-              loading={statsLoading}
-              error={statsError}
-              onDayClick={onDayClick}
-              onEntryClick={onEntryClick}
-            />
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading insights...</div>}>
+              <StatisticsView
+                statistics={statistics}
+                pastEntries={pastEntries}
+                loading={statsLoading}
+                error={statsError}
+                onDayClick={onDayClick}
+                onEntryClick={onEntryClick}
+              />
+            </Suspense>
+          </ErrorBoundary>
         </TabsContent>
 
         <TabsContent value="achievements" className="mt-6">
-          <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading milestones...</div>}>
-            <AchievementsView />
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading milestones...</div>}>
+              <AchievementsView />
+            </Suspense>
+          </ErrorBoundary>
         </TabsContent>
       </Tabs>
     </div>

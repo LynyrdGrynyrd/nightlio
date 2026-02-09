@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useMemo, R
 import apiService, { User } from '../services/api';
 import { useConfig } from './ConfigContext';
 import { isMockMode, mockUser } from '../services/mockData.js';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 
 // ========== Types ==========
 
@@ -53,7 +54,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(isMockMode ? mockUser : null);
   const [loading, setLoading] = useState(!isMockMode); // No loading in mock mode
   const [token, setToken] = useState<string | null>(() =>
-    isMockMode ? 'mock-token' : localStorage.getItem('twilightio_token')
+    isMockMode ? 'mock-token' : localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)
   );
 
   const logout = useCallback(() => {
@@ -63,7 +64,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setTimeout(() => setUser(mockUser), 100);
       return;
     }
-    localStorage.removeItem('twilightio_token');
+    localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
     setToken(null);
     setUser(null);
     apiService.setAuthToken('');
@@ -75,7 +76,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const response = await apiService.localLogin();
       const { token: jwtToken, user: userData } = response;
       if (jwtToken) {
-        localStorage.setItem('twilightio_token', jwtToken);
+        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, jwtToken);
         setToken(jwtToken);
         setUser(userData);
         apiService.setAuthToken(jwtToken);
@@ -151,7 +152,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
 
       const { token: jwtToken, user: userData } = response;
-      localStorage.setItem('twilightio_token', jwtToken);
+      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, jwtToken);
       setToken(jwtToken);
       setUser(userData);
       apiService.setAuthToken(jwtToken);

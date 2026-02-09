@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback, ChangeEvent } from 'react';
+import { useState, useEffect, useMemo, useCallback, ChangeEvent } from 'react';
 import { Search, Filter, Calendar, Image, List, X, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import HistoryList from '../components/history/HistoryList';
@@ -9,15 +9,8 @@ import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { cn } from '@/lib/utils';
 import { MOOD_CONFIG, TIMEOUTS } from '../constants/appConstants';
-import apiService, { GalleryPhoto, GalleryResponse } from '../services/api';
+import apiService, { GalleryPhoto, GalleryResponse, SearchEntry } from '../services/api';
 import type { HistoryEntry } from '../types/entry';
-
-interface SearchEntry {
-  id: number;
-  date: string;
-  mood: number;
-  content: string;
-}
 
 interface JournalViewProps {
   pastEntries: HistoryEntry[];
@@ -59,7 +52,6 @@ const JournalView = ({
   const [hasMorePhotos, setHasMorePhotos] = useState(false);
   const [photoOffset, setPhotoOffset] = useState(0);
 
-  const tokenRef = useRef(localStorage.getItem('twilightio_token'));
   const selectedMoodsSet = useMemo(() => new Set(selectedMoods), [selectedMoods]);
   const hasActiveFilters = query || selectedMoods.length > 0 || startDate || endDate;
 
@@ -73,19 +65,13 @@ const JournalView = ({
     const timer = setTimeout(async () => {
       setSearchLoading(true);
       try {
-        const params = new URLSearchParams();
-        if (query) params.append('q', query);
-        if (selectedMoods.length > 0) params.append('moods', selectedMoods.join(','));
-        if (startDate) params.append('start_date', startDate);
-        if (endDate) params.append('end_date', endDate);
-
-        const res = await fetch(`/api/search?${params.toString()}`, {
-          headers: { 'Authorization': `Bearer ${tokenRef.current}` }
+        const data = await apiService.searchEntries({
+          q: query || undefined,
+          moods: selectedMoods.length > 0 ? selectedMoods : undefined,
+          startDate: startDate || undefined,
+          endDate: endDate || undefined,
         });
-        if (res.ok) {
-          const data = await res.json();
-          setSearchResults(data);
-        }
+        setSearchResults(data);
       } catch (err) {
         console.error('Journal search failed', err);
       } finally {
@@ -96,25 +82,18 @@ const JournalView = ({
     return () => clearTimeout(timer);
   }, [query, selectedMoods, startDate, endDate, hasActiveFilters]);
 
-  // Fetch photos (for photos mode)
-  const fetchPhotos = useCallback(async (reset = false) => {
+  // Load more photos from current offset
+  const loadMorePhotos = useCallback(async () => {
     setPhotosLoading(true);
     try {
-      const currentOffset = reset ? 0 : photoOffset;
       const result: GalleryResponse = await apiService.getGalleryPhotos({
         limit: GALLERY_LIMIT,
-        offset: currentOffset,
+        offset: photoOffset,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
       });
-
-      if (reset) {
-        setPhotos(result.photos);
-        setPhotoOffset(GALLERY_LIMIT);
-      } else {
-        setPhotos(prev => [...prev, ...result.photos]);
-        setPhotoOffset(prev => prev + GALLERY_LIMIT);
-      }
+      setPhotos(prev => [...prev, ...result.photos]);
+      setPhotoOffset(prev => prev + GALLERY_LIMIT);
       setHasMorePhotos(result.has_more);
     } catch (err) {
       console.error('Failed to fetch photos:', err);
@@ -123,13 +102,33 @@ const JournalView = ({
     }
   }, [photoOffset, startDate, endDate]);
 
+  // Reset and reload photos (stable: only depends on date filters)
+  const resetPhotos = useCallback(async () => {
+    setPhotosLoading(true);
+    try {
+      const result: GalleryResponse = await apiService.getGalleryPhotos({
+        limit: GALLERY_LIMIT,
+        offset: 0,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+      });
+      setPhotos(result.photos);
+      setPhotoOffset(GALLERY_LIMIT);
+      setHasMorePhotos(result.has_more);
+    } catch (err) {
+      console.error('Failed to fetch photos:', err);
+    } finally {
+      setPhotosLoading(false);
+    }
+  }, [startDate, endDate]);
+
   // Reload photos when switching to photos mode or when date filters change
   useEffect(() => {
     if (viewMode === 'photos') {
-      const timer = setTimeout(() => fetchPhotos(true), 300);
+      const timer = setTimeout(() => resetPhotos(), 300);
       return () => clearTimeout(timer);
     }
-  }, [viewMode, startDate, endDate]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [viewMode, startDate, endDate, resetPhotos]);
 
   const toggleMood = (mood: number) => {
     setSelectedMoods(prev =>
@@ -305,7 +304,7 @@ const JournalView = ({
               {hasMorePhotos && (
                 <div className="flex justify-center pt-4 pb-8">
                   <Button
-                    onClick={() => fetchPhotos(false)}
+                    onClick={loadMorePhotos}
                     disabled={photosLoading}
                     variant="outline"
                     size="lg"

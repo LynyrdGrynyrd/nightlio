@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo, ReactNode, memo } from 'react';
 import { Search, Calendar, Filter, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { STORAGE_KEYS } from '../../constants/storageKeys';
 import { MOOD_CONFIG, TIMEOUTS } from '../../constants/appConstants';
 import { Dialog, DialogContent } from '../ui/dialog';
 import { Input } from '../ui/input';
@@ -48,7 +49,7 @@ const SearchModal = memo(({ isOpen, onClose }: SearchModalProps) => {
   useAuth();
 
   // Cache token in ref to avoid repeated localStorage access
-  const tokenRef = useRef(localStorage.getItem('twilightio_token'));
+  const tokenRef = useRef(localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN));
 
   // Create a Set for O(1) includes() lookups
   const selectedMoodsSet = useMemo(() => new Set(selectedMoods), [selectedMoods]);

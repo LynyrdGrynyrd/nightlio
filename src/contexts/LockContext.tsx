@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, ReactNode } from 'react';
 import apiService from '../services/api';
 import { useAuth } from './AuthContext';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 
 interface UserSettings {
   has_pin: boolean;
@@ -58,7 +59,7 @@ export const LockProvider = ({ children }: LockProviderProps) => {
         // Let's assume refresh = new session = lock.
         if (settings.has_pin) {
           // Check if we have a "was_unlocked" flag in sessionStorage
-          const wasUnlocked = sessionStorage.getItem('twilightio_unlocked');
+          const wasUnlocked = sessionStorage.getItem(STORAGE_KEYS.UNLOCKED);
           if (!wasUnlocked) {
             setIsLocked(true);
           }
@@ -73,14 +74,14 @@ export const LockProvider = ({ children }: LockProviderProps) => {
   const lockApp = useCallback(() => {
     if (hasPinRef.current && !isLockedRef.current) {
       setIsLocked(true);
-      sessionStorage.removeItem('twilightio_unlocked');
+      sessionStorage.removeItem(STORAGE_KEYS.UNLOCKED);
     }
   }, []);
 
   const unlockApp = useCallback(() => {
     setIsLocked(false);
     lastActivity.current = Date.now();
-    sessionStorage.setItem('twilightio_unlocked', 'true');
+    sessionStorage.setItem(STORAGE_KEYS.UNLOCKED, 'true');
   }, []);
 
   const resetTimer = useCallback(() => {

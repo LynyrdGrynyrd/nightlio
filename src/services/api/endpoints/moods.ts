@@ -3,7 +3,7 @@
  */
 
 import { ApiClient } from '../apiClient';
-import { MoodEntry, CreateMoodEntryData, UpdateMoodEntryData, MoodDefinition, GroupOption } from '../types';
+import { MoodEntry, CreateMoodEntryData, UpdateMoodEntryData, MoodDefinition, GroupOption, SearchEntry } from '../types';
 import type { CreateMoodEntryResponse, UpdateMoodEntryResponse } from '../types/responses';
 import type { JournalStats } from '../types/journal';
 
@@ -78,5 +78,22 @@ export const createMoodEndpoints = (client: ApiClient) => ({
    */
   getJournalStats: (): Promise<JournalStats> => {
     return client.request<JournalStats>('/api/journal/stats');
+  },
+
+  /**
+   * Search mood entries by text query, mood filter, and date range
+   */
+  searchEntries: (params: {
+    q?: string;
+    moods?: number[];
+    startDate?: string;
+    endDate?: string;
+  }): Promise<SearchEntry[]> => {
+    const sp = new URLSearchParams();
+    if (params.q) sp.append('q', params.q);
+    if (params.moods?.length) sp.append('moods', params.moods.join(','));
+    if (params.startDate) sp.append('start_date', params.startDate);
+    if (params.endDate) sp.append('end_date', params.endDate);
+    return client.request<SearchEntry[]>(`/api/search?${sp.toString()}`);
   },
 });

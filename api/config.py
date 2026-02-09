@@ -64,8 +64,19 @@ class ProductionConfig(Config):
     DEBUG = False
     TESTING = False
 
-    # Use Railway's writable directory for database
+    # Require explicit DATABASE_PATH in production to prevent silent data loss.
     DATABASE_PATH = os.environ.get("DATABASE_PATH") or "/tmp/twilightio.db"
+
+    @classmethod
+    def validate(cls) -> None:
+        if not os.environ.get("DATABASE_PATH"):
+            import warnings
+            warnings.warn(
+                "DATABASE_PATH is not set in production config. "
+                "Defaulting to /tmp/twilightio.db which is EPHEMERAL and will lose data on restart. "
+                "Set DATABASE_PATH to a persistent volume path.",
+                stacklevel=2,
+            )
 
     # SECURITY: Exclude localhost from CORS in production
     # Only use explicitly configured origins in production

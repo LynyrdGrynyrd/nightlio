@@ -85,6 +85,8 @@ class ApiService {
     updates: Parameters<typeof this.moods.updateMoodDefinition>[1]
   ) => this.moods.updateMoodDefinition(score, updates);
   getJournalStats = () => this.moods.getJournalStats();
+  searchEntries = (params: Parameters<typeof this.moods.searchEntries>[0]) =>
+    this.moods.searchEntries(params);
 
   // ========== Statistics ==========
   getStatistics = () => this.statistics.getStatistics();

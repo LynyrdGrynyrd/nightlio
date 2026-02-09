@@ -137,8 +137,9 @@ function useEntrySubmit({
           setTimeout(() => onEntrySubmitted(), TIMEOUTS.REDIRECT_DELAY_MS);
         }
 
-      } catch (networkError: any) {
-        if (!navigator.onLine || (networkError.message && networkError.message.includes('Failed to fetch'))) {
+      } catch (networkError: unknown) {
+        const netErrMsg = networkError instanceof Error ? networkError.message : String(networkError);
+        if (!navigator.onLine || netErrMsg.includes('Failed to fetch')) {
           const now = new Date();
           const offlineScaleEntries = getNonNullScaleEntries(scaleValues);
 
@@ -178,9 +179,10 @@ function useEntrySubmit({
         }
         throw networkError;
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : String(error);
       console.error('Failed to save entry:', error);
-      show(`Failed to save entry: ${error.message}`, 'error');
+      show(`Failed to save entry: ${errMsg}`, 'error');
     } finally {
       setIsSubmitting(false);
     }

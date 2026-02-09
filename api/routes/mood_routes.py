@@ -52,15 +52,15 @@ def create_mood_routes(mood_service: MoodService, media_service: Any = None):
                     selected_options=data.get("selected_options"),
                     scale_values=data.get("scale_values"),
                 )
-            except (TypeError, ValueError) as e:
-                return jsonify({"error": str(e)}), 400
+            except (TypeError, ValueError):
+                return jsonify({"error": "Invalid input"}), 400
             except ValidationError as e:
                 return jsonify({"error": e.message, "field": e.field}), 422
 
             try:
                 selected_options = _normalise_selected_options(validated.selected_options)
-            except ValueError as exc:
-                return jsonify({"error": str(exc)}), 400
+            except ValueError:
+                return jsonify({"error": "Invalid selected_options format"}), 400
 
             result = mood_service.create_mood_entry(
                 user_id,
@@ -159,8 +159,8 @@ def create_mood_routes(mood_service: MoodService, media_service: Any = None):
                     normalised_options = _normalise_selected_options(
                         data.get("selected_options"), allow_none=True
                     )
-                except ValueError as exc:
-                    return jsonify({"error": str(exc)}), 400
+                except ValueError:
+                    return jsonify({"error": "Invalid selected_options format"}), 400
                 selected_options = (
                     [] if normalised_options is None else normalised_options
                 )
