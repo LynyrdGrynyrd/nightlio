@@ -10,6 +10,7 @@ import { Button } from '../components/ui/button';
 import { cn } from '@/lib/utils';
 import { MOOD_CONFIG, TIMEOUTS } from '../constants/appConstants';
 import apiService, { GalleryPhoto, GalleryResponse } from '../services/api';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 import type { HistoryEntry } from '../types/entry';
 
 interface SearchEntry {
@@ -59,7 +60,7 @@ const JournalView = ({
   const [hasMorePhotos, setHasMorePhotos] = useState(false);
   const [photoOffset, setPhotoOffset] = useState(0);
 
-  const tokenRef = useRef(localStorage.getItem('twilightio_token'));
+  const tokenRef = useRef(localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN));
   const selectedMoodsSet = useMemo(() => new Set(selectedMoods), [selectedMoods]);
   const hasActiveFilters = query || selectedMoods.length > 0 || startDate || endDate;
 

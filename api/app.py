@@ -76,7 +76,13 @@ def create_app(config_name="default"):
 
         jwt_secret = app.config.get("JWT_SECRET_KEY")
         flask_secret = app.config.get("SECRET_KEY")
-        insecure = {None, "", INSECURE_DEFAULT_SECRET}
+        insecure = {
+            None,
+            "",
+            INSECURE_DEFAULT_SECRET,
+            "your-secret-key-change-this",
+            "your-jwt-secret-change-this",
+        }
 
         if jwt_secret in insecure or flask_secret in insecure:
             raise RuntimeError(

@@ -66,7 +66,7 @@ class ExportService:
             try:
                 date_obj = datetime.strptime(entry["date"], "%Y-%m-%d")
                 month_key = date_obj.strftime("%B %Y")
-            except:
+            except (ValueError, TypeError):
                 month_key = "Other"
             if month_key not in month_groups:
                 month_groups[month_key] = []

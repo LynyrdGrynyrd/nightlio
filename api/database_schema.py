@@ -2,10 +2,21 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
 from typing import Iterable
 
 from api.database_common import DatabaseConnectionMixin, logger
+
+_IS_PRODUCTION = os.getenv("RAILWAY_ENVIRONMENT", "").lower() == "production"
+
+
+def _handle_migration_error(exc: sqlite3.Error, context: str) -> None:
+    """Log migration failure; re-raise in production to prevent silent schema drift."""
+    if _IS_PRODUCTION:
+        logger.error("%s migration failed: %s", context, exc)
+        raise
+    logger.warning("%s migration failed (non-critical): %s", context, exc)
 
 
 class DatabaseSchemaMixin(DatabaseConnectionMixin):
@@ -99,7 +110,7 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
                 conn.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
                 logger.info("Users table migrated to include password_hash")
         except sqlite3.Error as exc:
-            logger.warning("Users table migration failed (non-critical): %s", exc)
+            _handle_migration_error(exc, "Users table")
 
     def _create_mood_entries_table(self, conn: sqlite3.Connection) -> None:
         conn.execute(
@@ -158,7 +169,7 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
                 conn.execute("ALTER TABLE groups ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE")
                 logger.info("Groups table migrated to include user_id")
         except sqlite3.Error as exc:
-            logger.warning("Groups table migration failed (non-critical): %s", exc)
+            _handle_migration_error(exc, "Groups table")
 
     def _create_group_options_table(self, conn: sqlite3.Connection) -> None:
         conn.execute(
@@ -184,7 +195,7 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
                 conn.execute("ALTER TABLE group_options ADD COLUMN icon TEXT")
                 logger.info("Group options table migrated to include icon")
         except sqlite3.Error as exc:
-            logger.warning("Group options table migration failed (non-critical): %s", exc)
+            _handle_migration_error(exc, "Group options table")
 
     def _create_entry_selections_table(self, conn: sqlite3.Connection) -> None:
         conn.execute(
@@ -291,7 +302,7 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
                 logger.info("Goals table migrated to include custom_days")
 
         except sqlite3.Error as exc:
-            logger.warning("Goals table migration failed (non-critical): %s", exc)
+            _handle_migration_error(exc, "Goals table")
 
     def _create_goal_completions_table(self, conn: sqlite3.Connection) -> None:
         try:
@@ -448,7 +459,7 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
                     "ALTER TABLE reminders ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
                 )
         except sqlite3.Error as exc:
-            logger.warning("Reminders table migration failed (non-critical): %s", exc)
+            _handle_migration_error(exc, "Reminders table")
 
     def _create_push_subscriptions_table(self, conn: sqlite3.Connection) -> None:
         try:
@@ -498,7 +509,7 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
                 conn.execute("ALTER TABLE media_attachments ADD COLUMN thumbnail_path TEXT")
                 logger.info("Media attachments table migrated to include thumbnail_path")
         except sqlite3.Error as exc:
-            logger.warning("Media table migration failed (non-critical): %s", exc)
+            _handle_migration_error(exc, "Media table")
 
     def _create_fts_tables(self, conn: sqlite3.Connection) -> None:
         """Create Full-Text Search virtual tables and triggers."""

@@ -3,6 +3,7 @@
  */
 
 import { ApiError, RequestOptions } from './types';
+import { STORAGE_KEYS } from '../../constants/storageKeys';
 
 /**
  * Normalize the base URL from environment variables
@@ -34,7 +35,7 @@ export class ApiClient {
   private token: string | null;
 
   constructor() {
-    this.token = typeof localStorage !== 'undefined' ? localStorage.getItem('twilightio_token') : null;
+    this.token = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) : null;
   }
 
   /**
