@@ -179,3 +179,11 @@ class MoodService:
         """Get detailed streak information for a user"""
         return self.db.get_streak_details(user_id)
 
+    def get_journal_stats(self, user_id: int) -> Dict:
+        """Get journaling statistics: weekly word count and writing streak."""
+        return {
+            "weekly_word_count": self.db.get_weekly_word_count(user_id),
+            "journaling_streak": self.db.get_journaling_streak(user_id),
+            "longest_journaling_streak": self.db.get_longest_journaling_streak(user_id),
+        }
+

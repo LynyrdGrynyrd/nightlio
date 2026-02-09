@@ -78,6 +78,4 @@ def create_achievement_routes(achievement_service: AchievementService):
         except Exception as e:
             return secure_error_response(e, 500)
 
-    # Web3 NFT minting removed
-
     return achievement_bp

@@ -1,16 +1,9 @@
 import { useMemo, useState, useEffect } from 'react';
 import apiService, { Scale, Correlation, CoOccurrence } from '../../services/api';
 import { getWeeklyMoodData, movingAverage, WeeklyMoodDataPoint } from '../../utils/moodUtils';
-import {
-  DEFAULT_METRICS,
-  EMPTY_OBJECT,
-  buildCalendarDays,
-  buildMoodDistributionData,
-  buildOverviewCards,
-  CalendarDay,
-  MoodDistributionDataPoint,
-  OverviewCard,
-} from './statisticsViewUtils';
+import type { CalendarDay, MoodDistributionDataPoint, OverviewCard } from './statisticsTypes';
+import { DEFAULT_METRICS, EMPTY_OBJECT } from './statisticsConstants';
+import { buildCalendarDays, buildMoodDistributionData, buildOverviewCards } from './statisticsUtils';
 import type { EntryWithSelections } from '../../types/entry';
 
 // ========== Types ==========

@@ -1,12 +1,9 @@
 # Optional dependencies for Twilightio features
-# Install only when enabling Google OAuth or Web3
 
 # Google OAuth
-authlib
+authlib==1.6.7
 google-auth
 google-auth-oauthlib
 
 # Image processing tools for scripts
 Pillow
-
-# Web3 removed

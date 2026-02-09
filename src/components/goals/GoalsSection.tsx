@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Target, Plus, ArrowRight, Calendar, CheckCircle, XCircle } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Target, Plus, Calendar, CheckCircle, XCircle } from 'lucide-react';
 import Skeleton from '../ui/Skeleton';
 import apiService from '../../services/api';
-import AddGoalCard from './AddGoalCard';
+import AddGoalDialog from './AddGoalDialog';
 import { useToast } from '../ui/ToastProvider';
 import { getTodayISO } from '../../utils/dateUtils';
 import ResponsiveGrid from '../layout/ResponsiveGrid';
@@ -10,25 +11,21 @@ import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { Progress } from '../ui/progress';
 import { cn } from '@/lib/utils';
-import {
-  useGoalCompletion,
-  GoalWithExtras,
-  mapGoalToExtras,
-  isGoalDoneToday,
-} from '../../hooks/useGoalCompletion';
-
-interface GoalsSectionProps {
-  onNavigateToGoals: () => void;
-}
+import { useGoalCompletion } from '../../hooks/useGoalCompletion';
+import { mapGoalToExtras, isGoalDoneToday } from '../../utils/goalUtils';
+import { queryKeys } from '../../lib/queryKeys';
+import type { Goal } from '../../services/api';
+import type { GoalWithExtras } from '../../types/goals';
 
 interface GoalPreviewCardProps {
   goal: GoalWithExtras;
   onToggleComplete: (goalId: number) => Promise<void>;
 }
 
-const GoalsSection = ({ onNavigateToGoals }: GoalsSectionProps) => {
+const GoalsSection = () => {
+  const queryClient = useQueryClient();
   const [goals, setGoals] = useState<GoalWithExtras[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
   const { show } = useToast();
 
   const { toggleGoalCompletion } = useGoalCompletion({
@@ -36,28 +33,26 @@ const GoalsSection = ({ onNavigateToGoals }: GoalsSectionProps) => {
     onError: (message) => show(message, 'error'),
   });
 
+  const { data: fetchedGoals, isLoading: loading } = useQuery({
+    queryKey: queryKeys.goals.list(),
+    queryFn: async () => {
+      const data = await apiService.getGoals();
+      const today = getTodayISO();
+      return (data || []).map((g: Goal) => mapGoalToExtras(g, today));
+    },
+  });
+
+  // Sync fetched data into local state (toggle mutations update local state directly)
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const data = await apiService.getGoals();
-        if (!mounted) return;
-        const today = getTodayISO();
-        const mapped = (data || []).slice(0, 3).map((g) => mapGoalToExtras(g, today));
-        setGoals(mapped);
-      } catch {
-        // leave empty on failure; section can show skeleton or CTA
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+    if (fetchedGoals) setGoals(fetchedGoals);
+  }, [fetchedGoals]);
 
   const handleToggleComplete = async (goalId: number) => {
     await toggleGoalCompletion(goalId, goals, setGoals);
+  };
+
+  const handleGoalCreated = (_goal: GoalWithExtras) => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.goals.all });
   };
 
   if (loading) {
@@ -83,13 +78,13 @@ const GoalsSection = ({ onNavigateToGoals }: GoalsSectionProps) => {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-foreground">Goals</h2>
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
-          onClick={onNavigateToGoals}
-          className="text-primary hover:text-primary gap-1"
+          onClick={() => setAddDialogOpen(true)}
+          className="gap-1.5"
         >
-          View All
-          <ArrowRight size={14} />
+          <Plus size={14} />
+          Add Goal
         </Button>
       </div>
 
@@ -102,7 +97,7 @@ const GoalsSection = ({ onNavigateToGoals }: GoalsSectionProps) => {
               </span>
               <p className="m-0 text-base opacity-90">No goals yet.</p>
             </div>
-            <Button onClick={onNavigateToGoals} size="sm" className="inline-flex items-center gap-1.5 w-full sm:w-auto">
+            <Button onClick={() => setAddDialogOpen(true)} size="sm" className="inline-flex items-center gap-1.5 w-full sm:w-auto">
               <Plus size={16} />
               Add First Goal
             </Button>
@@ -110,12 +105,17 @@ const GoalsSection = ({ onNavigateToGoals }: GoalsSectionProps) => {
         </Card>
       ) : (
         <ResponsiveGrid minCardWidth="16rem" maxColumns={4} gapToken="normal">
-          <AddGoalCard onAdd={onNavigateToGoals} />
           {goals.map((goal) => (
             <GoalPreviewCard key={goal.id} goal={goal} onToggleComplete={handleToggleComplete} />
           ))}
         </ResponsiveGrid>
       )}
+
+      <AddGoalDialog
+        open={addDialogOpen}
+        onOpenChange={setAddDialogOpen}
+        onGoalCreated={handleGoalCreated}
+      />
     </div>
   );
 };

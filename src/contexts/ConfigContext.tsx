@@ -28,7 +28,10 @@ export const useConfig = (): ConfigContextValue => {
 // ========== Provider ==========
 
 export const ConfigProvider = ({ children }: ConfigProviderProps) => {
-  const [config, setConfig] = useState<PublicConfig>({ enable_google_oauth: false });
+  const [config, setConfig] = useState<PublicConfig>({
+    enable_google_oauth: false,
+    enable_local_login: false,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

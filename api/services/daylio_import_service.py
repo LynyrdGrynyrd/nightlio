@@ -381,15 +381,9 @@ class DaylioImportService:
         parsed = _safe_int(value)
         if parsed is None:
             return None
-        if 1 <= parsed <= 5:
-            return parsed
         if 0 <= parsed <= 4:
             return parsed + 1
-        if parsed <= 0:
-            return 1
-        if parsed > 5:
-            return 5
-        return None
+        return max(1, min(5, parsed))
 
     def _normalize_entry(
         self, entry: Dict[str, Any], custom_moods: Dict[str, int]
@@ -398,12 +392,10 @@ class DaylioImportService:
         date_str = timestamp.strftime("%Y-%m-%d")
         created_at = timestamp.isoformat()
 
-        raw_mood = None
-        for key in ("mood", "moodValue", "value", "moodLevel"):
-            candidate = entry.get(key)
-            if candidate is not None:
-                raw_mood = candidate
-                break
+        raw_mood = next(
+            (entry[k] for k in ("mood", "moodValue", "value", "moodLevel") if entry.get(k) is not None),
+            None,
+        )
 
         mood = self._normalize_mood(raw_mood)
         if mood is None:
@@ -542,19 +534,12 @@ class DaylioImportService:
     def _is_duplicate_entry(self, user_id: int, created_at: str, mood: int, content: str) -> bool:
         """Deterministic duplicate check using (created_at, mood, content_hash)."""
         content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
-        with self.db._connect() as conn:
-            conn.row_factory = None
-            rows = conn.execute(
-                """
-                SELECT content
-                  FROM mood_entries
-                 WHERE user_id = ? AND created_at = ? AND mood = ?
-                """,
-                (user_id, created_at, mood),
-            ).fetchall()
-        for row in rows:
-            existing_content = str(row[0] or "")
-            existing_hash = hashlib.sha256(existing_content.encode("utf-8")).hexdigest()
-            if existing_hash == content_hash:
+        cursor = self.db._query(
+            "SELECT content FROM mood_entries WHERE user_id = ? AND created_at = ? AND mood = ?",
+            (user_id, created_at, mood),
+        )
+        for row in cursor.fetchall():
+            existing_content = str(row["content"] or "")
+            if hashlib.sha256(existing_content.encode("utf-8")).hexdigest() == content_hash:
                 return True
         return False

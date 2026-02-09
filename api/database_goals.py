@@ -7,20 +7,12 @@ from datetime import datetime, timedelta, date
 import json
 from typing import Dict, List, Optional
 
-try:  # pragma: no cover - support both package and script imports
-    from .database_common import (
-        DatabaseConnectionMixin,
-        DatabaseError,
-        SQLQueries,
-        logger,
-    )
-except ImportError:  # pragma: no cover - script fallback
-    from database_common import (  # type: ignore
-        DatabaseConnectionMixin,
-        DatabaseError,
-        SQLQueries,
-        logger,
-    )
+from api.database_common import (
+    DatabaseConnectionMixin,
+    DatabaseError,
+    SQLQueries,
+    logger,
+)
 
 
 class GoalsMixin(DatabaseConnectionMixin):
@@ -32,19 +24,19 @@ class GoalsMixin(DatabaseConnectionMixin):
             date_obj = datetime.now().date()
         start = date_obj - timedelta(days=date_obj.weekday())
         return start.strftime("%Y-%m-%d")
-    
+
     @staticmethod
     def _month_start_iso(date_obj: Optional[date] = None) -> str:
         if date_obj is None:
             date_obj = datetime.now().date()
         return date_obj.replace(day=1).strftime("%Y-%m-%d")
-    
+
     @staticmethod
     def _day_start_iso(date_obj: Optional[date] = None) -> str:
         if date_obj is None:
             date_obj = datetime.now().date()
         return date_obj.strftime("%Y-%m-%d")
-    
+
     def _get_period_start(self, frequency_type: str, date_obj: Optional[date] = None) -> str:
         """Get period start based on frequency type."""
         if frequency_type == "daily":
@@ -115,29 +107,36 @@ class GoalsMixin(DatabaseConnectionMixin):
         self,
         conn: sqlite3.Connection,
         goal_row: sqlite3.Row,
+        *,
+        in_transaction: bool = False,
     ) -> Dict:
         """Roll over goal to new period if needed, with transaction locking.
 
-        Uses BEGIN IMMEDIATE to acquire a reserved lock, preventing race conditions
-        where multiple requests try to rollover the same goal simultaneously.
+        Args:
+            conn: Active database connection.
+            goal_row: The goal row to check.
+            in_transaction: When ``True`` the caller already holds a write
+                transaction (via ``_write_transaction``), so this method skips
+                its own ``BEGIN IMMEDIATE`` / commit / rollback.
         """
         goal_dict = dict(goal_row)
         frequency_type = (goal_dict.get("frequency_type") or "weekly").lower()
         today_start = self._get_period_start(frequency_type)
         today_str = datetime.now().strftime("%Y-%m-%d")
 
-        # Quick check without lock - if already current period, no rollover needed
+        # Quick check - if already current period, no rollover needed
         if (goal_dict.get("period_start") or "") == today_start:
             goal_dict["already_completed_today"] = (
                 goal_dict.get("last_completed_date") == today_str
             )
             return goal_dict
 
-        # Need rollover - use IMMEDIATE transaction to prevent race conditions
+        # Need rollover
         try:
-            conn.execute("BEGIN IMMEDIATE")
+            if not in_transaction:
+                conn.execute("BEGIN IMMEDIATE")
 
-            # Re-fetch with lock to verify still needs rollover (double-check pattern)
+            # Re-fetch to verify still needs rollover (double-check pattern)
             conn.row_factory = sqlite3.Row
             fresh_row = conn.execute(
                 """
@@ -150,7 +149,8 @@ class GoalsMixin(DatabaseConnectionMixin):
             ).fetchone()
 
             if not fresh_row:
-                conn.rollback()
+                if not in_transaction:
+                    conn.rollback()
                 goal_dict["already_completed_today"] = False
                 return goal_dict
 
@@ -158,7 +158,8 @@ class GoalsMixin(DatabaseConnectionMixin):
 
             # Another request may have already rolled over
             if (fresh_dict.get("period_start") or "") == today_start:
-                conn.rollback()
+                if not in_transaction:
+                    conn.rollback()
                 fresh_dict["already_completed_today"] = (
                     fresh_dict.get("last_completed_date") == today_str
                 )
@@ -185,7 +186,8 @@ class GoalsMixin(DatabaseConnectionMixin):
                 """,
                 (0, streak, today_start, fresh_dict["id"], fresh_dict["user_id"]),
             )
-            conn.commit()
+            if not in_transaction:
+                conn.commit()
 
             # Fetch updated record
             refreshed = conn.execute(
@@ -203,7 +205,10 @@ class GoalsMixin(DatabaseConnectionMixin):
             return out
 
         except sqlite3.Error as exc:
-            conn.rollback()
+            if not in_transaction:
+                conn.rollback()
+            else:
+                raise
             logger.warning("Goal rollover failed, returning stale data: %s", exc)
             goal_dict["already_completed_today"] = (
                 goal_dict.get("last_completed_date") == today_str
@@ -229,7 +234,7 @@ class GoalsMixin(DatabaseConnectionMixin):
             raise ValueError("frequency_type must be daily, weekly, monthly, or custom")
         if target_count < 1:
             raise ValueError("target_count must be at least 1")
-        
+
         # For weekly: validate frequency_per_week
         if frequency_type == "weekly" and not (1 <= frequency_per_week <= 7):
             raise ValueError("frequency_per_week must be between 1 and 7 for weekly goals")
@@ -251,43 +256,40 @@ class GoalsMixin(DatabaseConnectionMixin):
         )
 
         try:
-            with self._connect() as conn:
-                cursor = conn.execute(
-                    """
-                    INSERT INTO goals (user_id, title, description, frequency_per_week,
-                                        completed, streak, period_start, frequency_type,
-                                        target_count, custom_days)
-                    VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?, ?)
-                    """,
-                    (
-                        user_id,
-                        title.strip(),
-                        (description or "").strip(),
-                        persisted_weekly_target,
-                        period_start,
-                        frequency_type,
-                        target_count,
-                        custom_days,
-                    ),
-                )
-                conn.commit()
-                goal_id = cursor.lastrowid
-                if goal_id is None:
-                    raise DatabaseError("Failed to get goal ID after creation")
-                return int(goal_id)
+            cursor = self._query(
+                """
+                INSERT INTO goals (user_id, title, description, frequency_per_week,
+                                    completed, streak, period_start, frequency_type,
+                                    target_count, custom_days)
+                VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?, ?)
+                """,
+                (
+                    user_id,
+                    title.strip(),
+                    (description or "").strip(),
+                    persisted_weekly_target,
+                    period_start,
+                    frequency_type,
+                    target_count,
+                    custom_days,
+                ),
+                commit=True,
+            )
+            goal_id = cursor.lastrowid
+            if goal_id is None:
+                raise DatabaseError("Failed to get goal ID after creation")
+            return int(goal_id)
         except sqlite3.Error as exc:
             logger.error("Failed to create goal for user %s: %s", user_id, exc)
             raise DatabaseError(f"Failed to create goal: {exc}") from exc
 
     def get_goals(self, user_id: int) -> List[Dict]:
-        with self._connect() as conn:
-            conn.row_factory = sqlite3.Row
+        with self._conn() as conn:
             rows = conn.execute(SQLQueries.GET_GOALS_BY_USER, (user_id,)).fetchall()
             return [self._rollover_goal_if_needed(conn, row) for row in rows]
 
     def get_goal_by_id(self, user_id: int, goal_id: int) -> Optional[Dict]:
-        with self._connect() as conn:
-            conn.row_factory = sqlite3.Row
+        with self._conn() as conn:
             row = conn.execute(SQLQueries.GET_GOAL_BY_ID, (goal_id, user_id)).fetchone()
             if not row:
                 return None
@@ -373,29 +375,26 @@ class GoalsMixin(DatabaseConnectionMixin):
         updates.append("updated_at = CURRENT_TIMESTAMP")
         params.extend([goal_id, user_id])
 
-        with self._connect() as conn:
-            # Column names are from hardcoded whitelist, safe for query
-            cursor = conn.execute(
-                f"UPDATE goals SET {', '.join(updates)} WHERE id = ? AND user_id = ?",
-                params,
-            )
-            conn.commit()
-            return cursor.rowcount > 0
+        # Column names are from hardcoded whitelist, safe for query
+        cursor = self._query(
+            f"UPDATE goals SET {', '.join(updates)} WHERE id = ? AND user_id = ?",
+            params,
+            commit=True,
+        )
+        return cursor.rowcount > 0
 
     def delete_goal(self, user_id: int, goal_id: int) -> bool:
-        with self._connect() as conn:
-            cursor = conn.execute(
-                "DELETE FROM goals WHERE id = ? AND user_id = ?",
-                (goal_id, user_id),
-            )
-            conn.commit()
-            return cursor.rowcount > 0
+        cursor = self._query(
+            "DELETE FROM goals WHERE id = ? AND user_id = ?",
+            (goal_id, user_id),
+            commit=True,
+        )
+        return cursor.rowcount > 0
 
     def increment_goal_progress(self, user_id: int, goal_id: int) -> Optional[Dict]:
         today_str = datetime.now().strftime("%Y-%m-%d")
         today_date = datetime.now().date()
-        with self._connect() as conn:
-            conn.row_factory = sqlite3.Row
+        with self._write_transaction() as conn:
             row = conn.execute(
                 "SELECT * FROM goals WHERE id = ? AND user_id = ?",
                 (goal_id, user_id),
@@ -403,7 +402,7 @@ class GoalsMixin(DatabaseConnectionMixin):
             if not row:
                 return None
 
-            goal = self._rollover_goal_if_needed(conn, row)
+            goal = self._rollover_goal_if_needed(conn, row, in_transaction=True)
             current_completed = int(goal.get("completed") or 0)
             freq = self._goal_target_total(goal)
             streak = int(goal.get("streak") or 0)
@@ -456,7 +455,6 @@ class GoalsMixin(DatabaseConnectionMixin):
                 except sqlite3.Error:
                     pass
 
-            conn.commit()
             updated = conn.execute(
                 """
                 SELECT id, user_id, title, description, frequency_per_week, frequency_type,
@@ -480,14 +478,12 @@ class GoalsMixin(DatabaseConnectionMixin):
         self, user_id: int, goal_id: int, date_str: str
     ) -> Optional[Dict]:
         """Toggle goal completion for a specific date.
-        
+
         If completion exists for that date, remove it.
         If completion doesn't exist, add it.
         Updates completed count based on actual completions in the toggled date's week.
         """
-        with self._connect() as conn:
-            conn.row_factory = sqlite3.Row
-            
+        with self._write_transaction() as conn:
             # Verify goal exists and belongs to user
             row = conn.execute(
                 "SELECT * FROM goals WHERE id = ? AND user_id = ?",
@@ -495,11 +491,11 @@ class GoalsMixin(DatabaseConnectionMixin):
             ).fetchone()
             if not row:
                 return None
-            
-            goal = self._rollover_goal_if_needed(conn, row)
+
+            goal = self._rollover_goal_if_needed(conn, row, in_transaction=True)
             frequency_type = (goal.get("frequency_type") or "weekly").lower()
             freq = self._goal_target_total(goal)
-            
+
             # Parse the toggled date and determine boundaries for goal frequency
             try:
                 target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
@@ -511,7 +507,7 @@ class GoalsMixin(DatabaseConnectionMixin):
                 target_date = datetime.now().date()
 
             custom_day_allowed = self._is_custom_day_allowed(goal, target_date)
-            
+
             # Check if completion exists for this date
             existing = conn.execute(
                 "SELECT 1 FROM goal_completions WHERE user_id = ? AND goal_id = ? AND date = ?",
@@ -528,7 +524,7 @@ class GoalsMixin(DatabaseConnectionMixin):
                 result["is_completed"] = False
                 result["blocked_by_schedule"] = True
                 return result
-            
+
             if existing:
                 # Remove the completion
                 conn.execute(
@@ -543,20 +539,20 @@ class GoalsMixin(DatabaseConnectionMixin):
                     (user_id, goal_id, date_str),
                 )
                 was_completed = True
-            
+
             # Count actual completions within the toggled date's week
             completion_count_row = conn.execute(
                 """
-                SELECT COUNT(*) as cnt FROM goal_completions 
+                SELECT COUNT(*) as cnt FROM goal_completions
                 WHERE user_id = ? AND goal_id = ? AND date >= ? AND date <= ?
                 """,
                 (user_id, goal_id, period_start, period_end),
             ).fetchone()
             actual_completed = completion_count_row["cnt"] if completion_count_row else 0
-            
+
             # Cap at frequency for display purposes
             display_completed = min(actual_completed, freq) if freq > 0 else actual_completed
-            
+
             # Update the goals table with the recalculated count and the new period_start
             # if we're toggling a date in a different week
             conn.execute(
@@ -570,9 +566,7 @@ class GoalsMixin(DatabaseConnectionMixin):
                 """,
                 (display_completed, period_start, date_str if was_completed else None, goal_id, user_id),
             )
-            
-            conn.commit()
-            
+
             # Return updated goal state
             updated = conn.execute(
                 """
@@ -583,10 +577,10 @@ class GoalsMixin(DatabaseConnectionMixin):
                 """,
                 (goal_id, user_id),
             ).fetchone()
-            
+
             if not updated:
                 return None
-            
+
             result = dict(updated)
             today_str = datetime.now().strftime("%Y-%m-%d")
             result["already_completed_today"] = result.get("last_completed_date") == today_str
@@ -601,26 +595,22 @@ class GoalsMixin(DatabaseConnectionMixin):
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
     ) -> List[Dict]:
-        with self._connect() as conn:
-            conn.row_factory = sqlite3.Row
+        if not start_date or not end_date:
+            end = datetime.now().date()
+            start = end - timedelta(days=90)
+            start_date = start.strftime("%Y-%m-%d")
+            end_date = end.strftime("%Y-%m-%d")
 
-            if not start_date or not end_date:
-                end = datetime.now().date()
-                start = end - timedelta(days=90)
-                start_date = start.strftime("%Y-%m-%d")
-                end_date = end.strftime("%Y-%m-%d")
-
-            rows = conn.execute(
-                """
-                SELECT date
-                  FROM goal_completions
-                 WHERE user_id = ? AND goal_id = ? AND date BETWEEN ? AND ?
-                 ORDER BY date ASC
-                """,
-                (user_id, goal_id, start_date, end_date),
-            ).fetchall()
-
-            return [dict(row) for row in rows]
+        cursor = self._query(
+            """
+            SELECT date
+              FROM goal_completions
+             WHERE user_id = ? AND goal_id = ? AND date BETWEEN ? AND ?
+             ORDER BY date ASC
+            """,
+            (user_id, goal_id, start_date, end_date),
+        )
+        return [dict(row) for row in cursor.fetchall()]
 
 
 __all__ = ["GoalsMixin"]

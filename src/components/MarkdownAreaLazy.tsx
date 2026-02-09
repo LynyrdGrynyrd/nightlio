@@ -1,5 +1,5 @@
 import { lazy, Suspense, forwardRef, ForwardedRef } from 'react';
-import type { MarkdownAreaHandle } from './MarkdownArea';
+import type { MarkdownAreaHandle, MarkdownAreaProps } from './MarkdownArea';
 
 // Lazy load the MDXEditor component
 const MarkdownArea = lazy(() => import('./MarkdownArea'));
@@ -16,7 +16,7 @@ const EditorSkeleton = () => (
   </div>
 );
 
-const MarkdownAreaLazy = forwardRef((props, ref: ForwardedRef<MarkdownAreaHandle>) => {
+const MarkdownAreaLazy = forwardRef((props: MarkdownAreaProps, ref: ForwardedRef<MarkdownAreaHandle>) => {
   return (
     <Suspense fallback={<EditorSkeleton />}>
       <MarkdownArea ref={ref} {...props} />
@@ -26,5 +26,5 @@ const MarkdownAreaLazy = forwardRef((props, ref: ForwardedRef<MarkdownAreaHandle
 
 MarkdownAreaLazy.displayName = 'MarkdownAreaLazy';
 
-export type { MarkdownAreaHandle };
+export type { MarkdownAreaHandle, MarkdownAreaProps };
 export default MarkdownAreaLazy;

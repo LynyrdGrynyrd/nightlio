@@ -2,11 +2,12 @@ import { useRef, useState, useMemo, Fragment, memo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Button } from '../ui/button';
-import { Share } from 'lucide-react';
+import { Share, Waves, Grid2X2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { BaseEntry } from '../../types/entry';
 import { useTheme } from '../../contexts/ThemeContext';
-import { resolveCSSVar } from './statisticsViewUtils';
+import { resolveCSSVar } from './statisticsConstants';
+import MoodLandscape from './MoodLandscape';
 
 // Use shared BaseEntry type
 type Entry = BaseEntry;
@@ -20,6 +21,8 @@ interface YearDataPoint {
   mood: number;
   entry: Entry;
 }
+
+type YearPixelsView = 'landscape' | 'grid';
 
 // Constants - moved outside component to avoid recreation on each render
 const MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
@@ -41,7 +44,8 @@ const YearInPixels = ({ entries, onDayClick }: YearInPixelsProps) => {
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [moodFilter, setMoodFilter] = useState<string>('all');
-  const gridRef = useRef<HTMLDivElement>(null);
+  const [viewMode, setViewMode] = useState<YearPixelsView>('landscape');
+  const visualRef = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
 
   // Resolve mood colors for current theme (re-computes on theme change)
@@ -117,8 +121,43 @@ const YearInPixels = ({ entries, onDayClick }: YearInPixelsProps) => {
     return processed;
   }, [entries, selectedYear]);
 
+  const yearPoints = useMemo(() => {
+    const points: Array<{
+      iso: string;
+      monthIndex: number;
+      day: number;
+      mood: number | null;
+      shouldDim: boolean;
+    }> = [];
+
+    const dayCursor = new Date(selectedYear, 0, 1);
+    const finalDay = new Date(selectedYear + 1, 0, 1);
+    const activeFilter = moodFilter === 'all' ? null : Number(moodFilter);
+
+    while (dayCursor < finalDay) {
+      const monthIndex = dayCursor.getMonth();
+      const day = dayCursor.getDate();
+      const key = `${monthIndex}-${day}`;
+      const mood = yearData[key]?.mood ?? null;
+      const roundedMood = mood === null ? null : Math.round(mood);
+      const shouldDim = activeFilter !== null && roundedMood !== null && roundedMood !== activeFilter;
+
+      points.push({
+        iso: dayCursor.toISOString(),
+        monthIndex,
+        day,
+        mood,
+        shouldDim,
+      });
+
+      dayCursor.setDate(dayCursor.getDate() + 1);
+    }
+
+    return points;
+  }, [selectedYear, moodFilter, yearData]);
+
   const handleExport = async () => {
-    if (!gridRef.current) return;
+    if (!visualRef.current) return;
 
     try {
       // Lazy-load html2canvas only when user clicks export (~73KB saved from initial bundle)
@@ -129,13 +168,13 @@ const YearInPixels = ({ entries, onDayClick }: YearInPixelsProps) => {
         || getComputedStyle(document.documentElement).getPropertyValue('--background').trim()
         || 'rgb(255, 255, 255)';
 
-      const canvas = await html2canvas(gridRef.current, {
+      const canvas = await html2canvas(visualRef.current, {
         backgroundColor: bgColor,
         scale: 2 // Retain high quality
       });
 
       const link = document.createElement('a');
-      link.download = `year-in-pixels-${selectedYear}.png`;
+      link.download = `${viewMode}-mood-view-${selectedYear}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
     } catch (err) {
@@ -144,11 +183,37 @@ const YearInPixels = ({ entries, onDayClick }: YearInPixelsProps) => {
   };
 
   return (
-    <Card>
-      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 space-y-2 sm:space-y-0">
-        <CardTitle className="text-base font-semibold">Year in Pixels</CardTitle>
+    <Card className="rounded-[calc(var(--radius)+4px)]">
+      <CardHeader className="flex flex-col items-start gap-3 pb-4">
+        <div className="w-full flex flex-wrap items-center justify-between gap-3">
+          <CardTitle className="text-base font-semibold">Mood Landscape</CardTitle>
+          <div className="inline-flex items-center rounded-full border border-border/70 bg-muted/50 p-1">
+            <button
+              type="button"
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                viewMode === 'landscape' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              )}
+              onClick={() => setViewMode('landscape')}
+            >
+              <Waves size={14} />
+              Landscape
+            </button>
+            <button
+              type="button"
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                viewMode === 'grid' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              )}
+              onClick={() => setViewMode('grid')}
+            >
+              <Grid2X2 size={14} />
+              Classic Grid
+            </button>
+          </div>
+        </div>
 
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-2 w-full">
           <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
             <SelectTrigger className="w-[100px] h-8 text-xs">
               <SelectValue placeholder="Year" />
@@ -178,79 +243,84 @@ const YearInPixels = ({ entries, onDayClick }: YearInPixelsProps) => {
       </CardHeader>
 
       <CardContent>
-        <div ref={gridRef} className="p-4 bg-background rounded-lg border overflow-x-auto">
-          <div className="grid gap-[2px] grid-cols-[24px_repeat(31,1fr)] sm:grid-cols-[32px_repeat(31,1fr)]">
-            {/* Header Row (Days) */}
-            <div className="h-6" /> {/* Corner Spacer */}
-            {DAYS.map(day => (
-              <div key={day} className="text-center text-[10px] text-muted-foreground font-medium h-6 flex items-center justify-center">
-                {day % 5 === 0 || day === 1 ? day : ''}
-              </div>
-            ))}
+        <div ref={visualRef} className="p-4 bg-background/75 rounded-[calc(var(--radius)+2px)] border border-border/70 overflow-x-auto">
+          {viewMode === 'landscape' ? (
+            <MoodLandscape
+              points={yearPoints}
+              selectedYear={selectedYear}
+              moodFilter={moodFilter}
+              getMoodColor={getMoodColor}
+              onDayClick={onDayClick}
+            />
+          ) : (
+            <>
+              <div className="grid gap-[2px] grid-cols-[24px_repeat(31,1fr)] sm:grid-cols-[32px_repeat(31,1fr)]">
+                <div className="h-6" />
+                {DAYS.map(day => (
+                  <div key={day} className="text-center text-[10px] text-muted-foreground font-medium h-6 flex items-center justify-center">
+                    {day % 5 === 0 || day === 1 ? day : ''}
+                  </div>
+                ))}
 
-            {/* Months Rows */}
-            {MONTHS.map((monthLabel, monthIndex) => (
-              <Fragment key={`month-${monthIndex}`}>
-                {/* Month Label */}
-                <div className="text-[10px] sm:text-xs text-muted-foreground font-semibold flex items-center justify-center h-5 sm:h-6">
-                  {monthLabel}
-                </div>
-
-                {/* Days Cells */}
-                {DAYS.map(day => {
-                  const date = new Date(selectedYear, monthIndex, day);
-                  // Check if date is valid for this month
-                  const isValidDate = date.getMonth() === monthIndex;
-
-                  if (!isValidDate) {
-                    return <div key={`${monthIndex}-${day}`} className="bg-transparent" />;
-                  }
-
-                  const data = yearData[`${monthIndex}-${day}`];
-                  const mood = data ? data.mood : null;
-                  const roundedMood = mood ? Math.round(mood) : null;
-
-                  // Apply mood filter - dim cells that don't match
-                  const currentFilterVal = moodFilter === 'all' ? 'all' : Number(moodFilter);
-                  const shouldDim = currentFilterVal !== 'all' && mood !== null && roundedMood !== currentFilterVal;
-
-                  const color = mood ? getMoodColor(mood) : undefined;
-                  const isClickable = !!onDayClick;
-                  const isEmpty = !mood;
-
-                  return (
-                    <div
-                      key={`${monthIndex}-${day}`}
-                      onClick={() => isClickable && onDayClick(date.toISOString())}
-                      title={data ? `${FULL_MONTHS[monthIndex]} ${day}: Mood ${(mood ?? 0).toFixed(1)}` : `${FULL_MONTHS[monthIndex]} ${day} - Click to add entry`}
-                      className={cn(
-                        "group relative aspect-square rounded-[2px] transition-[transform,opacity] duration-200 flex items-center justify-center border border-muted/20",
-                        isClickable ? "cursor-pointer hover:z-10 hover:scale-125" : "cursor-default",
-                        shouldDim ? "opacity-30" : "opacity-100",
-                        isEmpty ? "bg-muted/30" : ""
-                      )}
-                      style={{ backgroundColor: color }}
-                    >
-                      {isEmpty && isClickable && (
-                        <span className="text-[8px] font-thin text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-                          +
-                        </span>
-                      )}
+                {MONTHS.map((monthLabel, monthIndex) => (
+                  <Fragment key={`month-${monthIndex}`}>
+                    <div className="text-[10px] sm:text-xs text-muted-foreground font-semibold flex items-center justify-center h-5 sm:h-6">
+                      {monthLabel}
                     </div>
-                  );
-                })}
-              </Fragment>
-            ))}
-          </div>
 
-          <div className="flex gap-4 justify-center mt-6 text-xs text-muted-foreground">
-            {[1, 2, 3, 4, 5].map(score => (
-              <div key={score} className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-[2px]" style={{ background: getMoodColor(score) }} />
-                <span>Level {score}</span>
+                    {DAYS.map(day => {
+                      const date = new Date(selectedYear, monthIndex, day);
+                      const isValidDate = date.getMonth() === monthIndex;
+
+                      if (!isValidDate) {
+                        return <div key={`${monthIndex}-${day}`} className="bg-transparent" />;
+                      }
+
+                      const data = yearData[`${monthIndex}-${day}`];
+                      const mood = data ? data.mood : null;
+                      const roundedMood = mood ? Math.round(mood) : null;
+                      const currentFilterVal = moodFilter === 'all' ? 'all' : Number(moodFilter);
+                      const shouldDim = currentFilterVal !== 'all' && mood !== null && roundedMood !== currentFilterVal;
+
+                      const color = mood ? getMoodColor(mood) : undefined;
+                      const isClickable = !!onDayClick;
+                      const isEmpty = !mood;
+
+                      return (
+                        <div
+                          key={`${monthIndex}-${day}`}
+                          onClick={() => isClickable && onDayClick(date.toISOString())}
+                          title={data ? `${FULL_MONTHS[monthIndex]} ${day}: Mood ${(mood ?? 0).toFixed(1)}` : `${FULL_MONTHS[monthIndex]} ${day} - Click to add entry`}
+                          className={cn(
+                            "group relative aspect-square rounded-[3px] transition-[transform,opacity] duration-200 flex items-center justify-center border border-muted/20",
+                            isClickable ? "cursor-pointer hover:z-10 hover:scale-125" : "cursor-default",
+                            shouldDim ? "opacity-30" : "opacity-100",
+                            isEmpty ? "bg-muted/30" : ""
+                          )}
+                          style={{ backgroundColor: color }}
+                        >
+                          {isEmpty && isClickable && (
+                            <span className="text-[8px] font-thin text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                              +
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </Fragment>
+                ))}
               </div>
-            ))}
-          </div>
+
+              <div className="flex gap-4 justify-center mt-6 text-xs text-muted-foreground">
+                {[1, 2, 3, 4, 5].map(score => (
+                  <div key={score} className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-[3px]" style={{ background: getMoodColor(score) }} />
+                    <span>Level {score}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </CardContent>
     </Card>

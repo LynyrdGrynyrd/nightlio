@@ -1,19 +1,20 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useReducedMotion } from 'framer-motion';
 import MoodPicker from '../components/mood/MoodPicker';
 import MoodDisplay from '../components/mood/MoodDisplay';
 import GroupSelector from '../components/groups/GroupSelector';
 import GroupManager from '../components/groups/GroupManager';
 import MDArea, { MarkdownAreaHandle } from '../components/MarkdownAreaLazy';
-import apiService, { Group, Media, API_BASE_URL, Scale, ScaleValuesMap } from '../services/api';
+import apiService, { Group, Media, Scale, ScaleValuesMap } from '../services/api';
 import { useToast } from '../components/ui/ToastProvider';
 import PhotoPicker from '../components/media/PhotoPicker';
 import TemplateSelector from '../components/entry/TemplateSelector';
-import VoiceRecorder from '../components/entry/VoiceRecorder';
-import VoicePlayer from '../components/entry/VoicePlayer';
+import JournalPromptBar from '../components/entry/JournalPromptBar';
+import WordCountIndicator from '../components/entry/WordCountIndicator';
+import EntryVoiceNotes from '../components/entry/EntryVoiceNotes';
 import ScaleSection from '../components/scales/ScaleSection';
-import { offlineStorage } from '../services/offlineStorage';
-import { Mic, ArrowLeft, Loader2, Save, CalendarIcon, PenLine } from 'lucide-react';
-import { TIMEOUTS } from '../constants/appConstants';
+import useEntrySubmit from '../hooks/useEntrySubmit';
+import { ArrowLeft, Loader2, Save, CalendarIcon, PenLine } from 'lucide-react';
 import { HistoryEntry } from '../types/entry';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
@@ -21,17 +22,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popove
 import { cn } from '@/lib/utils';
 import { badgeVariants } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-
-/**
- * Extract non-null scale entries from the values map.
- * Used for saving to API and offline storage.
- */
-const getNonNullScaleEntries = (values: ScaleValuesMap): Record<number, number> => {
-  return Object.entries(values).reduce((acc, [id, value]) => {
-    if (value !== null) acc[Number(id)] = value;
-    return acc;
-  }, {} as Record<number, number>);
-};
+import { isPositiveMood, launchMoodCelebration } from '@/utils/celebration';
+import type { JournalPrompt } from '../data/journalPrompts';
 
 interface EntryViewProps {
   selectedMood?: number;
@@ -48,10 +40,6 @@ interface EntryViewProps {
   targetDate?: string | null;
 }
 
-const DEFAULT_MARKDOWN = `# How was your day?
-
-Write about your thoughts, feelings, and experiences...`;
-
 const EntryView = ({
   selectedMood,
   groups,
@@ -66,30 +54,69 @@ const EntryView = ({
   onEditMoodSelect,
   targetDate = null,
 }: EntryViewProps) => {
+  const prefersReducedMotion = useReducedMotion();
   const isEditing = Boolean(editingEntry);
   const isRetroactiveEntry = Boolean(targetDate) && !isEditing;
   const entryDate = targetDate || new Date().toLocaleDateString();
   const [selectedOptions, setSelectedOptions] = useState<number[]>(
     editingEntry?.selections?.map((selection) => selection.id) ?? []
   );
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitMessage, setSubmitMessage] = useState('');
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
   const [audioFiles, setAudioFiles] = useState<File[]>([]);
-  const [showRecorder, setShowRecorder] = useState(false);
   const [existingMedia, setExistingMedia] = useState<Media[]>([]);
   const [scales, setScales] = useState<Scale[]>([]);
   const [scaleValues, setScaleValues] = useState<ScaleValuesMap>({});
   const [scalesLoading, setScalesLoading] = useState(true);
-  // API_BASE_URL imported directly
   const markdownRef = useRef<MarkdownAreaHandle>(null);
+  const [editorContent, setEditorContent] = useState('');
+  const [weeklyWordCount, setWeeklyWordCount] = useState<number | undefined>();
   const { show } = useToast();
 
-  // Helper to reset scale values to null (skipped state)
   const resetScaleValues = useCallback((scaleList: Scale[]) => {
     const resetValues: ScaleValuesMap = {};
     scaleList.forEach(s => { resetValues[s.id] = null; });
     setScaleValues(resetValues);
+  }, []);
+
+  const resetForm = useCallback(() => {
+    setSelectedOptions([]);
+    setSelectedPhotos([]);
+    setAudioFiles([]);
+  }, []);
+
+  const { isSubmitting, submitMessage, handleSubmit } = useEntrySubmit({
+    selectedMood,
+    selectedOptions,
+    selectedPhotos,
+    audioFiles,
+    scaleValues,
+    scales,
+    entryDate,
+    isEditing,
+    editingEntry,
+    markdownRef,
+    onEntryUpdated,
+    onBack,
+    onEntrySubmitted,
+    resetForm,
+    resetScaleValues,
+  });
+
+  useEffect(() => {
+    if (!submitMessage || !isPositiveMood(selectedMood ?? null) || prefersReducedMotion) return;
+    void launchMoodCelebration({
+      mood: selectedMood ?? null,
+      reducedMotion: false,
+    });
+  }, [submitMessage, selectedMood, prefersReducedMotion]);
+
+  // Load weekly word count on mount
+  useEffect(() => {
+    let cancelled = false;
+    apiService.getJournalStats()
+      .then(stats => { if (!cancelled) setWeeklyWordCount(stats.weekly_word_count); })
+      .catch(() => { /* endpoint may not exist yet */ });
+    return () => { cancelled = true; };
   }, []);
 
   // Load scales on mount
@@ -179,6 +206,26 @@ const EntryView = ({
     }
   };
 
+  const handleApplyPrompt = useCallback((prompt: JournalPrompt) => {
+    const instance = markdownRef.current?.getInstance?.();
+    if (instance && typeof instance.setMarkdown === 'function') {
+      instance.setMarkdown(`## ${prompt.text}\n\n`);
+    }
+  }, []);
+
+  const handleInsertStarter = useCallback((text: string) => {
+    const instance = markdownRef.current?.getInstance?.();
+    if (instance && typeof instance.setMarkdown === 'function') {
+      const current = markdownRef.current?.getMarkdown?.() || '';
+      const trimmed = current.trim();
+      // Replace default placeholder or append
+      const isDefault = trimmed === '# How was your day?\n\nWrite about your thoughts, feelings, and experiences...'.trim()
+        || trimmed === '# How was your day?\n\nWrite about your thoughts, feelings, and experiences...'
+        || trimmed.length === 0;
+      instance.setMarkdown(isDefault ? text : `${current}\n\n${text}`);
+    }
+  }, []);
+
   const handleMediaDeleted = async (mediaId: number) => {
     try {
       await apiService.deleteMedia(mediaId);
@@ -186,139 +233,6 @@ const EntryView = ({
       show('Photo removed.', 'success');
     } catch {
       show('Failed to remove photo.', 'error');
-    }
-  };
-
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-    setSubmitMessage('');
-
-    try {
-      if (!selectedMood) {
-        show('Pick a mood before saving your entry.', 'error');
-        setIsSubmitting(false);
-        return;
-      }
-
-      const markdownContent = markdownRef.current?.getMarkdown?.() || '';
-      if (!markdownContent.trim()) {
-        show('Write a few thoughts before saving.', 'error');
-        setIsSubmitting(false);
-        return;
-      }
-
-      let entryId: number;
-      let finalEntry: Record<string, unknown> = {};
-
-      try {
-        if (isEditing && editingEntry) {
-          const response = await apiService.updateMoodEntry(editingEntry.id, {
-            mood: selectedMood,
-            content: markdownContent,
-            selected_options: selectedOptions,
-          });
-
-          entryId = editingEntry.id;
-          finalEntry = response.entry as Record<string, unknown>;
-        } else {
-          const now = new Date();
-          const response = await apiService.createMoodEntry({
-            mood: selectedMood,
-            date: entryDate,
-            timestamp: now.toISOString(),
-            content: markdownContent,
-            selected_options: selectedOptions,
-          });
-
-          entryId = response.entry_id;
-        }
-
-        // Upload photos
-        if (selectedPhotos.length > 0) {
-          await Promise.all(selectedPhotos.map(file => apiService.uploadMedia(entryId, file)));
-        }
-
-        // Upload audio
-        if (audioFiles.length > 0) {
-          await Promise.all(audioFiles.map(file => apiService.uploadMedia(entryId, file)));
-        }
-
-        // Save scale entries
-        const nonNullScales = getNonNullScaleEntries(scaleValues);
-        if (Object.keys(nonNullScales).length > 0) {
-          await apiService.saveEntryScales(entryId, nonNullScales);
-        }
-
-        // Success Handling
-        if (isEditing) {
-          if (typeof onEntryUpdated === 'function') {
-            onEntryUpdated({
-              ...editingEntry,
-              ...finalEntry,
-              selections: (finalEntry.selections as HistoryEntry['selections']) ?? [],
-            } as HistoryEntry);
-          }
-          if (typeof onBack === 'function') onBack();
-          show('Entry updated successfully!', 'success');
-        } else {
-          setSubmitMessage('Entry saved successfully! 🎉');
-          markdownRef.current?.getInstance?.()?.setMarkdown(DEFAULT_MARKDOWN);
-          setSelectedOptions([]);
-          setSelectedPhotos([]);
-          setAudioFiles([]);
-          resetScaleValues(scales);
-          setTimeout(() => onEntrySubmitted(), TIMEOUTS.REDIRECT_DELAY_MS);
-        }
-
-      } catch (networkError: any) {
-        // OFFLINE FALLBACK
-        if (!navigator.onLine || (networkError.message && networkError.message.includes('Failed to fetch'))) {
-          const now = new Date();
-          const offlineScaleEntries = getNonNullScaleEntries(scaleValues);
-
-          const payload = {
-            mood: selectedMood,
-            date: entryDate,
-            time: now.toISOString(),
-            content: markdownContent,
-            selected_options: selectedOptions,
-            scale_entries: offlineScaleEntries,
-            photos: selectedPhotos,
-            audio: audioFiles,
-            id: isEditing ? editingEntry?.id : undefined,
-            updates: isEditing ? {
-              mood: selectedMood,
-              content: markdownContent,
-              selected_options: selectedOptions,
-              scale_entries: offlineScaleEntries
-            } : undefined
-          };
-
-          const type = isEditing ? 'UPDATE_ENTRY' : 'CREATE_ENTRY';
-          await offlineStorage.addToQueue({ type, payload });
-
-          show('Saved offline. Will sync when online.', 'info');
-
-          if (isEditing) {
-            if (typeof onBack === 'function') onBack();
-          } else {
-            setSubmitMessage('Saved offline.');
-            markdownRef.current?.getInstance?.()?.setMarkdown(DEFAULT_MARKDOWN);
-            setSelectedOptions([]);
-            setSelectedPhotos([]);
-            setAudioFiles([]);
-            resetScaleValues(scales);
-            setTimeout(() => onEntrySubmitted(), TIMEOUTS.REDIRECT_DELAY_MS);
-          }
-          return;
-        }
-        throw networkError;
-      }
-    } catch (error: any) {
-      console.error('Failed to save entry:', error);
-      show(`Failed to save entry: ${error.message}`, 'error');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -331,9 +245,15 @@ const EntryView = ({
             Back
           </Button>
         </div>
-        <Card className="border-0 shadow-none bg-transparent">
-          <CardContent className="p-0 text-center space-y-6 pt-12">
-            <h3 className="text-2xl font-bold tracking-tight">How are you feeling right now?</h3>
+        <Card className="border-border/60 bg-card/80">
+          <CardContent className="p-6 md:p-10 text-center space-y-7">
+            <div className={cn("mx-auto h-28 w-28 rounded-full border border-border/60 bg-[color:var(--accent-bg-softer)] flex items-center justify-center", !prefersReducedMotion && "breathe-soft")}>
+              <span className="font-journal text-sm text-muted-foreground">Take one breath</span>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-2xl font-bold tracking-tight">How are you feeling right now?</h3>
+              <p className="text-sm text-muted-foreground font-journal">Pick the feeling that matches this moment. You can add details right after.</p>
+            </div>
             <div className="flex justify-center">
               <MoodPicker onMoodSelect={handleMoodSelection} selectedMood={null} />
             </div>
@@ -348,7 +268,7 @@ const EntryView = ({
       <div className="flex items-center justify-between">
         <Button variant="ghost" onClick={onBack} className="gap-2 text-muted-foreground hover:text-foreground">
           <ArrowLeft size={18} aria-hidden="true" />
-          {isEditing ? 'Cancel Edit' : 'Back to History'}
+          {isEditing ? 'Cancel Edit' : 'Back to Journal'}
         </Button>
       </div>
 
@@ -360,13 +280,13 @@ const EntryView = ({
             {isEditing && editingEntry && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg w-fit">
                 <PenLine size={14} aria-hidden="true" />
-                Editing entry from <span className="font-semibold text-foreground">{editingEntry.date}</span>
+                Editing reflection from <span className="font-semibold text-foreground">{editingEntry.date}</span>
               </div>
             )}
             {isRetroactiveEntry && (
               <div className={cn(badgeVariants({ variant: "outline" }), "bg-[color:var(--warning-soft)] border-[color:var(--warning)] text-[color:var(--warning)] gap-2 py-1.5 px-3 h-auto")}>
                 <CalendarIcon size={14} aria-hidden="true" />
-                Creating entry for <span className="font-semibold">{entryDate}</span>
+                Creating reflection for <span className="font-semibold">{entryDate}</span>
               </div>
             )}
 
@@ -394,7 +314,7 @@ const EntryView = ({
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-lg">Activities</h3>
+              <h3 className="font-semibold text-lg">Moments & Activities</h3>
             </div>
             <GroupSelector
               groups={groups}
@@ -430,61 +350,19 @@ const EntryView = ({
 
           <Separator />
 
-          {/* Voice Notes */}
-          <div className="space-y-4">
-            <h4 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-              <Mic size={16} aria-hidden="true" />
-              Voice Notes
-            </h4>
-
-            {showRecorder ? (
-              <VoiceRecorder
-                onRecordingComplete={(file) => {
-                  setAudioFiles(prev => [...prev, file]);
-                  setShowRecorder(false);
-                }}
-                onCancel={() => setShowRecorder(false)}
-              />
-            ) : (
-              <Button
-                variant="outline"
-                className="w-full justify-start h-auto py-3 gap-3 border-dashed hover:border-primary/50 hover:bg-muted/50"
-                onClick={() => setShowRecorder(true)}
-              >
-                <div className="w-8 h-8 rounded-full bg-[color:var(--destructive-soft)] text-destructive flex items-center justify-center shrink-0">
-                  <Mic size={16} aria-hidden="true" />
-                </div>
-                <div className="flex flex-col items-start text-sm">
-                  <span className="font-medium text-foreground">Record a voice note</span>
-                  <span className="text-xs text-muted-foreground">Tap to start recording</span>
-                </div>
-              </Button>
-            )}
-
-            <div className="space-y-2">
-              {existingMedia.filter(m => !m.file_type.startsWith('image/')).map((media) => (
-                <VoicePlayer
-                  key={media.id}
-                  src={`${API_BASE_URL}/uploads/${media.file_path}`}
-                  onDelete={() => handleMediaDeleted(media.id)}
-                />
-              ))}
-
-              {audioFiles.map((file, idx) => (
-                <VoicePlayer
-                  key={`new-${idx}`}
-                  src={URL.createObjectURL(file)}
-                  onDelete={() => setAudioFiles(prev => prev.filter((_, i) => i !== idx))}
-                />
-              ))}
-            </div>
-          </div>
+          <EntryVoiceNotes
+            existingMedia={existingMedia}
+            audioFiles={audioFiles}
+            onRecordingComplete={(file) => setAudioFiles(prev => [...prev, file])}
+            onAudioFileRemove={(idx) => setAudioFiles(prev => prev.filter((_, i) => i !== idx))}
+            onMediaDeleted={handleMediaDeleted}
+          />
         </div>
 
         {/* RIGHT COLUMN: Editor */}
         <div className="lg:col-span-7 flex flex-col h-full space-y-4 lg:border-l lg:pl-8 min-h-[500px]">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="font-semibold text-lg">Journal</h3>
+            <h3 className="font-semibold text-lg">Journal Reflection</h3>
             <TemplateSelector
               onSelectTemplate={(content) => {
                 const instance = markdownRef.current?.getInstance?.();
@@ -495,9 +373,21 @@ const EntryView = ({
             />
           </div>
 
-          <div className="flex-1 border rounded-xl overflow-hidden shadow-sm bg-card">
-            <MDArea ref={markdownRef} />
+          {selectedMood && (
+            <JournalPromptBar
+              mood={selectedMood}
+              onInsertText={handleInsertStarter}
+              onApplyPrompt={handleApplyPrompt}
+              hasContent={editorContent.length > 20}
+              isEditing={isEditing}
+            />
+          )}
+
+          <div className="flex-1 border rounded-[calc(var(--radius)+2px)] overflow-hidden shadow-sm bg-card font-journal">
+            <MDArea ref={markdownRef} onChange={setEditorContent} />
           </div>
+
+          <WordCountIndicator content={editorContent} weeklyTotal={weeklyWordCount} />
 
           <div className="pt-4 flex justify-end sticky bottom-6 z-10">
             <Button
@@ -514,7 +404,7 @@ const EntryView = ({
               ) : (
                 <>
                   <Save className="mr-2 h-5 w-5" aria-hidden="true" />
-                  {isEditing ? 'Save Changes' : 'Save Entry'}
+                  {isEditing ? 'Save Changes' : 'Save Reflection'}
                 </>
               )}
             </Button>

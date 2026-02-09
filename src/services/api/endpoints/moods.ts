@@ -1,11 +1,11 @@
 /**
  * Mood entry endpoints
- * NOTE: Bug fix included - updateMoodEntry now invalidates /api/streak cache
  */
 
 import { ApiClient } from '../apiClient';
 import { MoodEntry, CreateMoodEntryData, UpdateMoodEntryData, MoodDefinition, GroupOption } from '../types';
 import type { CreateMoodEntryResponse, UpdateMoodEntryResponse } from '../types/responses';
+import type { JournalStats } from '../types/journal';
 
 export const createMoodEndpoints = (client: ApiClient) => ({
   /**
@@ -23,47 +23,30 @@ export const createMoodEndpoints = (client: ApiClient) => ({
   /**
    * Create a new mood entry
    */
-  createMoodEntry: async (entryData: CreateMoodEntryData): Promise<CreateMoodEntryResponse> => {
-    const result = await client.request<CreateMoodEntryResponse>('/api/mood', {
+  createMoodEntry: (entryData: CreateMoodEntryData): Promise<CreateMoodEntryResponse> => {
+    return client.request<CreateMoodEntryResponse>('/api/mood', {
       method: 'POST',
       body: JSON.stringify(entryData),
     });
-    // Invalidate related caches
-    client.invalidateCache('/api/moods');
-    client.invalidateCache('/api/statistics');
-    client.invalidateCache('/api/streak');
-    client.invalidateCache('/api/analytics');
-    return result;
   },
 
   /**
    * Update an existing mood entry
-   * BUG FIX: Now invalidates /api/streak cache (was missing before)
    */
-  updateMoodEntry: async (entryId: number, entryData: UpdateMoodEntryData): Promise<UpdateMoodEntryResponse> => {
-    const result = await client.request<UpdateMoodEntryResponse>(`/api/mood/${entryId}`, {
+  updateMoodEntry: (entryId: number, entryData: UpdateMoodEntryData): Promise<UpdateMoodEntryResponse> => {
+    return client.request<UpdateMoodEntryResponse>(`/api/mood/${entryId}`, {
       method: 'PUT',
       body: JSON.stringify(entryData),
     });
-    client.invalidateCache('/api/moods');
-    client.invalidateCache('/api/statistics');
-    client.invalidateCache('/api/streak'); // BUG FIX: Added missing cache invalidation
-    client.invalidateCache('/api/analytics');
-    return result;
   },
 
   /**
    * Delete a mood entry
    */
-  deleteMoodEntry: async (entryId: number): Promise<{ message: string }> => {
-    const result = await client.request<{ message: string }>(`/api/mood/${entryId}`, {
+  deleteMoodEntry: (entryId: number): Promise<{ message: string }> => {
+    return client.request<{ message: string }>(`/api/mood/${entryId}`, {
       method: 'DELETE',
     });
-    client.invalidateCache('/api/moods');
-    client.invalidateCache('/api/statistics');
-    client.invalidateCache('/api/streak');
-    client.invalidateCache('/api/analytics');
-    return result;
   },
 
   /**
@@ -88,5 +71,12 @@ export const createMoodEndpoints = (client: ApiClient) => ({
       method: 'PUT',
       body: JSON.stringify(updates),
     });
+  },
+
+  /**
+   * Get journal statistics (weekly word count, journaling streak)
+   */
+  getJournalStats: (): Promise<JournalStats> => {
+    return client.request<JournalStats>('/api/journal/stats');
   },
 });

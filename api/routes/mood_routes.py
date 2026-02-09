@@ -19,7 +19,15 @@ def _normalise_selected_options(
         raise ValueError("selected_options must be an array")
 
     try:
-        return [int(option_id) for option_id in raw]
+        deduped: List[int] = []
+        seen = set()
+        for option_id in raw:
+            parsed = int(option_id)
+            if parsed in seen:
+                continue
+            seen.add(parsed)
+            deduped.append(parsed)
+        return deduped
     except (TypeError, ValueError) as exc:
         raise ValueError("selected_options must contain integers") from exc
 
@@ -32,8 +40,6 @@ def create_mood_routes(mood_service: MoodService, media_service: Any = None):
     def create_mood_entry():
         try:
             user_id = get_current_user_id()
-            if user_id is None:
-                return jsonify({"error": "Unauthorized"}), 401
             data = request.get_json(silent=True) or {}
 
             # Validate input using schema
@@ -94,8 +100,6 @@ def create_mood_routes(mood_service: MoodService, media_service: Any = None):
     def get_mood_entries():
         try:
             user_id = get_current_user_id()
-            if user_id is None:
-                return jsonify({"error": "Unauthorized"}), 401
             start_date = request.args.get("start_date")
             end_date = request.args.get("end_date")
 
@@ -129,8 +133,6 @@ def create_mood_routes(mood_service: MoodService, media_service: Any = None):
     def get_mood_entry(entry_id):
         try:
             user_id = get_current_user_id()
-            if user_id is None:
-                return jsonify({"error": "Unauthorized"}), 401
             entry = mood_service.get_entry_by_id(user_id, entry_id)
             if entry:
                 return jsonify(entry)
@@ -145,8 +147,6 @@ def create_mood_routes(mood_service: MoodService, media_service: Any = None):
     def update_mood_entry(entry_id):
         try:
             user_id = get_current_user_id()
-            if user_id is None:
-                return jsonify({"error": "Unauthorized"}), 401
             data = request.json or {}
 
             mood = data.get("mood")
@@ -223,8 +223,6 @@ def create_mood_routes(mood_service: MoodService, media_service: Any = None):
     def delete_mood_entry(entry_id):
         try:
             user_id = get_current_user_id()
-            if user_id is None:
-                return jsonify({"error": "Unauthorized"}), 401
             success = mood_service.delete_entry(user_id, entry_id)
 
             if success:
@@ -244,8 +242,6 @@ def create_mood_routes(mood_service: MoodService, media_service: Any = None):
     def get_mood_statistics():
         try:
             user_id = get_current_user_id()
-            if user_id is None:
-                return jsonify({"error": "Unauthorized"}), 401
             stats = mood_service.get_statistics(user_id)
             return jsonify(stats)
 
@@ -257,8 +253,6 @@ def create_mood_routes(mood_service: MoodService, media_service: Any = None):
     def get_current_streak():
         try:
             user_id = get_current_user_id()
-            if user_id is None:
-                return jsonify({"error": "Unauthorized"}), 401
             streak = mood_service.get_current_streak(user_id)
             return jsonify(
                 {
@@ -275,8 +269,6 @@ def create_mood_routes(mood_service: MoodService, media_service: Any = None):
     def get_entry_selections(entry_id):
         try:
             user_id = get_current_user_id()
-            if user_id is None:
-                return jsonify({"error": "Unauthorized"}), 401
             selections = mood_service.get_entry_selections(user_id, entry_id)
             return jsonify(selections)
 
@@ -288,10 +280,19 @@ def create_mood_routes(mood_service: MoodService, media_service: Any = None):
     def get_streak_details():
         try:
             user_id = get_current_user_id()
-            if user_id is None:
-                return jsonify({"error": "Unauthorized"}), 401
             details = mood_service.get_streak_details(user_id)
             return jsonify(details)
+
+        except Exception as e:
+            return secure_error_response(e, 500)
+
+    @mood_bp.route("/journal/stats", methods=["GET"])
+    @require_auth
+    def get_journal_stats():
+        try:
+            user_id = get_current_user_id()
+            stats = mood_service.get_journal_stats(user_id)
+            return jsonify(stats)
 
         except Exception as e:
             return secure_error_response(e, 500)

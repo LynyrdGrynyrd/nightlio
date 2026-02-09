@@ -10,7 +10,9 @@ def test_config_endpoint_client():
     assert set(data.keys()) == {
         "enable_google_oauth",
         "enable_registration",
+        "enable_local_login",
         "google_client_id",
     }
     assert isinstance(data["enable_google_oauth"], bool)
     assert isinstance(data["enable_registration"], bool)
+    assert isinstance(data["enable_local_login"], bool)

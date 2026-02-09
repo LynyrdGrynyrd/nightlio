@@ -5,6 +5,10 @@ const config: Config = {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["var(--font-family-ui)", "system-ui", "sans-serif"],
+        serif: ["var(--font-family-journal)", "serif"],
+      },
       colors: {
         border: "var(--border)",
         input: "var(--input)",

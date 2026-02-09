@@ -10,16 +10,9 @@ import {
   linkDialogPlugin,
   imagePlugin,
   tablePlugin,
-  codeBlockPlugin,
-  codeMirrorPlugin,
-  diffSourcePlugin,
-  frontmatterPlugin,
-  directivesPlugin,
-  AdmonitionDirectiveDescriptor,
   toolbarPlugin,
   UndoRedo,
   BoldItalicUnderlineToggles,
-  CodeToggle,
   CreateLink,
   InsertImage,
   InsertTable,
@@ -33,6 +26,11 @@ import '@mdxeditor/editor/style.css';
 
 // ========== Types ==========
 
+export interface MarkdownAreaProps {
+  onChange?: (markdown: string) => void;
+  initialContent?: string;
+}
+
 export interface MarkdownAreaHandle {
   getMarkdown: () => string;
   getInstance: () => {
@@ -40,9 +38,13 @@ export interface MarkdownAreaHandle {
   };
 }
 
+const DEFAULT_CONTENT = `# How was your day?
+
+Write about your thoughts, feelings, and experiences...`;
+
 // ========== Component ==========
 
-const MarkdownArea = forwardRef((_props, ref: ForwardedRef<MarkdownAreaHandle>) => {
+const MarkdownArea = forwardRef(({ onChange, initialContent }: MarkdownAreaProps, ref: ForwardedRef<MarkdownAreaHandle>) => {
   const editorRef = useRef<MDXEditorMethods>(null);
 
   useImperativeHandle(ref, () => ({
@@ -141,9 +143,8 @@ const MarkdownArea = forwardRef((_props, ref: ForwardedRef<MarkdownAreaHandle>) 
       </style>
       <MDXEditor
         ref={editorRef}
-        markdown={`# How was your day?
-
-Write about your thoughts, feelings, and experiences...`}
+        markdown={initialContent ?? DEFAULT_CONTENT}
+        onChange={onChange}
         contentEditableClassName="prose"
         plugins={[
           headingsPlugin(),
@@ -155,19 +156,12 @@ Write about your thoughts, feelings, and experiences...`}
           linkDialogPlugin(),
           imagePlugin(),
           tablePlugin(),
-          codeBlockPlugin({ defaultCodeBlockLanguage: 'txt' }),
-          codeMirrorPlugin({ codeBlockLanguages: { txt: 'Plain Text', js: 'JavaScript', css: 'CSS' } }),
-          directivesPlugin({ directiveDescriptors: [AdmonitionDirectiveDescriptor] }),
-          frontmatterPlugin(),
-          diffSourcePlugin({ viewMode: 'rich-text', diffMarkdown: '' }),
           toolbarPlugin({
             toolbarContents: () => (
               <>
                 <UndoRedo />
                 <Separator />
                 <BoldItalicUnderlineToggles />
-                <CodeToggle />
-                <Separator />
                 <BlockTypeSelect />
                 <Separator />
                 <CreateLink />

@@ -1,6 +1,7 @@
-import { Dispatch, SetStateAction, useEffect, useMemo, useState } from 'react';
+import { Dispatch, ReactElement, SetStateAction, useEffect, useMemo, useState } from 'react';
 import { Bell, Clock, Trash2, Plus, Pencil, Save, X } from 'lucide-react';
 import apiService, { Goal, Reminder } from '../../services/api';
+import { useNotificationSubscription } from '../../hooks/useNotificationSubscription';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -14,7 +15,6 @@ import {
   SelectValue,
 } from '../ui/select';
 import { useToast } from '../ui/ToastProvider';
-import { cn } from '@/lib/utils';
 
 interface ReminderDraft {
   time: string;
@@ -42,17 +42,6 @@ const DEFAULT_DRAFT: ReminderDraft = {
   isActive: true,
 };
 
-const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-};
-
 const normalizeDays = (days: number[]): number[] =>
   Array.from(
     new Set(days.filter((day) => Number.isInteger(day) && day >= 0 && day <= 6))
@@ -76,18 +65,119 @@ const fromReminder = (reminder: Reminder): ReminderDraft => ({
   isActive: reminder.is_active ?? reminder.isActive ?? true,
 });
 
+function toPayload(draft: ReminderDraft) {
+  const parsedGoalId = Number(draft.goalId);
+  return {
+    time: draft.time,
+    days: normalizeDays(draft.days),
+    message: draft.message.trim() || 'Time to log your mood!',
+    goal_id:
+      draft.goalId && Number.isFinite(parsedGoalId) ? parsedGoalId : null,
+    is_active: draft.isActive,
+  };
+}
+
+function toggleDraftDay(
+  setter: Dispatch<SetStateAction<ReminderDraft>>,
+  day: number
+): void {
+  setter((prev) => {
+    const hasDay = prev.days.includes(day);
+    const nextDays = hasDay
+      ? prev.days.filter((value) => value !== day)
+      : [...prev.days, day];
+    return { ...prev, days: normalizeDays(nextDays) };
+  });
+}
+
+// --- Shared form fields ---
+
+interface ReminderFormFieldsProps {
+  draft: ReminderDraft;
+  setDraft: Dispatch<SetStateAction<ReminderDraft>>;
+  goals: Goal[];
+}
+
+function ReminderFormFields({ draft, setDraft, goals }: ReminderFormFieldsProps): ReactElement {
+  return (
+    <>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Input
+          type="time"
+          value={draft.time}
+          onChange={(event) =>
+            setDraft((prev) => ({ ...prev, time: event.target.value }))
+          }
+          className="font-mono"
+        />
+        <Select
+          value={draft.goalId || 'none'}
+          onValueChange={(value) =>
+            setDraft((prev) => ({
+              ...prev,
+              goalId: value === 'none' ? '' : value,
+            }))
+          }
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Link goal (optional)" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">No linked goal</SelectItem>
+            {goals.map((goal) => (
+              <SelectItem key={goal.id} value={String(goal.id)}>
+                {goal.title}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Input
+        value={draft.message}
+        onChange={(event) =>
+          setDraft((prev) => ({ ...prev, message: event.target.value }))
+        }
+        placeholder="Reminder message"
+      />
+
+      <div className="space-y-2">
+        <div className="text-xs text-muted-foreground">Weekdays</div>
+        <div className="flex flex-wrap gap-2">
+          {WEEKDAYS.map((day) => {
+            const selected = draft.days.includes(day.value);
+            return (
+              <Button
+                key={day.value}
+                type="button"
+                size="sm"
+                variant={selected ? 'default' : 'outline'}
+                onClick={() => toggleDraftDay(setDraft, day.value)}
+                className="h-8 px-3 text-xs"
+              >
+                {day.label}
+              </Button>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// --- RemindersManager ---
+
 const RemindersManager = () => {
   const isMockMode = import.meta.env.VITE_MOCK_MODE === 'true';
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
-  const [subscribed, setSubscribed] = useState(false);
-  const [subscribing, setSubscribing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [newReminder, setNewReminder] = useState<ReminderDraft>(DEFAULT_DRAFT);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState<ReminderDraft>(DEFAULT_DRAFT);
   const { show } = useToast();
+  const { subscribed, subscribing, subscribe, sendTest } = useNotificationSubscription(isMockMode);
 
   const goalTitleMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -115,7 +205,7 @@ const RemindersManager = () => {
   useEffect(() => {
     let mounted = true;
     const init = async () => {
-      await Promise.all([loadData(), checkSubscription()]);
+      await loadData();
       if (!mounted) return;
     };
     init();
@@ -124,98 +214,20 @@ const RemindersManager = () => {
     };
   }, []);
 
-  const checkSubscription = async () => {
-    if (isMockMode) {
-      setSubscribed(true);
-      return;
+  const validateDraft = (draft: ReminderDraft): boolean => {
+    if (!draft.time) {
+      show('Please choose a reminder time.', 'error');
+      return false;
     }
-    try {
-      if (!('serviceWorker' in navigator)) {
-        setSubscribed(false);
-        return;
-      }
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
-      setSubscribed(Boolean(subscription));
-    } catch {
-      setSubscribed(false);
+    if (draft.days.length === 0) {
+      show('Select at least one weekday.', 'error');
+      return false;
     }
-  };
-
-  const handleSubscribe = async () => {
-    if (isMockMode) {
-      setSubscribed(true);
-      show('Mock mode: notifications enabled.', 'success');
-      return;
-    }
-
-    setSubscribing(true);
-    try {
-      if (!('serviceWorker' in navigator)) {
-        throw new Error('Service workers are not available on this browser.');
-      }
-
-      const [permission, vapid, registration] = await Promise.all([
-        Notification.requestPermission(),
-        apiService.getPushVapidPublicKey(),
-        navigator.serviceWorker.ready,
-      ]);
-
-      if (permission !== 'granted') {
-        throw new Error('Notification permission was denied.');
-      }
-
-      const convertedVapidKey = urlBase64ToUint8Array(vapid.publicKey);
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: convertedVapidKey,
-      });
-
-      await apiService.subscribePush(subscription);
-      setSubscribed(true);
-      show('Notifications enabled for this device.', 'success');
-    } catch (err) {
-      console.error('Subscription failed:', err);
-      show(`Failed to enable notifications: ${(err as Error).message}`, 'error');
-    } finally {
-      setSubscribing(false);
-    }
-  };
-
-  const toggleDraftDay = (
-    setter: Dispatch<SetStateAction<ReminderDraft>>,
-    day: number
-  ) => {
-    setter((prev) => {
-      const hasDay = prev.days.includes(day);
-      const nextDays = hasDay
-        ? prev.days.filter((value) => value !== day)
-        : [...prev.days, day];
-      return { ...prev, days: normalizeDays(nextDays) };
-    });
-  };
-
-  const toPayload = (draft: ReminderDraft) => {
-    const parsedGoalId = Number(draft.goalId);
-    return {
-      time: draft.time,
-      days: normalizeDays(draft.days),
-      message: draft.message.trim() || 'Time to log your mood!',
-      goal_id:
-        draft.goalId && Number.isFinite(parsedGoalId) ? parsedGoalId : null,
-      is_active: draft.isActive,
-    };
+    return true;
   };
 
   const handleCreateReminder = async () => {
-    if (!newReminder.time) {
-      show('Please choose a reminder time.', 'error');
-      return;
-    }
-    if (newReminder.days.length === 0) {
-      show('Select at least one weekday.', 'error');
-      return;
-    }
+    if (!validateDraft(newReminder)) return;
 
     setSaving(true);
     try {
@@ -260,14 +272,7 @@ const RemindersManager = () => {
   };
 
   const handleSaveEdit = async (reminderId: number) => {
-    if (!editDraft.time) {
-      show('Please choose a reminder time.', 'error');
-      return;
-    }
-    if (editDraft.days.length === 0) {
-      show('Select at least one weekday.', 'error');
-      return;
-    }
+    if (!validateDraft(editDraft)) return;
 
     setSaving(true);
     try {
@@ -280,20 +285,6 @@ const RemindersManager = () => {
       show('Failed to update reminder.', 'error');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleTestPush = async () => {
-    try {
-      const result = await apiService.sendTestPush();
-      if (result?.message) {
-        show(result.message, 'success');
-      } else {
-        show(result?.error || 'Test notification failed.', 'error');
-      }
-    } catch (err) {
-      console.error(err);
-      show('Failed to send test notification.', 'error');
     }
   };
 
@@ -314,7 +305,7 @@ const RemindersManager = () => {
             <CardDescription>
               Enable push notifications to receive reminders on this device.
             </CardDescription>
-            <Button onClick={handleSubscribe} disabled={subscribing} className="self-start">
+            <Button onClick={subscribe} disabled={subscribing} className="self-start">
               {subscribing ? 'Enabling...' : 'Enable Notifications'}
             </Button>
           </div>
@@ -327,7 +318,7 @@ const RemindersManager = () => {
               <span className="w-2 h-2 rounded-full bg-[color:var(--success)] mr-2" />
               Notifications Enabled
             </Badge>
-            <Button variant="link" onClick={handleTestPush} className="self-start p-0 h-auto">
+            <Button variant="link" onClick={sendTest} className="self-start p-0 h-auto">
               Send Test Notification
             </Button>
           </div>
@@ -337,68 +328,11 @@ const RemindersManager = () => {
           <>
             <div className="border rounded-xl p-4 space-y-4">
               <h3 className="font-semibold">New Reminder</h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Input
-                  type="time"
-                  value={newReminder.time}
-                  onChange={(event) =>
-                    setNewReminder((prev) => ({ ...prev, time: event.target.value }))
-                  }
-                  className="font-mono"
-                />
-                <Select
-                  value={newReminder.goalId || 'none'}
-                  onValueChange={(value) =>
-                    setNewReminder((prev) => ({
-                      ...prev,
-                      goalId: value === 'none' ? '' : value,
-                    }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Link goal (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No linked goal</SelectItem>
-                    {goals.map((goal) => (
-                      <SelectItem key={goal.id} value={String(goal.id)}>
-                        {goal.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Input
-                value={newReminder.message}
-                onChange={(event) =>
-                  setNewReminder((prev) => ({ ...prev, message: event.target.value }))
-                }
-                placeholder="Reminder message"
+              <ReminderFormFields
+                draft={newReminder}
+                setDraft={setNewReminder}
+                goals={goals}
               />
-
-              <div className="space-y-2">
-                <div className="text-xs text-muted-foreground">Weekdays</div>
-                <div className="flex flex-wrap gap-2">
-                  {WEEKDAYS.map((day) => {
-                    const selected = newReminder.days.includes(day.value);
-                    return (
-                      <Button
-                        key={day.value}
-                        type="button"
-                        size="sm"
-                        variant={selected ? 'default' : 'outline'}
-                        onClick={() => toggleDraftDay(setNewReminder, day.value)}
-                        className="h-8 px-3 text-xs"
-                      >
-                        {day.label}
-                      </Button>
-                    );
-                  })}
-                </div>
-              </div>
-
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <span>Active</span>
@@ -481,67 +415,11 @@ const RemindersManager = () => {
                         </div>
                       ) : (
                         <div className="space-y-3">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <Input
-                              type="time"
-                              value={editDraft.time}
-                              onChange={(event) =>
-                                setEditDraft((prev) => ({ ...prev, time: event.target.value }))
-                              }
-                              className="font-mono"
-                            />
-                            <Select
-                              value={editDraft.goalId || 'none'}
-                              onValueChange={(value) =>
-                                setEditDraft((prev) => ({
-                                  ...prev,
-                                  goalId: value === 'none' ? '' : value,
-                                }))
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Link goal (optional)" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">No linked goal</SelectItem>
-                                {goals.map((goal) => (
-                                  <SelectItem key={goal.id} value={String(goal.id)}>
-                                    {goal.title}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <Input
-                            value={editDraft.message}
-                            onChange={(event) =>
-                              setEditDraft((prev) => ({
-                                ...prev,
-                                message: event.target.value,
-                              }))
-                            }
-                            placeholder="Reminder message"
+                          <ReminderFormFields
+                            draft={editDraft}
+                            setDraft={setEditDraft}
+                            goals={goals}
                           />
-
-                          <div className="flex flex-wrap gap-2">
-                            {WEEKDAYS.map((day) => {
-                              const selected = editDraft.days.includes(day.value);
-                              return (
-                                <Button
-                                  key={day.value}
-                                  type="button"
-                                  size="sm"
-                                  variant={selected ? 'default' : 'outline'}
-                                  onClick={() => toggleDraftDay(setEditDraft, day.value)}
-                                  className={cn('h-8 px-3 text-xs')}
-                                >
-                                  {day.label}
-                                </Button>
-                              );
-                            })}
-                          </div>
-
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                               <span>Active</span>

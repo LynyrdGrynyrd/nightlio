@@ -100,14 +100,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     } catch {
       // If verify fails, clear token and in self-host mode immediately local-login
       logout();
-      if (!config.enable_google_oauth) {
+      if (!config.enable_google_oauth && config.enable_local_login) {
         await localLogin();
         return;
       }
     } finally {
       setLoading(false);
     }
-  }, [token, config.enable_google_oauth, logout, localLogin]);
+  }, [token, config.enable_google_oauth, config.enable_local_login, logout, localLogin]);
 
   useEffect(() => {
     // Skip all auth verification in mock mode
@@ -118,7 +118,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (configLoading) return;
     if (token) {
       verifyToken();
-    } else if (!config.enable_google_oauth) {
+    } else if (!config.enable_google_oauth && config.enable_local_login) {
       // In self-host mode, auto-login to local account on first visit
       localLogin();
     } else {

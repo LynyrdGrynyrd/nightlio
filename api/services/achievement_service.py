@@ -152,6 +152,36 @@ class AchievementService:
                 "secret": False,
                 "target": 500,
             },
+            "weekly_wordsmith": {
+                "achievement_type": "weekly_wordsmith",
+                "name": "Weekly Wordsmith",
+                "description": "Write 500+ words in a single week",
+                "icon": "PenLine",
+                "rarity": "uncommon",
+                "category": "journaling",
+                "secret": False,
+                "target": 500,
+            },
+            "deep_diver": {
+                "achievement_type": "deep_diver",
+                "name": "Deep Diver",
+                "description": "Write 50+ words for 7 consecutive days",
+                "icon": "BookOpen",
+                "rarity": "rare",
+                "category": "journaling",
+                "secret": False,
+                "target": 7,
+            },
+            "journaling_master": {
+                "achievement_type": "journaling_master",
+                "name": "Journaling Master",
+                "description": "Write 50+ words for 30 consecutive days",
+                "icon": "BookMarked",
+                "rarity": "legendary",
+                "category": "journaling",
+                "secret": False,
+                "target": 30,
+            },
         }
 
     def get_achievement_info(self, achievement_type: str) -> Dict:

@@ -5,6 +5,7 @@ Docker startup script for Twilightio API
 import os
 import sys
 import subprocess
+from pathlib import Path
 
 # Set up path for imports
 sys.path.insert(0, "/app")
@@ -27,20 +28,11 @@ if __name__ == "__main__":
     )
 
     if env == "production":
+        gunicorn_config = str(Path(__file__).with_name("gunicorn.conf.py"))
         cmd = [
             "gunicorn",
-            "--bind",
-            f"[::]:{port}",
-            "--workers",
-            "4",
-            "--timeout",
-            "120",
-            "--worker-class",
-            "sync",
-            "--access-logfile",
-            "-",
-            "--error-logfile",
-            "-",
+            "-c",
+            gunicorn_config,
             "wsgi:application",
         ]
         print(f"Using Gunicorn: {' '.join(cmd)}")

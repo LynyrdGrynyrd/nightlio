@@ -6,10 +6,9 @@ import sqlite3
 from datetime import datetime, timedelta, date
 from typing import Dict, List, Optional
 
-try:  # pragma: no cover - allow running as top-level script
-    from .database_common import DatabaseConnectionMixin, SQLQueries, logger
-except ImportError:  # pragma: no cover - executed for script usage fallback
-    from database_common import DatabaseConnectionMixin, SQLQueries, logger  # type: ignore
+from api.database_common import DatabaseConnectionMixin, SQLQueries, logger
+
+MEANINGFUL_WORD_THRESHOLD = 50
 
 
 class AchievementsMixin(DatabaseConnectionMixin):
@@ -17,64 +16,58 @@ class AchievementsMixin(DatabaseConnectionMixin):
 
     # --- Statistics -----------------------------------------------------------
     def increment_stats_view(self, user_id: int) -> None:
-        with self._connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO user_metrics (user_id, stats_views)
-                VALUES (?, 1)
-                ON CONFLICT(user_id)
-                DO UPDATE SET stats_views = stats_views + 1, updated_at = CURRENT_TIMESTAMP
-                """,
-                (user_id,),
-            )
-            conn.commit()
+        self._query(
+            """
+            INSERT INTO user_metrics (user_id, stats_views)
+            VALUES (?, 1)
+            ON CONFLICT(user_id)
+            DO UPDATE SET stats_views = stats_views + 1, updated_at = CURRENT_TIMESTAMP
+            """,
+            (user_id,),
+            commit=True,
+        )
 
     def get_user_metrics(self, user_id: int) -> Dict:
-        with self._connect() as conn:
-            conn.row_factory = sqlite3.Row
-            row = conn.execute(
-                "SELECT user_id, stats_views, updated_at FROM user_metrics WHERE user_id = ?",
-                (user_id,),
-            ).fetchone()
-            if not row:
-                return {"user_id": user_id, "stats_views": 0}
-            return dict(row)
+        row = self._query(
+            "SELECT user_id, stats_views, updated_at FROM user_metrics WHERE user_id = ?",
+            (user_id,),
+        ).fetchone()
+        if not row:
+            return {"user_id": user_id, "stats_views": 0}
+        return dict(row)
 
     def get_mood_statistics(self, user_id: int) -> Dict:
-        with self._connect() as conn:
-            cursor = conn.execute(SQLQueries.GET_MOOD_STATISTICS, (user_id,))
-            row = cursor.fetchone()
-            if row and row[0] > 0:
-                return {
-                    "total_entries": row[0],
-                    "average_mood": round(row[1], 2) if row[1] else 0,
-                    "lowest_mood": row[2],
-                    "highest_mood": row[3],
-                    "first_entry_date": row[4],
-                    "last_entry_date": row[5],
-                }
+        row = self._query(SQLQueries.GET_MOOD_STATISTICS, (user_id,)).fetchone()
+        if row and row[0] > 0:
             return {
-                "total_entries": 0,
-                "average_mood": 0,
-                "lowest_mood": None,
-                "highest_mood": None,
-                "first_entry_date": None,
-                "last_entry_date": None,
+                "total_entries": row[0],
+                "average_mood": round(row[1], 2) if row[1] else 0,
+                "lowest_mood": row[2],
+                "highest_mood": row[3],
+                "first_entry_date": row[4],
+                "last_entry_date": row[5],
             }
+        return {
+            "total_entries": 0,
+            "average_mood": 0,
+            "lowest_mood": None,
+            "highest_mood": None,
+            "first_entry_date": None,
+            "last_entry_date": None,
+        }
 
     def get_mood_counts(self, user_id: int) -> Dict[int, int]:
-        with self._connect() as conn:
-            cursor = conn.execute(
-                """
-                SELECT mood, COUNT(*) as count
-                  FROM mood_entries
-                 WHERE user_id = ?
-                 GROUP BY mood
-                 ORDER BY mood
-                """,
-                (user_id,),
-            )
-            return {row[0]: row[1] for row in cursor.fetchall()}
+        cursor = self._query(
+            """
+            SELECT mood, COUNT(*) as count
+              FROM mood_entries
+             WHERE user_id = ?
+             GROUP BY mood
+             ORDER BY mood
+            """,
+            (user_id,),
+        )
+        return {row[0]: row[1] for row in cursor.fetchall()}
 
     # --- Streak calculation ---------------------------------------------------
     def get_current_streak(self, user_id: int) -> int:
@@ -91,9 +84,8 @@ class AchievementsMixin(DatabaseConnectionMixin):
             return 0
 
     def _get_user_entry_dates(self, user_id: int) -> List[str]:
-        with self._connect() as conn:
-            cursor = conn.execute(SQLQueries.GET_USER_ENTRY_DATES, (user_id,))
-            return [row[0] for row in cursor.fetchall()]
+        cursor = self._query(SQLQueries.GET_USER_ENTRY_DATES, (user_id,))
+        return [row[0] for row in cursor.fetchall()]
 
     def _parse_date_strings(self, date_strings: List[str]) -> List[date]:
         parsed_dates: List[date] = []
@@ -144,20 +136,20 @@ class AchievementsMixin(DatabaseConnectionMixin):
         """Find the longest consecutive streak from a sorted list of dates."""
         if not parsed_dates:
             return 0
-        
+
         # Sort ascending for easier processing
         sorted_dates = sorted(set(parsed_dates))
-        
+
         longest = 1
         current = 1
-        
+
         for i in range(1, len(sorted_dates)):
             if (sorted_dates[i] - sorted_dates[i-1]).days == 1:
                 current += 1
                 longest = max(longest, current)
             else:
                 current = 1
-        
+
         return longest
 
     def get_streak_details(self, user_id: int) -> Dict:
@@ -166,14 +158,14 @@ class AchievementsMixin(DatabaseConnectionMixin):
             dates = self._get_user_entry_dates(user_id)
             parsed_dates = self._parse_date_strings(dates) if dates else []
             entry_dates_set = set(parsed_dates)
-            
+
             current_streak = self._calculate_streak_from_dates(parsed_dates) if parsed_dates else 0
             longest_streak = self._calculate_longest_streak(parsed_dates) if parsed_dates else 0
-            
+
             # Generate recent 5 days including today
             today = datetime.now().date()
             day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-            
+
             recent_days = []
             for i in range(4, -1, -1):  # 4 days ago to today
                 day = today - timedelta(days=i)
@@ -183,7 +175,7 @@ class AchievementsMixin(DatabaseConnectionMixin):
                     "hasEntry": day in entry_dates_set,
                     "isToday": day == today
                 })
-            
+
             return {
                 "current_streak": current_streak,
                 "longest_streak": longest_streak,
@@ -196,6 +188,53 @@ class AchievementsMixin(DatabaseConnectionMixin):
                 "longest_streak": 0,
                 "recent_days": []
             }
+
+    # --- Journaling streaks ---------------------------------------------------
+    def _get_journaling_dates(self, user_id: int) -> List[str]:
+        """Get distinct dates where the user wrote 50+ words."""
+        cursor = self._query(
+            "SELECT DISTINCT date FROM mood_entries WHERE user_id = ? AND word_count >= ?",
+            (user_id, MEANINGFUL_WORD_THRESHOLD),
+        )
+        return [row[0] for row in cursor.fetchall()]
+
+    def get_journaling_streak(self, user_id: int) -> int:
+        """Consecutive days with entries having 50+ words."""
+        try:
+            dates = self._get_journaling_dates(user_id)
+            if not dates:
+                return 0
+            parsed = self._parse_date_strings(dates)
+            return self._calculate_streak_from_dates(parsed) if parsed else 0
+        except Exception as exc:
+            logger.warning("Error calculating journaling streak for user %s: %s", user_id, exc)
+            return 0
+
+    def get_longest_journaling_streak(self, user_id: int) -> int:
+        """Longest consecutive streak of 50+ word entries ever."""
+        try:
+            dates = self._get_journaling_dates(user_id)
+            if not dates:
+                return 0
+            parsed = self._parse_date_strings(dates)
+            return self._calculate_longest_streak(parsed) if parsed else 0
+        except Exception as exc:
+            logger.warning("Error calculating longest journaling streak for user %s: %s", user_id, exc)
+            return 0
+
+    def get_weekly_word_count(self, user_id: int) -> int:
+        """Sum of word_count for entries in the current calendar week (Mon-Sun)."""
+        try:
+            today = datetime.now().date()
+            monday = today - timedelta(days=today.weekday())
+            row = self._query(
+                "SELECT COALESCE(SUM(word_count), 0) FROM mood_entries WHERE user_id = ? AND date >= ?",
+                (user_id, monday.strftime("%Y-%m-%d")),
+            ).fetchone()
+            return int(row[0]) if row else 0
+        except Exception as exc:
+            logger.warning("Error calculating weekly word count for user %s: %s", user_id, exc)
+            return 0
 
     # --- Achievements ---------------------------------------------------------
     def add_achievement(self, user_id: int, achievement_type: str) -> Optional[int]:
@@ -211,37 +250,16 @@ class AchievementsMixin(DatabaseConnectionMixin):
                 return None
 
     def get_user_achievements(self, user_id: int) -> List[Dict]:
-        with self._connect() as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.execute(
-                """
-                SELECT id, achievement_type, earned_at, nft_minted, nft_token_id, nft_tx_hash
-                  FROM achievements
-                 WHERE user_id = ?
-                 ORDER BY earned_at DESC
-                """,
-                (user_id,),
-            )
-            return [dict(row) for row in cursor.fetchall()]
-
-    def update_achievement_nft(
-        self,
-        achievement_id: int,
-        token_id: int,
-        tx_hash: str,
-    ) -> None:
-        with self._connect() as conn:
-            conn.execute(
-                """
-                UPDATE achievements
-                   SET nft_minted = TRUE,
-                       nft_token_id = ?,
-                       nft_tx_hash = ?
-                 WHERE id = ?
-                """,
-                (token_id, tx_hash, achievement_id),
-            )
-            conn.commit()
+        cursor = self._query(
+            """
+            SELECT id, achievement_type, earned_at
+              FROM achievements
+             WHERE user_id = ?
+             ORDER BY earned_at DESC
+            """,
+            (user_id,),
+        )
+        return [dict(row) for row in cursor.fetchall()]
 
     def check_achievements(self, user_id: int) -> List[str]:
         new_achievements: List[str] = []
@@ -251,10 +269,10 @@ class AchievementsMixin(DatabaseConnectionMixin):
         longest_streak = self.get_longest_streak(user_id)
         stats_views = int(self.get_user_metrics(user_id).get("stats_views") or 0)
         mood_counts = self.get_mood_counts(user_id)
-        
+
         # Check if user has used all 5 mood levels
         unique_moods_count = sum(1 for count in mood_counts.values() if count > 0)
-        
+
         # Get goal completions and photo counts (may need to query separately)
         goal_completions = 0
         photo_count = 0
@@ -265,10 +283,10 @@ class AchievementsMixin(DatabaseConnectionMixin):
                     (user_id,)
                 )
                 goal_completions = cursor.fetchone()[0]
-                
+
                 cursor = conn.execute(
-                    """SELECT COUNT(*) FROM media_attachments ma 
-                       JOIN mood_entries me ON ma.entry_id = me.id 
+                    """SELECT COUNT(*) FROM media_attachments ma
+                       JOIN mood_entries me ON ma.entry_id = me.id
                        WHERE me.user_id = ?""",
                     (user_id,)
                 )
@@ -283,7 +301,7 @@ class AchievementsMixin(DatabaseConnectionMixin):
             ("consistency_king", current_streak >= 30),
             ("data_lover", stats_views >= 10),
             ("mood_master", total_entries >= 100),
-            
+
             # New achievements
             ("complex_person", unique_moods_count >= 5),  # All 5 mood levels used
             ("devoted", current_streak >= 365),  # 1 year streak
@@ -291,12 +309,22 @@ class AchievementsMixin(DatabaseConnectionMixin):
             ("goal_crusher", goal_completions >= 10),  # 10 goals completed
             ("half_year", current_streak >= 180),  # 6 month streak
             ("comeback_king", longest_streak > current_streak and current_streak >= 7),
-            
+
             # Milestone achievements
             ("milestone_50", total_entries >= 50),
             ("milestone_250", total_entries >= 250),
             ("milestone_500", total_entries >= 500),
         ]
+
+        # Journaling achievements
+        weekly_word_count = self.get_weekly_word_count(user_id)
+        journaling_streak = self.get_journaling_streak(user_id)
+
+        achievements_to_check.extend([
+            ("weekly_wordsmith", weekly_word_count >= 500),
+            ("deep_diver", journaling_streak >= 7),
+            ("journaling_master", journaling_streak >= 30),
+        ])
 
         for achievement_type, condition in achievements_to_check:
             if condition:
@@ -314,7 +342,7 @@ class AchievementsMixin(DatabaseConnectionMixin):
         stats_views = int(self.get_user_metrics(user_id).get("stats_views") or 0)
         mood_counts = self.get_mood_counts(user_id)
         unique_moods = sum(1 for count in mood_counts.values() if count > 0)
-        
+
         # Get goal completions and photo counts
         goal_completions = 0
         photo_count = 0
@@ -325,10 +353,10 @@ class AchievementsMixin(DatabaseConnectionMixin):
                     (user_id,)
                 )
                 goal_completions = cursor.fetchone()[0]
-                
+
                 cursor = conn.execute(
-                    """SELECT COUNT(*) FROM media_attachments ma 
-                       JOIN mood_entries me ON ma.entry_id = me.id 
+                    """SELECT COUNT(*) FROM media_attachments ma
+                       JOIN mood_entries me ON ma.entry_id = me.id
                        WHERE me.user_id = ?""",
                     (user_id,)
                 )
@@ -346,7 +374,7 @@ class AchievementsMixin(DatabaseConnectionMixin):
             "consistency_king": {"current": clamp(current_streak, 30), "max": 30},
             "data_lover": {"current": clamp(stats_views, 10), "max": 10},
             "mood_master": {"current": clamp(total_entries, 100), "max": 100},
-            
+
             # New achievements
             "complex_person": {"current": clamp(unique_moods, 5), "max": 5},
             "devoted": {"current": clamp(current_streak, 365), "max": 365},
@@ -354,11 +382,16 @@ class AchievementsMixin(DatabaseConnectionMixin):
             "goal_crusher": {"current": clamp(goal_completions, 10), "max": 10},
             "half_year": {"current": clamp(current_streak, 180), "max": 180},
             "comeback_king": {"current": clamp(current_streak, 7), "max": 7},
-            
+
             # Milestones
             "milestone_50": {"current": clamp(total_entries, 50), "max": 50},
             "milestone_250": {"current": clamp(total_entries, 250), "max": 250},
             "milestone_500": {"current": clamp(total_entries, 500), "max": 500},
+
+            # Journaling
+            "weekly_wordsmith": {"current": clamp(self.get_weekly_word_count(user_id), 500), "max": 500},
+            "deep_diver": {"current": clamp(self.get_journaling_streak(user_id), 7), "max": 7},
+            "journaling_master": {"current": clamp(self.get_journaling_streak(user_id), 30), "max": 30},
         }
 
 

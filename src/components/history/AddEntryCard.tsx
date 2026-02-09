@@ -18,8 +18,8 @@ const AddEntryCard = () => {
   return (
     <Card
       className={cn(
-        "flex flex-col items-center justify-center min-h-[200px] cursor-pointer transition-all border-dashed shadow-sm",
-        "bg-accent/5 hover:bg-accent/10 border-primary/30 hover:border-primary/50",
+        "flex flex-col items-center justify-center min-h-[220px] cursor-pointer transition-all border-dashed shadow-sm rounded-[calc(var(--radius)+4px)]",
+        "bg-accent/10 hover:bg-accent/20 border-primary/30 hover:border-primary/50",
         "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
       )}
       onClick={handleAdd}
@@ -33,7 +33,7 @@ const AddEntryCard = () => {
         <div className="flex items-center justify-center w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-sm">
           <Plus size={24} />
         </div>
-        <div className="font-semibold text-lg">Add Entry</div>
+        <div className="font-semibold text-lg">New Reflection</div>
       </div>
     </Card>
   );

@@ -3,6 +3,13 @@ from dataclasses import dataclass
 from typing import Optional, Dict, Any
 from pathlib import Path
 
+INSECURE_DEFAULT_SECRET = "dev-secret-key-change-in-production"
+
+
+def _parse_cors_origins(raw: str) -> list[str]:
+    """Parse comma-separated CORS origins into a normalized list."""
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
 # Optional .env loader: only if python-dotenv is installed.
 try:
     from dotenv import load_dotenv  # type: ignore
@@ -22,7 +29,7 @@ class Config:
     Note: New features should prefer the typed config via get_config().
     """
 
-    SECRET_KEY = os.environ.get("SECRET_KEY") or "dev-secret-key-change-in-production"
+    SECRET_KEY = os.environ.get("SECRET_KEY") or INSECURE_DEFAULT_SECRET
 
     # Database configuration
     DATABASE_PATH = os.environ.get("DATABASE_PATH") or os.path.join(
@@ -30,9 +37,9 @@ class Config:
     )
 
     # CORS configuration
-    CORS_ORIGINS = os.environ.get(
-        "CORS_ORIGINS", "http://localhost:5173,https://twilightio.vercel.app"
-    ).split(",")
+    CORS_ORIGINS = _parse_cors_origins(
+        os.environ.get("CORS_ORIGINS", "http://localhost:5173,https://twilightio.vercel.app")
+    )
 
     # Google OAuth configuration
     GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
@@ -41,6 +48,7 @@ class Config:
     # JWT configuration (legacy)
     JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY") or SECRET_KEY
     JWT_ACCESS_TOKEN_EXPIRES = 3600  # 1 hour
+    ENABLE_LOCAL_LOGIN = str(os.environ.get("ENABLE_LOCAL_LOGIN", "")).strip().lower() in {"1", "true", "yes", "on"}
 
 
 class DevelopmentConfig(Config):
@@ -62,9 +70,11 @@ class ProductionConfig(Config):
     # SECURITY: Exclude localhost from CORS in production
     # Only use explicitly configured origins in production
     CORS_ORIGINS = [
-        origin.strip()
-        for origin in os.environ.get("CORS_ORIGINS", "https://twilightio.vercel.app").split(",")
-        if not origin.strip().startswith("http://localhost")
+        origin
+        for origin in _parse_cors_origins(
+            os.environ.get("CORS_ORIGINS", "https://twilightio.vercel.app")
+        )
+        if not origin.startswith("http://localhost")
     ] or ["https://twilightio.vercel.app"]
 
 
@@ -116,13 +126,12 @@ class ConfigData:
     # Feature flags
     ENABLE_GOOGLE_OAUTH: bool
     ENABLE_REGISTRATION: bool
+    ENABLE_LOCAL_LOGIN: bool
 
     # Google OAuth
     GOOGLE_CLIENT_ID: Optional[str]
     GOOGLE_CLIENT_SECRET: Optional[str]
     GOOGLE_CALLBACK_URL: Optional[str]
-
-    # Web3 removed
 
     # Auth
     JWT_SECRET: str
@@ -145,14 +154,12 @@ def _load_config_from_env() -> ConfigData:
 
     enable_google = is_truthy(os.getenv("ENABLE_GOOGLE_OAUTH"))
     enable_registration = is_truthy(os.getenv("ENABLE_REGISTRATION"))
-    # Web3 removed
-
     # Secrets pulled from env; don't default to empty string.
     jwt_secret = (
         os.getenv("JWT_SECRET")
         or os.getenv("JWT_SECRET_KEY")
         or os.getenv("SECRET_KEY")
-        or "dev-secret-key-change-in-production"
+        or INSECURE_DEFAULT_SECRET
     )
 
     port_str = os.getenv("PORT", "5000")
@@ -165,10 +172,10 @@ def _load_config_from_env() -> ConfigData:
         PORT=port,
         ENABLE_GOOGLE_OAUTH=enable_google,
         ENABLE_REGISTRATION=enable_registration,
+        ENABLE_LOCAL_LOGIN=is_truthy(os.getenv("ENABLE_LOCAL_LOGIN")),
         GOOGLE_CLIENT_ID=os.getenv("GOOGLE_CLIENT_ID"),
         GOOGLE_CLIENT_SECRET=os.getenv("GOOGLE_CLIENT_SECRET"),
         GOOGLE_CALLBACK_URL=os.getenv("GOOGLE_CALLBACK_URL"),
-        # Web3 fields removed
         JWT_SECRET=jwt_secret,
         DEFAULT_SELF_HOST_ID=os.getenv("DEFAULT_SELF_HOST_ID")
         or "selfhost_default_user",
@@ -196,6 +203,7 @@ def config_to_public_dict(cfg: ConfigData) -> Dict[str, Any]:
     return {
         "enable_google_oauth": bool(cfg.ENABLE_GOOGLE_OAUTH),
         "enable_registration": bool(cfg.ENABLE_REGISTRATION),
+        "enable_local_login": bool(cfg.ENABLE_LOCAL_LOGIN),
         # Expose the Google Client ID so the frontend can initialize GSI correctly
         "google_client_id": cfg.GOOGLE_CLIENT_ID,
     }

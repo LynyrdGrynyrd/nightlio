@@ -9,7 +9,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { TOOLTIP_STYLE } from './statisticsViewUtils';
+import { TOOLTIP_STYLE } from './statisticsConstants';
 
 interface Scale {
   id: number;

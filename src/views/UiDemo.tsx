@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -90,6 +91,11 @@ const UiDemo = () => {
         <p className="ui-demo__subtitle">
           Side-by-side examples of the current components vs shadcn/ui.
         </p>
+        <div className="mt-3">
+          <Button asChild size="sm" variant="outline">
+            <Link to="/ui-demo/mood-model">Try mood model sandbox</Link>
+          </Button>
+        </div>
       </header>
 
       <div className="ui-demo__columns ui-demo__columns--two">

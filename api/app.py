@@ -48,11 +48,11 @@ def create_app(config_name="default"):
     """Application factory pattern"""
     try:
         from api.config import config as config_map
-        from api.config import get_config
+        from api.config import get_config, INSECURE_DEFAULT_SECRET
     except Exception:
         # Fallback when running from within api/ directory
         from config import config as config_map  # type: ignore[import-not-found]
-        from config import get_config  # type: ignore[import-not-found]
+        from config import get_config, INSECURE_DEFAULT_SECRET  # type: ignore[import-not-found]
 
     app = Flask(__name__)
     app.config.from_object(config_map[config_name])
@@ -65,10 +65,34 @@ def create_app(config_name="default"):
             app.config["JWT_SECRET_KEY"] = getattr(cfg, "JWT_SECRET")
         if getattr(cfg, "GOOGLE_CLIENT_ID", None):
             app.config["GOOGLE_CLIENT_ID"] = getattr(cfg, "GOOGLE_CLIENT_ID")
+        app.config["ENABLE_LOCAL_LOGIN"] = bool(getattr(cfg, "ENABLE_LOCAL_LOGIN", False))
     except Exception:
         cfg = None  # fallback if typed config fails
 
-    CORS(app, origins=app.config["CORS_ORIGINS"])
+    def _ensure_secure_secrets() -> None:
+        # Reject insecure defaults in production deployments.
+        if config_name != "production":
+            return
+
+        jwt_secret = app.config.get("JWT_SECRET_KEY")
+        flask_secret = app.config.get("SECRET_KEY")
+        insecure = {None, "", INSECURE_DEFAULT_SECRET}
+
+        if jwt_secret in insecure or flask_secret in insecure:
+            raise RuntimeError(
+                "Refusing to start in production with insecure default secrets. "
+                "Set JWT_SECRET (or JWT_SECRET_KEY) and SECRET_KEY to strong values."
+            )
+
+    _ensure_secure_secrets()
+
+    cors_origins = app.config.get("CORS_ORIGINS") or []
+    CORS(
+        app,
+        resources={r"/api/*": {"origins": cors_origins}},
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
+    )
 
     # Rely on flask-cors to handle CORS and automatic OPTIONS responses per route
 
@@ -117,13 +141,12 @@ def create_app(config_name="default"):
                 alphabet = string.ascii_letters + string.digits + string.punctuation
                 admin_password = ''.join(secrets.choice(alphabet) for _ in range(16))
 
-                # Log the generated password (only visible in logs)
+                # Never log raw credentials; emit explicit action guidance instead.
                 app.logger.warning("=" * 70)
                 app.logger.warning("⚠️  DEFAULT ADMIN ACCOUNT CREATED")
                 app.logger.warning(f"⚠️  Username: admin")
-                app.logger.warning(f"⚠️  Password: {admin_password}")
-                app.logger.warning("⚠️  SAVE THIS PASSWORD - IT WON'T BE SHOWN AGAIN!")
-                app.logger.warning("⚠️  Set ADMIN_PASSWORD environment variable to avoid auto-generation")
+                app.logger.warning("⚠️  Password was auto-generated and is intentionally not logged.")
+                app.logger.warning("⚠️  Set ADMIN_PASSWORD environment variable to a known strong value.")
                 app.logger.warning("=" * 70)
             else:
                 app.logger.info("Creating admin user with password from ADMIN_PASSWORD env var")
@@ -312,8 +335,6 @@ def create_app(config_name="default"):
                     print(
                         f"[warn] ENABLE_GOOGLE_OAUTH is true but oauth blueprint not available: {e} / {e2}"
                     )
-
-    # Web3 functionality removed from the application
 
     # Debug: Print all registered routes
     if app.debug:

@@ -122,7 +122,10 @@ const LoginPage = () => {
     window.location.reload();
   }, []);
 
-  const isSelfHost = !config.enable_google_oauth && !config.enable_registration;
+  const isSelfHost =
+    !!config.enable_local_login &&
+    !config.enable_google_oauth &&
+    !config.enable_registration;
   const showGoogleLogin = config.enable_google_oauth;
 
   const getDescription = () => {

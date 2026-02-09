@@ -6,12 +6,27 @@ This file is kept for simple testing and backward compatibility.
 
 import time
 import logging
+import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from database import MoodDatabase
 
 app = Flask(__name__)
-CORS(app)
+
+
+def _parse_cors_origins(raw: str) -> list[str]:
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+
+_LEGACY_CORS_ORIGINS = _parse_cors_origins(
+    os.getenv("CORS_ORIGINS", "http://localhost:5173")
+)
+CORS(
+    app,
+    resources={r"/api/*": {"origins": _LEGACY_CORS_ORIGINS}},
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 
 # Initialize database
 db = MoodDatabase()

@@ -7,7 +7,7 @@ services:
       - RAILWAY_ENVIRONMENT=production
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-this}
       - JWT_SECRET=${JWT_SECRET:-your-jwt-secret-change-this}
-      - CORS_ORIGINS=http://localhost:5173,http://localhost:5000
+      - CORS_ORIGINS=http://localhost:5173
       - ENABLE_GOOGLE_OAUTH=${ENABLE_GOOGLE_OAUTH:-0}
       - DEFAULT_SELF_HOST_ID=${DEFAULT_SELF_HOST_ID:-selfhost_default_user}
       - DATABASE_PATH=/app/data/twilightio.db

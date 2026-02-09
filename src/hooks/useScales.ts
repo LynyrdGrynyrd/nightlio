@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiService, { Scale, CreateScaleData, UpdateScaleData } from '../services/api';
+import { queryKeys } from '../lib/queryKeys';
 
 interface UseScalesReturn {
   scales: Scale[];
@@ -11,93 +13,104 @@ interface UseScalesReturn {
   refreshScales: () => Promise<void>;
 }
 
+const SCALES_KEY = queryKeys.scales.list();
+
 export const useScales = (): UseScalesReturn => {
-  const [scales, setScales] = useState<Scale[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  // Use ref to avoid stale closures in callbacks
-  const scalesRef = useRef(scales);
-  useEffect(() => { scalesRef.current = scales; }, [scales]);
+  const { data, isLoading, error: queryError } = useQuery({
+    queryKey: SCALES_KEY,
+    queryFn: () => apiService.getScales(),
+  });
 
-  const loadScales = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const createScaleMutation = useMutation({
+    mutationFn: (scaleData: CreateScaleData) => apiService.createScale(scaleData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.scales.all });
+    },
+  });
 
+  const updateScaleMutation = useMutation({
+    mutationFn: ({ scaleId, updates }: { scaleId: number; updates: UpdateScaleData }) =>
+      apiService.updateScale(scaleId, updates),
+    onMutate: async ({ scaleId, updates }) => {
+      await queryClient.cancelQueries({ queryKey: SCALES_KEY });
+      const previous = queryClient.getQueryData<Scale[]>(SCALES_KEY);
+      queryClient.setQueryData<Scale[]>(SCALES_KEY, (prev) =>
+        (prev ?? []).map((s) => (s.id === scaleId ? { ...s, ...updates } : s)),
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(SCALES_KEY, context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.scales.all });
+    },
+  });
+
+  const deleteScaleMutation = useMutation({
+    mutationFn: (scaleId: number) => apiService.deleteScale(scaleId),
+    onMutate: async (scaleId) => {
+      await queryClient.cancelQueries({ queryKey: SCALES_KEY });
+      const previous = queryClient.getQueryData<Scale[]>(SCALES_KEY);
+      queryClient.setQueryData<Scale[]>(SCALES_KEY, (prev) =>
+        (prev ?? []).filter((s) => s.id !== scaleId),
+      );
+      return { previous };
+    },
+    onError: (_err, _scaleId, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(SCALES_KEY, context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.scales.all });
+    },
+  });
+
+  const createScale = useCallback(async (scaleData: CreateScaleData): Promise<boolean> => {
     try {
-      const data = await apiService.getScales();
-      setScales(data);
-    } catch (err) {
-      console.error('Failed to load scales:', err);
-      setError('Failed to load scales');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const createScale = useCallback(async (data: CreateScaleData): Promise<boolean> => {
-    setError(null);
-    try {
-      await apiService.createScale(data);
-      // Refresh from server to get complete data with correct user_id and created_at
-      await loadScales();
+      await createScaleMutation.mutateAsync(scaleData);
       return true;
-    } catch (err) {
-      console.error('Failed to create scale:', err);
-      setError('Failed to create scale');
+    } catch {
       return false;
     }
-  }, [loadScales]);
+  }, [createScaleMutation]);
 
   const updateScale = useCallback(async (scaleId: number, updates: UpdateScaleData): Promise<boolean> => {
-    setError(null);
-    const previousScales = scalesRef.current;
-    // Optimistic update: update scale locally
-    setScales(prev => prev.map(s =>
-      s.id === scaleId
-        ? { ...s, ...updates }
-        : s
-    ));
     try {
-      await apiService.updateScale(scaleId, updates);
+      await updateScaleMutation.mutateAsync({ scaleId, updates });
       return true;
-    } catch (err) {
-      console.error('Failed to update scale:', err);
-      setError('Failed to update scale');
-      // Revert on failure
-      setScales(previousScales);
+    } catch {
       return false;
     }
-  }, []);
+  }, [updateScaleMutation]);
 
   const deleteScale = useCallback(async (scaleId: number): Promise<boolean> => {
-    setError(null);
-    const previousScales = scalesRef.current;
-    // Optimistic update: remove scale locally (soft delete, so filter out)
-    setScales(prev => prev.filter(s => s.id !== scaleId));
     try {
-      await apiService.deleteScale(scaleId);
+      await deleteScaleMutation.mutateAsync(scaleId);
       return true;
-    } catch (err) {
-      console.error('Failed to delete scale:', err);
-      setError('Failed to delete scale');
-      // Revert on failure
-      setScales(previousScales);
+    } catch {
       return false;
     }
-  }, []);
+  }, [deleteScaleMutation]);
 
-  useEffect(() => {
-    loadScales();
-  }, [loadScales]);
+  const refreshScales = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.scales.all });
+  }, [queryClient]);
+
+  const mutationError = createScaleMutation.error || updateScaleMutation.error || deleteScaleMutation.error;
 
   return useMemo(() => ({
-    scales,
-    loading,
-    error,
+    scales: data ?? [],
+    loading: isLoading,
+    error: queryError ? 'Failed to load scales' : mutationError ? 'Operation failed' : null,
     createScale,
     updateScale,
     deleteScale,
-    refreshScales: loadScales,
-  }), [scales, loading, error, createScale, updateScale, deleteScale, loadScales]);
+    refreshScales,
+  }), [data, isLoading, queryError, mutationError, createScale, updateScale, deleteScale, refreshScales]);
 };
