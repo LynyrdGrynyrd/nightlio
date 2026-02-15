@@ -3,7 +3,7 @@
  */
 
 import { ApiClient } from '../apiClient';
-import { AuthResponse, VerifyTokenResponse, PublicConfig } from '../types';
+import { AuthResponse, VerifyTokenResponse, PublicConfig, ForgotPasswordResponse, ResetPasswordResponse } from '../types';
 
 export const createAuthEndpoints = (client: ApiClient) => ({
   /**
@@ -61,6 +61,26 @@ export const createAuthEndpoints = (client: ApiClient) => ({
       headers: {
         Authorization: `Bearer ${token}`,
       },
+    });
+  },
+
+  /**
+   * Request a password reset email
+   */
+  forgotPassword: (email: string): Promise<ForgotPasswordResponse> => {
+    return client.request<ForgotPasswordResponse>('/api/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  /**
+   * Reset password with a valid token
+   */
+  resetPassword: (token: string, password: string): Promise<ResetPasswordResponse> => {
+    return client.request<ResetPasswordResponse>('/api/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
     });
   },
 });

@@ -189,6 +189,7 @@ const LoginPage = () => {
         isLoading={isLoading}
         showGoogleOption={!!showGoogleLogin}
         showRegisterOption={!!config.enable_registration}
+        showForgotPassword={!!config.email_enabled}
       />
     );
   };

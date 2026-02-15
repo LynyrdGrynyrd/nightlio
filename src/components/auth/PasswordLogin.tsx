@@ -1,4 +1,5 @@
 import { useState, FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -11,6 +12,7 @@ interface PasswordLoginProps {
   isLoading: boolean;
   showGoogleOption: boolean;
   showRegisterOption: boolean;
+  showForgotPassword?: boolean;
 }
 
 const PasswordLogin = ({
@@ -20,6 +22,7 @@ const PasswordLogin = ({
   isLoading,
   showGoogleOption,
   showRegisterOption,
+  showForgotPassword,
 }: PasswordLoginProps) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -79,6 +82,14 @@ const PasswordLogin = ({
           'Sign In'
         )}
       </Button>
+      {showForgotPassword && (
+        <Link
+          to="/forgot-password"
+          className="block text-center text-sm text-primary hover:underline"
+        >
+          Forgot your password?
+        </Link>
+      )}
       {showRegisterOption && onSwitchToRegister && (
         <Button
           type="button"

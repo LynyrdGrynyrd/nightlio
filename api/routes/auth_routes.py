@@ -12,7 +12,7 @@ from api.utils.password_utils import hash_password, verify_password
 from api.utils.password_validation import validate_password_strength, validate_username
 
 
-def create_auth_routes(user_service: UserService, login_attempt_service: LoginAttemptService = None):
+def create_auth_routes(user_service: UserService, login_attempt_service: LoginAttemptService = None, email_service=None, db=None):
     auth_bp = Blueprint("auth", __name__)
 
     @auth_bp.route("/auth/google", methods=["POST"])
@@ -51,6 +51,7 @@ def create_auth_routes(user_service: UserService, login_attempt_service: LoginAt
                         "name": user["name"],
                         "email": user["email"],
                         "avatar_url": user["avatar_url"],
+                        "email_verified": bool(user.get("email_verified")),
                     },
                 }
             )
@@ -83,6 +84,7 @@ def create_auth_routes(user_service: UserService, login_attempt_service: LoginAt
                         "name": user["name"],
                         "email": user["email"],
                         "avatar_url": user["avatar_url"],
+                        "email_verified": bool(user.get("email_verified")),
                     }
                 }
             )
@@ -131,6 +133,7 @@ def create_auth_routes(user_service: UserService, login_attempt_service: LoginAt
                             "name": user["name"],
                             "email": user.get("email"),
                             "avatar_url": user.get("avatar_url"),
+                            "email_verified": bool(user.get("email_verified")),
                         },
                     }
                 ),
@@ -199,6 +202,7 @@ def create_auth_routes(user_service: UserService, login_attempt_service: LoginAt
                         "name": user["name"],
                         "email": user["email"],
                         "avatar_url": user.get("avatar_url"),
+                        "email_verified": bool(user.get("email_verified")),
                     },
                 }
             )
@@ -266,6 +270,7 @@ def create_auth_routes(user_service: UserService, login_attempt_service: LoginAt
                             "name": user["name"],
                             "email": user["email"],
                             "avatar_url": user.get("avatar_url"),
+                            "email_verified": bool(user.get("email_verified")),
                         },
                     }
                 ),
@@ -370,6 +375,48 @@ def create_auth_routes(user_service: UserService, login_attempt_service: LoginAt
         except Exception as e:
             current_app.logger.error(f"Google token verification error: {str(e)}")
             return None
+
+    @auth_bp.route("/auth/send-verification", methods=["POST"])
+    @require_auth
+    @rate_limit(max_requests=3, window_minutes=15)
+    def send_verification():
+        """Send email verification link to the authenticated user."""
+        user_id = get_current_user_id()
+        user = user_service.get_user_by_id(user_id)
+
+        if not user or not user.get("email"):
+            return jsonify({"error": "No email associated with this account"}), 400
+
+        if user.get("email_verified"):
+            return jsonify({"message": "Email already verified"}), 200
+
+        if not email_service or not email_service.is_enabled:
+            return jsonify({"error": "Email service is not configured"}), 503
+
+        raw_token = db.create_email_verification_token(user_id)
+        username = user.get("username") or user.get("name", "there")
+        email_service.send_email_verification(user["email"], raw_token, username)
+
+        return jsonify({"message": "Verification email sent"}), 200
+
+    @auth_bp.route("/auth/verify-email", methods=["GET"])
+    def verify_email():
+        """Verify email address via token link."""
+        token = request.args.get("token", "").strip()
+        if not token:
+            return jsonify({"error": "Token is required"}), 400
+
+        if not db:
+            return jsonify({"error": "Service unavailable"}), 503
+
+        token_data = db.validate_email_verification_token(token)
+        if not token_data:
+            return jsonify({"error": "Invalid or expired verification link"}), 400
+
+        db.set_email_verified(token_data["user_id"])
+        db.mark_email_verification_token_used(token_data["token_id"])
+
+        return jsonify({"message": "Email verified successfully"}), 200
 
     def generate_jwt_token(user_id: int) -> str:
         """Generate JWT token for user"""

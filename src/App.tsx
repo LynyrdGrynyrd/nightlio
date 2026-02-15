@@ -44,6 +44,8 @@ const SettingsView = lazy(() => import('./views/SettingsView'));
 const AboutPage = lazy(() => import('./views/AboutPage'));
 const UiDemo = lazy(() => import('./views/UiDemo'));
 const MoodModelSandbox = lazy(() => import('./views/MoodModelSandbox'));
+const ForgotPasswordPage = lazy(() => import('./components/auth/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./components/auth/ResetPasswordPage'));
 
 interface LocationState {
   mood?: number;
@@ -403,6 +405,8 @@ function App() {
                     <Route path="/ui-demo" element={<Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading…</div>}><UiDemo /></Suspense>} />
                     <Route path="/ui-demo/mood-model" element={<Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading…</div>}><MoodModelSandbox /></Suspense>} />
                     <Route path="/login" element={<Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading…</div>}><LoginPage /></Suspense>} />
+                    <Route path="/forgot-password" element={<Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading…</div>}><ForgotPasswordPage /></Suspense>} />
+                    <Route path="/reset-password" element={<Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading…</div>}><ResetPasswordPage /></Suspense>} />
                     <Route
                       path="/dashboard/*"
                       element={

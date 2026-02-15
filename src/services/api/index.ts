@@ -69,6 +69,9 @@ class ApiService {
   register = (username: string, password: string, email?: string, name?: string) =>
     this.auth.register(username, password, email, name);
   verifyToken = (token: string) => this.auth.verifyToken(token);
+  forgotPassword = (email: string) => this.auth.forgotPassword(email);
+  resetPassword = (token: string, password: string) =>
+    this.auth.resetPassword(token, password);
 
   // ========== Mood Entries ==========
   getMoodEntries = (options?: { include?: ('selections' | 'media')[] }) =>
