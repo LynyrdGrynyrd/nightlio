@@ -13,6 +13,7 @@ export interface User {
   name?: string;
   avatar_url?: string;
   created_at: string;
+  email_verified?: boolean;
 }
 
 export interface PublicConfig {
@@ -20,6 +21,7 @@ export interface PublicConfig {
   enable_google_oauth?: boolean;
   enable_registration?: boolean;
   enable_local_login?: boolean;
+  email_enabled?: boolean;
   features?: string[];
 }
 

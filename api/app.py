@@ -168,8 +168,32 @@ def create_app(config_name="default"):
     except Exception as e:
         app.logger.warning(f"Could not create default admin user: {e}")
 
+    # Email & Password Reset services
+    try:
+        from api.services.email_service import create_email_service
+        from api.services.password_reset_service import PasswordResetService
+        from api.routes.password_reset_routes import create_password_reset_routes
+    except ImportError:
+        from services.email_service import create_email_service
+        from services.password_reset_service import PasswordResetService
+        from routes.password_reset_routes import create_password_reset_routes
+
+    email_service = create_email_service(cfg) if cfg else None
+    password_reset_service = (
+        PasswordResetService(db, email_service) if email_service else None
+    )
+
     # Register blueprints with services
-    app.register_blueprint(create_auth_routes(user_service, login_attempt_service), url_prefix="/api")
+    app.register_blueprint(
+        create_auth_routes(user_service, login_attempt_service, email_service, db),
+        url_prefix="/api",
+    )
+
+    if password_reset_service:
+        app.register_blueprint(
+            create_password_reset_routes(password_reset_service),
+            url_prefix="/api",
+        )
     
     # Media Services needs to be created before some routes if we want to pass it
     upload_folder = os.path.join(app.root_path, "..", "data", "media")

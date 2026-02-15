@@ -14,6 +14,7 @@ from api.database_common import (
     logger,
 )
 from api.database_goals import GoalsMixin
+from api.database_password_reset import PasswordResetMixin
 from api.database_groups import GroupsMixin
 from api.database_important_days import ImportantDaysMixin
 from api.database_media import MediaMixin
@@ -27,6 +28,7 @@ from api.database_settings import SettingsMixin
 class MoodDatabase(
     DatabaseSchemaMixin,
     UsersMixin,
+    PasswordResetMixin,
     GoalsMixin,
     MoodEntriesMixin,
     MoodDefinitionMixin,

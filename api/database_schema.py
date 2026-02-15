@@ -58,6 +58,10 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
                 # Failed login attempts tracking
                 self._create_failed_login_attempts_table(conn)
 
+                # Password reset & email verification tokens
+                self._create_password_reset_tokens_table(conn)
+                self._create_email_verification_tokens_table(conn)
+
                 # App Lock / Settings
                 if hasattr(self, "_create_settings_table"):
                     self._create_settings_table(conn)
@@ -109,6 +113,12 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
             if "password_hash" not in cols:
                 conn.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
                 logger.info("Users table migrated to include password_hash")
+
+            if "email_verified" not in cols:
+                conn.execute(
+                    "ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT 0"
+                )
+                logger.info("Users table migrated to include email_verified")
         except sqlite3.Error as exc:
             _handle_migration_error(exc, "Users table")
 
@@ -660,6 +670,60 @@ class DatabaseSchemaMixin(DatabaseConnectionMixin):
             logger.info("Failed login attempts table ready")
         except sqlite3.Error as exc:
             logger.warning("Failed login attempts table creation failed: %s", exc)
+
+    def _create_password_reset_tokens_table(
+        self, conn: sqlite3.Connection
+    ) -> None:
+        try:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    token_hash TEXT NOT NULL UNIQUE,
+                    user_id INTEGER NOT NULL,
+                    expires_at TIMESTAMP NOT NULL,
+                    used BOOLEAN DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+                )
+                """
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_password_reset_user "
+                "ON password_reset_tokens(user_id)"
+            )
+            logger.info("Password reset tokens table ready")
+        except sqlite3.Error as exc:
+            logger.warning(
+                "Password reset tokens table creation failed: %s", exc
+            )
+
+    def _create_email_verification_tokens_table(
+        self, conn: sqlite3.Connection
+    ) -> None:
+        try:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS email_verification_tokens (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    token_hash TEXT NOT NULL UNIQUE,
+                    user_id INTEGER NOT NULL,
+                    expires_at TIMESTAMP NOT NULL,
+                    used BOOLEAN DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+                )
+                """
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_email_verification_user "
+                "ON email_verification_tokens(user_id)"
+            )
+            logger.info("Email verification tokens table ready")
+        except sqlite3.Error as exc:
+            logger.warning(
+                "Email verification tokens table creation failed: %s", exc
+            )
 
     # --- Seed helpers -----------------------------------------------------------
     def _insert_default_groups(self) -> None:

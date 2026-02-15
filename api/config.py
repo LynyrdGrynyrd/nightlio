@@ -151,6 +151,18 @@ class ConfigData:
     SELFHOST_USER_NAME: Optional[str] = None
     SELFHOST_USER_EMAIL: Optional[str] = None
 
+    # Email configuration
+    EMAIL_PROVIDER: str = "none"  # "sendgrid", "smtp", or "none"
+    EMAIL_API_KEY: Optional[str] = None
+    EMAIL_FROM_ADDRESS: str = "noreply@twilightio.app"
+    EMAIL_FROM_NAME: str = "Twilightio"
+    SMTP_HOST: Optional[str] = None
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    SMTP_USE_TLS: bool = True
+    APP_URL: str = "http://localhost:5173"
+
 
 _CONFIG_SINGLETON: Optional[ConfigData] = None
 
@@ -192,6 +204,16 @@ def _load_config_from_env() -> ConfigData:
         or "selfhost_default_user",
         SELFHOST_USER_NAME=os.getenv("SELFHOST_USER_NAME") or "Me",
         SELFHOST_USER_EMAIL=os.getenv("SELFHOST_USER_EMAIL") or None,
+        EMAIL_PROVIDER=os.getenv("EMAIL_PROVIDER", "none").lower().strip(),
+        EMAIL_API_KEY=os.getenv("EMAIL_API_KEY"),
+        EMAIL_FROM_ADDRESS=os.getenv("EMAIL_FROM_ADDRESS", "noreply@twilightio.app"),
+        EMAIL_FROM_NAME=os.getenv("EMAIL_FROM_NAME", "Twilightio"),
+        SMTP_HOST=os.getenv("SMTP_HOST"),
+        SMTP_PORT=int(os.getenv("SMTP_PORT", "587")),
+        SMTP_USERNAME=os.getenv("SMTP_USERNAME"),
+        SMTP_PASSWORD=os.getenv("SMTP_PASSWORD"),
+        SMTP_USE_TLS=is_truthy(os.getenv("SMTP_USE_TLS", "true")),
+        APP_URL=os.getenv("APP_URL", "http://localhost:5173"),
     )
 
 
@@ -217,4 +239,5 @@ def config_to_public_dict(cfg: ConfigData) -> Dict[str, Any]:
         "enable_local_login": bool(cfg.ENABLE_LOCAL_LOGIN),
         # Expose the Google Client ID so the frontend can initialize GSI correctly
         "google_client_id": cfg.GOOGLE_CLIENT_ID,
+        "email_enabled": cfg.EMAIL_PROVIDER not in ("none", ""),
     }

@@ -80,6 +80,8 @@ class UsersMixin(DatabaseConnectionMixin):
         "important_days",
         "scale_definitions",
         "push_subscriptions",
+        "password_reset_tokens",
+        "email_verification_tokens",
     })
 
     def delete_user_data(self, user_id: int) -> None:
